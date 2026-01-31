@@ -7,7 +7,8 @@ from ..config import claude_client, ANTHROPIC_MODEL, DEV_MODE
 from ..models.message import Message
 from ..models.user import User
 from .skill_loader import SkillLoader
-from .tools import ToolExecutor, get_tool_definitions, TOOLS
+from .tools import ToolExecutor, get_tool_definitions, get_allowed_tools, TOOLS
+from .permission_manager import get_permission_manager
 from ..utils.logging import logger
 import time
 import random
@@ -135,16 +136,17 @@ class ClaudeProcessor:
                     final_response = f"[DEV MODE] I would process your message: '{user_message[:50]}...' with tools enabled."
                     break
 
-                # Prepare the API request
+                # Prepare the API request - use only allowed tools
+                allowed_tools = get_allowed_tools()
                 request_params = {
                     "model": ANTHROPIC_MODEL,
                     "max_tokens": 8192,
                     "system": SYSTEM_PROMPT,
-                    "tools": TOOLS,
+                    "tools": allowed_tools,
                     "messages": messages
                 }
 
-                logger.info(f"Calling Claude API with {len(TOOLS)} tools available")
+                logger.info(f"Calling Claude API with {len(allowed_tools)} tools available")
                 logger.debug(f"Messages count: {len(messages)}")
 
                 response = await asyncio.wait_for(

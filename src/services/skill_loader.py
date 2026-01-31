@@ -3,6 +3,8 @@ import importlib.util
 from typing import Dict, Callable
 from ..models.skill import Skill
 from ..utils.logging import logger
+from .permission_manager import get_permission_manager
+
 
 class SkillLoader:
     """Loads and manages Claude Skills from a directory."""
@@ -44,6 +46,12 @@ class SkillLoader:
                     logger.debug(f"Checking for execute_skill function in {skill_name}")
                     if hasattr(module, 'execute_skill'):
                         if callable(getattr(module, 'execute_skill')):
+                            # Check if skill is allowed by permission manager
+                            permission_manager = get_permission_manager()
+                            if permission_manager and not permission_manager.is_skill_allowed(skill_name):
+                                logger.info(f"Skill {skill_name} blocked by permission config")
+                                continue
+
                             self.skills[skill_name] = module.execute_skill
                             logger.info(f"Loaded skill: {skill_name}")
                             logger.debug(f"Skill {skill_name} validation successful")

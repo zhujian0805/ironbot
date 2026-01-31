@@ -23,6 +23,9 @@ ANTHROPIC_AUTH_TOKEN = os.getenv("ANTHROPIC_AUTH_TOKEN")
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "gpt-5-mini")
 SKILLS_DIR = os.getenv("SKILLS_DIR", "./skills")
 
+# Permission configuration from environment
+PERMISSIONS_FILE = os.getenv("PERMISSIONS_FILE", "./permissions.yaml")
+
 # Logging configuration from environment
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

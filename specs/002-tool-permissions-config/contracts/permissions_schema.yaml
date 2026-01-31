@@ -1,0 +1,158 @@
+# Permission Configuration File Schema
+
+# JSON Schema for permissions.yaml validation
+$schema: "http://json-schema.org/draft-07/schema#"
+$id: "https://ironbot.local/schemas/permissions.yaml"
+title: Permission Configuration
+description: Configuration file for bot capability permissions
+type: object
+
+required:
+  - version
+
+properties:
+  version:
+    type: string
+    description: Schema version for forward compatibility
+    pattern: "^[0-9]+\\.[0-9]+$"
+    examples:
+      - "1.0"
+
+  settings:
+    type: object
+    description: Global permission settings
+    properties:
+      default_deny:
+        type: boolean
+        default: true
+        description: If true, deny all unlisted capabilities
+      log_denials:
+        type: boolean
+        default: true
+        description: Log all permission denial events
+    additionalProperties: false
+
+  tools:
+    type: object
+    description: Tool permission configuration
+    properties:
+      allowed:
+        type: array
+        items:
+          type: string
+        description: |
+          List of allowed tool names or patterns.
+          Supports glob patterns: * (any chars), ? (single char), [seq] (char set)
+        examples:
+          - ["list_directory", "read_file", "file_*"]
+      restrictions:
+        type: object
+        description: Per-tool restrictions
+        additionalProperties:
+          $ref: "#/definitions/ToolRestriction"
+    additionalProperties: false
+
+  skills:
+    type: object
+    description: Skill permission configuration
+    properties:
+      allowed:
+        type: array
+        items:
+          type: string
+        description: List of allowed skill names or patterns
+        examples:
+          - ["calculator", "weather", "*"]
+    additionalProperties: false
+
+  mcps:
+    type: object
+    description: MCP (Model Context Protocol) permission configuration
+    properties:
+      allowed:
+        type: array
+        items:
+          type: string
+        description: List of allowed MCP identifiers or patterns
+        examples:
+          - ["filesystem", "github"]
+      settings:
+        type: object
+        description: Per-MCP settings
+        additionalProperties:
+          $ref: "#/definitions/MCPSettings"
+    additionalProperties: false
+
+definitions:
+  ToolRestriction:
+    type: object
+    description: Restrictions for a specific tool
+    properties:
+      allowed_commands:
+        type: array
+        items:
+          type: string
+        description: Patterns for allowed command arguments
+      blocked_commands:
+        type: array
+        items:
+          type: string
+        description: Patterns for blocked command arguments
+      allowed_paths:
+        type: array
+        items:
+          type: string
+        description: Allowed working directories
+      timeout_max:
+        type: integer
+        minimum: 1
+        maximum: 3600
+        description: Maximum allowed timeout in seconds
+    additionalProperties: false
+
+  MCPSettings:
+    type: object
+    description: Settings for a specific MCP
+    properties:
+      allowed_paths:
+        type: array
+        items:
+          type: string
+        description: Allowed filesystem paths for this MCP
+      allowed_repos:
+        type: array
+        items:
+          type: string
+        description: Allowed repository patterns (for git-related MCPs)
+    additionalProperties: false
+
+# Example valid configuration
+examples:
+  - version: "1.0"
+    settings:
+      default_deny: true
+      log_denials: true
+    tools:
+      allowed:
+        - "list_directory"
+        - "read_file"
+        - "run_powershell"
+      restrictions:
+        run_powershell:
+          allowed_commands:
+            - "Get-*"
+            - "Test-*"
+          blocked_commands:
+            - "*-Item"
+          timeout_max: 60
+    skills:
+      allowed:
+        - "calculator"
+        - "weather"
+    mcps:
+      allowed:
+        - "filesystem"
+      settings:
+        filesystem:
+          allowed_paths:
+            - "/home/user/projects"

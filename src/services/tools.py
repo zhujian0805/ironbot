@@ -5,6 +5,7 @@ import subprocess
 import json
 from typing import Dict, Any, List, Optional
 from ..utils.logging import logger
+from .permission_manager import get_permission_manager
 
 
 # Tool definitions following Claude's tool use schema
@@ -138,13 +139,15 @@ class ToolExecutor:
         "init 6",
     ]
 
-    def __init__(self, allowed_tools: Optional[List[str]] = None):
+    def __init__(self, allowed_tools: Optional[List[str]] = None, permission_manager=None):
         """Initialize the tool executor.
 
         Args:
-            allowed_tools: List of tool names that are allowed. If None, all tools are allowed.
+            allowed_tools: List of tool names that are allowed. If None, uses permission manager.
+            permission_manager: Optional PermissionManager instance. If None, uses global instance.
         """
         self.allowed_tools = allowed_tools
+        self.permission_manager = permission_manager or get_permission_manager()
 
     def is_command_safe(self, command: str) -> bool:
         """Check if a command is safe to execute."""
@@ -167,8 +170,25 @@ class ToolExecutor:
         """
         logger.info(f"Executing tool: {tool_name} with input: {tool_input}")
 
-        # Check if tool is allowed
-        if self.allowed_tools is not None and tool_name not in self.allowed_tools:
+        # Check if tool is allowed via permission manager
+        if self.permission_manager:
+            if not self.permission_manager.is_tool_allowed(tool_name):
+                denial_msg = self.permission_manager.format_denial_message("tool", tool_name)
+                return {
+                    "success": False,
+                    "error": denial_msg
+                }
+
+            # Check resource paths for file operations
+            path = tool_input.get("path") or tool_input.get("working_directory")
+            if path and self.permission_manager.check_resource_denied(path):
+                return {
+                    "success": False,
+                    "error": f"Permission denied: Resource path '{path}' is blocked by deny rules"
+                }
+
+        # Legacy allowed_tools check (for backward compatibility)
+        elif self.allowed_tools is not None and tool_name not in self.allowed_tools:
             return {
                 "success": False,
                 "error": f"Tool '{tool_name}' is not allowed in current configuration"
@@ -419,3 +439,21 @@ class ToolExecutor:
 def get_tool_definitions() -> List[Dict[str, Any]]:
     """Get the list of tool definitions for Claude API."""
     return TOOLS
+
+
+def get_allowed_tools() -> List[Dict[str, Any]]:
+    """Get tool definitions filtered by permission manager.
+
+    Returns:
+        List of tool definitions that are allowed by the permission config.
+    """
+    permission_manager = get_permission_manager()
+    if permission_manager is None:
+        # No permission manager, return all tools
+        return TOOLS
+
+    return [
+        tool for tool in TOOLS
+        if permission_manager.is_tool_allowed(tool["name"])
+    ]
+

@@ -1,0 +1,204 @@
+# Permission Manager API Contract
+
+openapi: "3.0.3"
+info:
+  title: Permission Manager Internal API
+  description: Internal API contract for the PermissionManager service
+  version: "1.0.0"
+
+# Note: This is an internal Python API, not a REST API.
+# Using OpenAPI format for standardized documentation.
+
+paths:
+  /permission/check/tool:
+    post:
+      summary: Check if a tool is allowed
+      description: |
+        Validates whether a specific tool can be executed.
+        Returns permission status and any applicable restrictions.
+      operationId: is_tool_allowed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToolCheckRequest'
+      responses:
+        '200':
+          description: Permission check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionResult'
+
+  /permission/check/skill:
+    post:
+      summary: Check if a skill is allowed
+      operationId: is_skill_allowed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkillCheckRequest'
+      responses:
+        '200':
+          description: Permission check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionResult'
+
+  /permission/check/mcp:
+    post:
+      summary: Check if an MCP is allowed
+      operationId: is_mcp_allowed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MCPCheckRequest'
+      responses:
+        '200':
+          description: Permission check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionResult'
+
+  /permission/list:
+    get:
+      summary: List all allowed capabilities
+      operationId: list_allowed
+      responses:
+        '200':
+          description: List of allowed capabilities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllowedCapabilities'
+
+  /permission/reload:
+    post:
+      summary: Reload configuration from file
+      operationId: reload_config
+      responses:
+        '200':
+          description: Reload successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReloadResult'
+        '400':
+          description: Reload failed (invalid config)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReloadError'
+
+components:
+  schemas:
+    ToolCheckRequest:
+      type: object
+      required:
+        - tool_name
+      properties:
+        tool_name:
+          type: string
+          description: Name of the tool to check
+          example: "run_powershell"
+        arguments:
+          type: object
+          description: Optional tool arguments for restriction checking
+          additionalProperties: true
+
+    SkillCheckRequest:
+      type: object
+      required:
+        - skill_name
+      properties:
+        skill_name:
+          type: string
+          description: Name of the skill to check
+          example: "calculator"
+
+    MCPCheckRequest:
+      type: object
+      required:
+        - mcp_name
+      properties:
+        mcp_name:
+          type: string
+          description: Name/identifier of the MCP to check
+          example: "filesystem"
+
+    PermissionResult:
+      type: object
+      required:
+        - allowed
+      properties:
+        allowed:
+          type: boolean
+          description: Whether the capability is permitted
+        reason:
+          type: string
+          description: Human-readable reason (especially for denials)
+          example: "Tool 'run_powershell' is not in the allowed list"
+        restrictions:
+          type: object
+          description: Any restrictions that apply if allowed
+          additionalProperties: true
+
+    AllowedCapabilities:
+      type: object
+      properties:
+        tools:
+          type: array
+          items:
+            type: string
+          description: List of allowed tool names/patterns
+        skills:
+          type: array
+          items:
+            type: string
+          description: List of allowed skill names/patterns
+        mcps:
+          type: array
+          items:
+            type: string
+          description: List of allowed MCP identifiers/patterns
+
+    ReloadResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Configuration reloaded successfully"
+        tools_count:
+          type: integer
+          description: Number of tools now allowed
+        skills_count:
+          type: integer
+          description: Number of skills now allowed
+        mcps_count:
+          type: integer
+          description: Number of MCPs now allowed
+
+    ReloadError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          description: Error message describing what went wrong
+          example: "Invalid YAML syntax at line 15"
+        kept_previous:
+          type: boolean
+          description: Whether the previous config was retained
+          example: true

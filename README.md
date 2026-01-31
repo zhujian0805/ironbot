@@ -16,6 +16,7 @@ A Python-based AI agent that integrates with Slack to provide conversational AI 
 - **Async Processing**: Handles concurrent users efficiently
 - **Structured Logging**: JSON-formatted logs for production monitoring
 - **Safety Checks**: Blocks dangerous commands to prevent system damage
+- **Permission System**: YAML-based configuration to control which tools, skills, and MCPs are allowed
 
 ## Quick Start
 
@@ -32,9 +33,25 @@ A Python-based AI agent that integrates with Slack to provide conversational AI 
    ANTHROPIC_AUTH_TOKEN=your-api-key
    ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
    SKILLS_DIR=./skills
+   PERMISSIONS_FILE=./permissions.yaml
    ```
 
-3. Set up Slack App permissions:
+3. Configure permissions in `permissions.yaml`:
+   ```yaml
+   version: "1.0"
+   settings:
+     default_deny: true
+   tools:
+     allowed:
+       - "list_directory"
+       - "read_file"
+   skills:
+     allowed: []
+   mcps:
+     allowed: []
+   ```
+
+4. Set up Slack App permissions:
    - **OAuth Scopes** (Bot Token Scopes):
      - `channels:read` - Read public channel information
      - `groups:read` - Read private channel information
@@ -54,6 +71,51 @@ A Python-based AI agent that integrates with Slack to provide conversational AI 
    ```bash
    python src/main.py
    ```
+
+## Permission Configuration
+
+The bot uses a YAML configuration file to control which capabilities are allowed. See `permissions.yaml` for the full configuration.
+
+### Basic Configuration
+
+```yaml
+version: "1.0"
+settings:
+  default_deny: true    # Deny unlisted capabilities
+  log_denials: true     # Log all permission denials
+
+tools:
+  allowed:
+    - "list_directory"  # Allow specific tools
+    - "read_file"
+    - "file_*"          # Wildcard patterns supported
+
+resources:
+  denied_paths:         # Block specific paths regardless of tool
+    - "/etc/*"
+    - "C:\\Windows\\*"
+    - "*/.env"
+
+skills:
+  allowed: []           # Empty = deny all
+
+mcps:
+  allowed: []
+```
+
+### Key Features
+
+- **Default Deny**: If a tool/skill/MCP is not in the allowed list, it's blocked
+- **Wildcard Patterns**: Use `*` for flexible matching (e.g., `file_*` matches all file operations)
+- **Resource Deny Rules**: Block specific paths even when the tool is allowed
+- **Hot Reload**: Changes to `permissions.yaml` are detected automatically (requires `watchdog`)
+- **Audit Logging**: All permission denials are logged for security auditing
+
+### CLI Options
+
+```bash
+python src/main.py --permissions-file /path/to/custom-permissions.yaml
+```
 
 ## Tool Use
 
@@ -90,21 +152,26 @@ src/
 ├── models/                # Data models
 │   ├── message.py         # Message model
 │   ├── user.py            # User model
-│   └── skill.py           # Skill model
+│   ├── skill.py           # Skill model
+│   └── permission.py      # Permission config models
 ├── services/              # Business logic
 │   ├── slack_handler.py   # Slack event handling + thinking indicator
 │   ├── claude_processor.py # Claude API + tool use loop
 │   ├── skill_loader.py    # Legacy skill loading
-│   └── tools.py           # Tool definitions and executor
+│   ├── tools.py           # Tool definitions and executor
+│   └── permission_manager.py # Permission enforcement
 ├── handlers/              # Request handlers
 └── utils/                 # Utilities
     └── logging.py         # Structured logging
 
 tests/
 ├── contract/              # Contract tests
+│   └── test_permission_enforcement.py
 ├── integration/           # Integration tests
+│   └── test_permission_reload.py
 └── unit/                  # Unit tests
-    └── test_tools.py      # Tool executor tests
+    ├── test_tools.py
+    └── test_permission_manager.py
 ```
 
 ## How It Works

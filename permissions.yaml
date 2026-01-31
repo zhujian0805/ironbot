@@ -1,0 +1,63 @@
+# Bot Permissions Configuration
+# This file controls which tools, skills, and MCPs the bot can use.
+# Default behavior: deny all (if file missing or section empty)
+
+version: "1.0"
+
+# Global settings
+settings:
+  default_deny: true    # If true, deny unlisted capabilities (recommended)
+  log_denials: true     # Log all permission denial events for audit
+
+# Allowed tools (Claude tool use)
+tools:
+  allowed:
+    - "list_directory"    # Allow listing directory contents
+    - "read_file"         # Allow reading files
+    # - "write_file"      # Uncomment to allow writing files
+    # - "run_powershell"  # Uncomment to allow PowerShell execution
+    # - "run_bash"        # Uncomment to allow Bash execution
+    # - "file_*"          # Wildcard: allow all file operations
+
+  # Optional: per-tool restrictions
+  restrictions:
+    run_powershell:
+      allowed_commands:
+        - "Get-*"         # Only allow Get commands
+        - "Test-*"        # Allow Test commands
+      blocked_commands:
+        - "*-Item"        # Block item manipulation (delete/move/copy)
+        - "Remove-*"      # Block all Remove commands
+      timeout_max: 60     # Maximum 60 second timeout
+
+# Resource-level deny rules (block regardless of tool permissions)
+# Deny rules take precedence over allow rules
+resources:
+  denied_paths:
+    - "/etc/*"            # Block access to /etc on Linux
+    - "/var/log/*"        # Block access to system logs
+    - "C:\\Windows\\*"    # Block Windows system directory
+    - "C:\\Program Files\\*"
+    - "*/.env"            # Block all .env files
+    - "*/.git/*"          # Block git internals
+    - "*/secrets/*"       # Block any secrets directories
+
+# Allowed skills (legacy skill system)
+skills:
+  allowed:
+    - "calculator"        # Example skill
+    # - "*"               # Uncomment to allow all skills
+
+# Allowed MCPs (Model Context Protocol servers)
+mcps:
+  allowed: []             # No MCPs allowed by default
+  # allowed:
+  #   - "filesystem"
+  #   - "github"
+
+  # MCP-specific settings
+  settings:
+    filesystem:
+      allowed_paths:
+        - "/home/user/projects"
+        - "C:\\Projects"

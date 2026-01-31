@@ -1,6 +1,6 @@
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 def setup_logging(debug=False, log_level=None, log_file=None):
     """Setup structured JSON logging for the application.
@@ -14,7 +14,7 @@ def setup_logging(debug=False, log_level=None, log_file=None):
     class JSONFormatter(logging.Formatter):
         def format(self, record):
             log_entry = {
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "level": record.levelname,
                 "message": record.getMessage(),
                 "module": record.module,
