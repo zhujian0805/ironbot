@@ -1,6 +1,7 @@
 export type GlobalSettings = {
   defaultDeny: boolean;
   logDenials: boolean;
+  enableOverridePrompt?: boolean;
 };
 
 export type ToolRestriction = {
@@ -8,6 +9,7 @@ export type ToolRestriction = {
   blockedCommands: string[];
   allowedPaths: string[];
   timeoutMax?: number;
+  overridePrompt?: boolean;
 };
 
 export type ToolPermissions = {
@@ -31,11 +33,13 @@ export type McpPermissions = {
 
 export type ResourceDenyRules = {
   deniedPaths: string[];
+  deniedPatterns?: string[];
 };
 
 export type PermissionPolicy = {
   version: string;
   settings: GlobalSettings;
+  blockedCommands?: string[];
   tools: ToolPermissions;
   skills: SkillPermissions;
   mcps: McpPermissions;

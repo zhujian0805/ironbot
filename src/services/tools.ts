@@ -132,26 +132,7 @@ export const TOOLS: ToolDefinition[] = [
   }
 ];
 
-const BLOCKED_COMMANDS = [
-  "rm -rf /",
-  "del /f /s /q c:\\\\",
-  "format",
-  ":(){:|:&};:",
-  "mkfs",
-  "dd if=/dev/zero",
-  "shutdown",
-  "reboot",
-  "halt",
-  "init 0",
-  "init 6"
-];
-
 const normalize = (command: string): string => command.toLowerCase().trim();
-
-const findBlockedCommand = (command: string): string | undefined => {
-  const lowered = normalize(command);
-  return BLOCKED_COMMANDS.find((blocked) => lowered.includes(blocked.toLowerCase()));
-};
 
 const runProcess = (
   command: string,
@@ -349,10 +330,11 @@ export class ToolExecutor {
     const timeout = typeof toolInput.timeout === "number" ? toolInput.timeout : 30;
 
     if (!command) return { success: false, error: "No command provided" };
-    const blocked = findBlockedCommand(command);
-    if (blocked) {
-      logger.debug({ command, rule: blocked }, "Command blocked by safety rule");
-      return { success: false, error: `Command blocked for safety reasons: matched '${blocked}'` };
+
+    const permissionManager = getPermissionManager();
+    if (permissionManager?.isCommandBlocked(command, "run_powershell")) {
+      logger.debug({ command }, "Command blocked by permission policy");
+      return { success: false, error: "Command blocked: This operation is not permitted by policy" };
     }
 
     logger.info({ command }, "Running PowerShell command");
@@ -366,10 +348,11 @@ export class ToolExecutor {
     const timeout = typeof toolInput.timeout === "number" ? toolInput.timeout : 30;
 
     if (!command) return { success: false, error: "No command provided" };
-    const blocked = findBlockedCommand(command);
-    if (blocked) {
-      logger.debug({ command, rule: blocked }, "Command blocked by safety rule");
-      return { success: false, error: `Command blocked for safety reasons: matched '${blocked}'` };
+
+    const permissionManager = getPermissionManager();
+    if (permissionManager?.isCommandBlocked(command, "run_bash")) {
+      logger.debug({ command }, "Command blocked by permission policy");
+      return { success: false, error: "Command blocked: This operation is not permitted by policy" };
     }
 
     logger.info({ command }, "Running Bash command");

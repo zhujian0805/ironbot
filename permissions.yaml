@@ -1,48 +1,75 @@
 # Bot Permissions Configuration
-# This file controls which tools, skills, and MCPs the bot can use.
-# Default behavior: deny all (if file missing or section empty)
+# Strategy: Deny-all by default. Only explicitly allowed actions are permitted.
+# Add actions to allow lists or enable override prompts for additional operations.
 
 version: "1.0"
 
 # Global settings
 settings:
-  default_deny: true    # If true, deny unlisted capabilities (recommended)
-  log_denials: true     # Log all permission denial events for audit
+  default_deny: true                    # Deny all unlisted capabilities (core security model)
+  log_denials: true                     # Log all permission denial events for audit
+  enable_override_prompt: false         # Enable user prompts for permission overrides (global setting)
 
-# Allowed tools (Claude tool use)
+# Global blocked commands - applied to all command-based tools
+# These represent destructive, dangerous, or system-critical operations
+blocked_commands:
+  - "rm -rf /"                          # Recursive delete entire filesystem (Linux)
+  - "del /f /s /q c:\\\\"               # Recursive delete entire drive (Windows)
+  - "format"                            # Format disk
+  - ":(){:|:&};:"                       # Bash fork bomb
+  - "mkfs"                              # Make filesystem
+  - "dd if=/dev/zero"                   # Destructive disk write
+  - "shutdown"                          # System shutdown
+  - "reboot"                            # System reboot
+  - "halt"                              # System halt
+  - "init 0"                            # Runlevel 0 (shutdown)
+  - "init 6"                            # Runlevel 6 (reboot)
+
+# Allowed tools (allow-list only)
 tools:
-  allowed:
-    - "list_directory"    # Allow listing directory contents
-    - "read_file"         # Allow reading files
-    # - "write_file"      # Uncomment to allow writing files
-    - "run_powershell"  # Uncomment to allow PowerShell execution
-    # - "run_bash"        # Uncomment to allow Bash execution
-    # - "file_*"          # Wildcard: allow all file operations
+  allowed: []                           # Empty by default: no tools allowed unless explicitly enabled
 
-  # Optional: per-tool restrictions
+  # Per-tool restrictions and configurations
   restrictions:
     run_powershell:
-      allowed_commands:
-        - "Get-*"         # Only allow Get commands
-        - "Get-PSDrive"   # Explicitly allow Get-PSDrive
-        - "Test-*"        # Allow Test commands
-        - "Format-*"      # Allow Format commands
-      blocked_commands:
-        - "*-Item"        # Block item manipulation (delete/move/copy)
-        - "Remove-*"      # Block all Remove commands
-      timeout_max: 60     # Maximum 60 second timeout
+      allowed_commands: []              # Empty = deny all commands (override with specific patterns)
+      blocked_commands: []              # Additional blocked patterns for this tool
+      timeout_max: 30                   # Maximum timeout in seconds
+      override_prompt: false            # Allow prompting to override denial
 
-# Resource-level deny rules (block regardless of tool permissions)
+    run_bash:
+      allowed_commands: []              # Empty = deny all commands
+      blocked_commands: []              # Additional blocked patterns
+      timeout_max: 30
+      override_prompt: false
+
+    read_file:
+      allowed_paths: []                 # Empty = deny all paths (override with specific patterns)
+      override_prompt: false
+
+    write_file:
+      allowed_paths: []                 # Empty = deny all paths
+      override_prompt: false
+
+    list_directory:
+      allowed_paths: []                 # Empty = deny all paths
+      override_prompt: false
+
+# Resource-level deny rules (block access regardless of tool permissions)
 # Deny rules take precedence over allow rules
 resources:
   denied_paths:
-    - "/etc/*"            # Block access to /etc on Linux
-    - "/var/log/*"        # Block access to system logs
-    - "C:\\Windows\\*"    # Block Windows system directory
-    - "C:\\Program Files\\*"
-    - "*/.env"            # Block all .env files
-    - "*/.git/*"          # Block git internals
-    - "*/secrets/*"       # Block any secrets directories
+    - "/etc/*"                          # System configuration (Linux)
+    - "/var/log/*"                      # System logs (Linux)
+    - "C:\\Windows\\*"                  # Windows system directory
+    - "C:\\Program Files\\*"            # Program files
+    - "*/.env"                          # Environment files with secrets
+    - "*/.git/*"                        # Git internals
+    - "*/secrets/*"                     # Secrets directories
+  denied_patterns:                      # Additional deny patterns
+    - ".*password.*"                    # Files containing "password"
+    - ".*token.*"                       # Files containing "token"
+    - ".*credential.*"                  # Files containing "credential"
 
 # Allowed skills (legacy skill system)
 skills:

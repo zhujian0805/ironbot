@@ -27,16 +27,18 @@ const toStringArray = (value: unknown): string[] => {
 
 const defaultSettings = (): GlobalSettings => ({
   defaultDeny: true,
-  logDenials: true
+  logDenials: true,
+  enableOverridePrompt: false
 });
 
 const defaultPolicy = (): PermissionPolicy => ({
   version: "1.0",
   settings: defaultSettings(),
+  blockedCommands: [],
   tools: { allowed: [], restrictions: {} },
   skills: { allowed: [] },
   mcps: { allowed: [], settings: {} },
-  resources: { deniedPaths: [] }
+  resources: { deniedPaths: [], deniedPatterns: [] }
 });
 
 const escapeRegex = (input: string): string =>
@@ -104,8 +106,11 @@ export class PermissionManager {
     const rawSettings = (raw.settings ?? {}) as Record<string, unknown>;
     const settings: GlobalSettings = {
       defaultDeny: Boolean(rawSettings.default_deny ?? true),
-      logDenials: Boolean(rawSettings.log_denials ?? true)
+      logDenials: Boolean(rawSettings.log_denials ?? true),
+      enableOverridePrompt: Boolean(rawSettings.enable_override_prompt ?? false)
     };
+
+    const blockedCommands = toStringArray(raw.blocked_commands);
 
     const rawTools = (raw.tools ?? {}) as Record<string, unknown>;
     const restrictions: Record<string, ToolRestriction> = {};
@@ -119,7 +124,8 @@ export class PermissionManager {
         timeoutMax:
           typeof restriction.timeout_max === "number"
             ? restriction.timeout_max
-            : undefined
+            : undefined,
+        overridePrompt: Boolean(restriction.override_prompt ?? false)
       };
     }
 
@@ -151,12 +157,14 @@ export class PermissionManager {
 
     const rawResources = (raw.resources ?? {}) as Record<string, unknown>;
     const resources: ResourceDenyRules = {
-      deniedPaths: toStringArray(rawResources.denied_paths)
+      deniedPaths: toStringArray(rawResources.denied_paths),
+      deniedPatterns: toStringArray(rawResources.denied_patterns)
     };
 
     return {
       version: typeof raw.version === "string" ? raw.version : "1.0",
       settings,
+      blockedCommands,
       tools,
       skills,
       mcps,
@@ -224,6 +232,32 @@ export class PermissionManager {
 
   getToolRestrictions(toolName: string): ToolRestriction | undefined {
     return this.config.tools.restrictions[toolName];
+  }
+
+  getGlobalBlockedCommands(): string[] {
+    return this.config.blockedCommands ?? [];
+  }
+
+  shouldPromptForOverride(toolName: string): boolean {
+    const restrictions = this.config.tools.restrictions[toolName];
+    return Boolean(restrictions?.overridePrompt ?? this.config.settings.enableOverridePrompt);
+  }
+
+  isCommandBlocked(command: string, toolName?: string): boolean {
+    if (!command) return false;
+
+    const globalBlockedCommands = this.getGlobalBlockedCommands();
+    const toolRestrictions = toolName ? this.config.tools.restrictions[toolName] : undefined;
+
+    const allBlocked = [
+      ...globalBlockedCommands,
+      ...(toolRestrictions?.blockedCommands ?? [])
+    ];
+
+    if (allBlocked.length === 0) return false;
+
+    const lowerCmd = command.toLowerCase().trim();
+    return allBlocked.some((blocked) => lowerCmd.includes(blocked.toLowerCase()));
   }
 
   checkPermission(
