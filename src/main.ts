@@ -80,11 +80,12 @@ const main = async (): Promise<void> => {
   const capabilities = permissionManager.listAllowedCapabilities();
   logger.info(
     {
-      tools: capabilities.tools.length,
+      tools: capabilities.tools,
+      toolCount: capabilities.tools.length,
       skills: capabilities.skills.length,
       mcps: capabilities.mcps.length
     },
-    "Allowed capabilities"
+    "Loaded capabilities"
   );
 
   if (permissionManager.startFileWatcher()) {

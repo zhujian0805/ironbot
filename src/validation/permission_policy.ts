@@ -5,7 +5,8 @@ const ToolRestrictionSchema = z
     allowed_commands: z.array(z.string()).optional(),
     blocked_commands: z.array(z.string()).optional(),
     allowed_paths: z.array(z.string()).optional(),
-    timeout_max: z.number().int().positive().optional()
+    timeout_max: z.number().int().positive().optional(),
+    override_prompt: z.boolean().optional()
   })
   .strict();
 
@@ -19,10 +20,12 @@ const McpSettingsSchema = z
 export const PermissionPolicySchema = z
   .object({
     version: z.string().optional(),
+    blocked_commands: z.array(z.string()).optional(),
     settings: z
       .object({
         default_deny: z.boolean().optional(),
-        log_denials: z.boolean().optional()
+        log_denials: z.boolean().optional(),
+        enable_override_prompt: z.boolean().optional()
       })
       .optional(),
     tools: z
@@ -44,7 +47,8 @@ export const PermissionPolicySchema = z
       .optional(),
     resources: z
       .object({
-        denied_paths: z.array(z.string()).optional()
+        denied_paths: z.array(z.string()).optional(),
+        denied_patterns: z.array(z.string()).optional()
       })
       .optional()
   })
