@@ -103,6 +103,46 @@ Examples of foundational tasks (adjust based on your project):
 
 ---
 
+## Phase 5: User Story 3 - Thinking Indicator (Priority: P1)
+
+**Goal**: Show visual feedback while processing messages
+
+**Independent Test**: Send a message and verify "Thinking..." appears before final response
+
+### Implementation for User Story 3
+
+- [x] T025 [US3] Update slack_handler.py to post "Thinking..." message on message receipt
+- [x] T026 [US3] Update slack_handler.py to use chat_update to replace thinking message with response
+- [x] T027 [US3] Handle errors by updating thinking message with error indicator
+
+**Checkpoint**: Thinking indicator working for all messages
+
+---
+
+## Phase 6: User Story 4 - Tool Use / System Operations (Priority: P2)
+
+**Goal**: Enable AI agent to execute system commands via Claude tool use API
+
+**Independent Test**: Ask agent to list files and verify command execution
+
+### Tests for User Story 4 (MANDATORY) ⚠️
+
+- [x] T028 [P] [US4] Unit tests for tool definitions in tests/unit/test_tools.py
+- [x] T029 [P] [US4] Unit tests for tool executor (PowerShell, Bash, file ops) in tests/unit/test_tools.py
+- [x] T030 [P] [US4] Unit tests for safety checks (blocked commands) in tests/unit/test_tools.py
+
+### Implementation for User Story 4
+
+- [x] T031 [P] [US4] Create tool definitions (run_powershell, run_bash, read_file, write_file, list_directory) in src/services/tools.py
+- [x] T032 [P] [US4] Implement ToolExecutor class with safety checks in src/services/tools.py
+- [x] T033 [US4] Add agentic tool use loop in src/services/claude_processor.py
+- [x] T034 [US4] Add system prompt for tool use in src/services/claude_processor.py
+- [x] T035 [US4] Handle tool_use stop_reason and tool_result messages in src/services/claude_processor.py
+
+**Checkpoint**: Tool use working - agent can execute system commands
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
