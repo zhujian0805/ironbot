@@ -146,12 +146,6 @@ const commandStartsWithPattern = (command: string, patterns: string[]): boolean 
   });
 };
 
-const commandContainsPattern = (command: string, patterns: string[]): boolean => {
-  if (!patterns.length || !command) return false;
-  const normalizedCmd = normalize(command);
-  return patterns.some((pattern) => normalizedCmd.includes(normalize(pattern)));
-};
-
 const runProcess = (
   command: string,
   args: string[],
@@ -269,25 +263,24 @@ export class ToolExecutor {
       const restrictions = this.permissionManager.getToolRestrictions(toolName);
       if (restrictions) {
         const command = typeof toolInput.command === "string" ? toolInput.command : "";
-        if (restrictions.blockedCommands.length > 0 && command) {
-          if (commandContainsPattern(command, restrictions.blockedCommands)) {
+        if (command) {
+          // Deny-all-by-default for commands: only allow if explicitly listed
+          if (restrictions.allowedCommands.length === 0) {
             logger.debug(
-              { toolName, command, blocked: restrictions.blockedCommands },
-              "Tool execution denied by blocked command rule"
+              { toolName, command },
+              "Tool execution denied: no allowed commands configured"
             );
             return {
               success: false,
-              error: `Permission denied: Command contains blocked pattern`
+              error: `Permission denied: No commands allowed for this tool (allowed_commands is empty)`
             };
           }
-        }
-        if (restrictions.allowedCommands.length > 0 && command) {
           const isAllowed = commandStartsWithPattern(command, restrictions.allowedCommands);
           if (!isAllowed) {
             const allowedList = restrictions.allowedCommands.join(", ");
             logger.debug(
               { toolName, command, allowed: restrictions.allowedCommands },
-              "Tool execution denied by allowed command rules"
+              "Tool execution denied: command not in allowed list"
             );
             return {
               success: false,
@@ -349,8 +342,8 @@ export class ToolExecutor {
     if (!command) return { success: false, error: "No command provided" };
 
     const permissionManager = getPermissionManager();
-    if (permissionManager?.isCommandBlocked(command, "run_powershell")) {
-      logger.debug({ command }, "Command blocked by permission policy");
+    if (permissionManager?.isCommandBlocked(command)) {
+      logger.debug({ command }, "Command blocked by global policy");
       return { success: false, error: "Command blocked: This operation is not permitted by policy" };
     }
 
@@ -367,8 +360,8 @@ export class ToolExecutor {
     if (!command) return { success: false, error: "No command provided" };
 
     const permissionManager = getPermissionManager();
-    if (permissionManager?.isCommandBlocked(command, "run_bash")) {
-      logger.debug({ command }, "Command blocked by permission policy");
+    if (permissionManager?.isCommandBlocked(command)) {
+      logger.debug({ command }, "Command blocked by global policy");
       return { success: false, error: "Command blocked: This operation is not permitted by policy" };
     }
 

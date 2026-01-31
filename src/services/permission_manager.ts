@@ -243,21 +243,14 @@ export class PermissionManager {
     return Boolean(restrictions?.overridePrompt ?? this.config.settings.enableOverridePrompt);
   }
 
-  isCommandBlocked(command: string, toolName?: string): boolean {
+  isCommandBlocked(command: string): boolean {
     if (!command) return false;
 
     const globalBlockedCommands = this.getGlobalBlockedCommands();
-    const toolRestrictions = toolName ? this.config.tools.restrictions[toolName] : undefined;
-
-    const allBlocked = [
-      ...globalBlockedCommands,
-      ...(toolRestrictions?.blockedCommands ?? [])
-    ];
-
-    if (allBlocked.length === 0) return false;
+    if (globalBlockedCommands.length === 0) return false;
 
     const lowerCmd = command.toLowerCase().trim();
-    return allBlocked.some((blocked) => lowerCmd.includes(blocked.toLowerCase()));
+    return globalBlockedCommands.some((blocked) => lowerCmd.includes(blocked.toLowerCase()));
   }
 
   checkPermission(

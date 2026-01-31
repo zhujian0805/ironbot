@@ -32,14 +32,21 @@ tools:
   # Per-tool restrictions and configurations
   restrictions:
     run_powershell:
-      allowed_commands: []                 # Empty = all commands allowed (unless blocked)
-      blocked_commands: []              # Additional blocked patterns for this tool
+      allowed_commands:                 # Deny-all by default. Explicitly list allowed commands.
+        - "Get-"                        # Allow all Get-* commands (reading system/file info)
+        - "Read-"                       # Allow all Read-* commands (reading input/content)
+        - "Import-"                     # Allow all Import-* commands (reading data files)
+        - "Select-Object"               # Allow piping to Select-Object for formatting
+        - "Where-Object"                # Allow filtering with Where-Object
+        - "Sort-Object"                 # Allow sorting results
+        - "Format-"                     # Allow Format-* commands for output formatting
+      blocked_commands: []              # Not needed: blocked_commands is checked globally only
       timeout_max: 30                   # Maximum timeout in seconds
       override_prompt: false            # Allow prompting to override denial
 
     run_bash:
-      allowed_commands: []              # Empty = all commands allowed (unless blocked)
-      blocked_commands: []              # Additional blocked patterns
+      allowed_commands: []              # Empty = deny all commands
+      blocked_commands: []              # Not needed: blocked_commands is checked globally only
       timeout_max: 30
       override_prompt: false
 
