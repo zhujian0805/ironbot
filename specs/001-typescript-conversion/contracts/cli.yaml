@@ -1,0 +1,8 @@
+openapi: 3.0.3
+info:
+  title: Ironbot CLI Contract
+  version: 1.0.0
+  description: |
+    The system is a CLI-first service and exposes no HTTP API endpoints.
+    This contract is intentionally empty to reflect the CLI-only surface.
+paths: {}

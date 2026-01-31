@@ -15,7 +15,7 @@ tools:
     - "list_directory"    # Allow listing directory contents
     - "read_file"         # Allow reading files
     # - "write_file"      # Uncomment to allow writing files
-    # - "run_powershell"  # Uncomment to allow PowerShell execution
+    - "run_powershell"  # Uncomment to allow PowerShell execution
     # - "run_bash"        # Uncomment to allow Bash execution
     # - "file_*"          # Wildcard: allow all file operations
 
