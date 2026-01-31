@@ -1,13 +1,13 @@
 # Research: Slack AI Agent
 
-## Python Version and Dependencies
+## TypeScript/Node Version and Dependencies
 
-**Decision**: Use Python 3.11 with slack-sdk 3.27.x and anthropic 0.30.x
-**Rationale**: Python 3.11 provides excellent async/await support essential for concurrent message handling. Latest versions of SDKs ensure compatibility with current APIs and security patches.
+**Decision**: Use Node.js 20 LTS with TypeScript 5.x, Slack Bolt (@slack/bolt), and the Anthropic JS SDK.
+**Rationale**: Node 20 provides a stable runtime with modern async support, while TypeScript improves safety and maintainability. Official SDKs ensure compatibility with current APIs and security patches.
 **Alternatives Considered**:
-- Python 3.10: Slightly older but stable; rejected for better async performance in 3.11
-- slack-sdk 3.x vs 2.x: 3.x has better async support; 2.x is deprecated
-- anthropic 0.20.x: Older version; rejected for missing features in Claude Agent SDK
+- Node.js 18: Older LTS; rejected in favor of newer runtime features in Node 20
+- Slack SDK vs Bolt: Bolt provides higher-level event handling; lower-level SDK was rejected to reduce boilerplate
+- Direct HTTP calls to Anthropic API: More error-prone; rejected in favor of the official SDK
 
 ## Slack Integration Patterns
 
@@ -19,26 +19,26 @@
 
 ## Claude SDK Integration
 
-**Decision**: Use Anthropic's Python SDK with async client for message processing
-**Rationale**: Official SDK provides proper authentication, error handling, and async support for non-blocking operations.
+**Decision**: Use Anthropic's JavaScript SDK with async client for message processing
+**Rationale**: Official SDK provides proper authentication, error handling, and async support for non-blocking operations in Node.js.
 **Alternatives Considered**:
 - Direct HTTP calls to Anthropic API: More error-prone; rejected for security and maintainability
 - Synchronous client: Would block concurrent processing; rejected for performance requirements
 
 ## Claude Skills Loading
 
-**Decision**: Dynamic import using Python's importlib from a configurable directory
-**Rationale**: Allows runtime loading of skills without restarting the agent, supports extensibility.
+**Decision**: Dynamic module loading via `import()` from a configurable directory
+**Rationale**: Allows runtime loading of skills without restarting the agent and supports extensibility.
 **Alternatives Considered**:
 - Static imports: Requires code changes for new skills; rejected for flexibility
 - Plugin system with entry points: More complex setup; rejected for simplicity
 
 ## Concurrent User Handling
 
-**Decision**: Use asyncio with connection pooling and rate limiting
-**Rationale**: Native Python async provides efficient concurrency without threads, essential for 100 concurrent users.
+**Decision**: Use async/await with promise-based concurrency and rate limiting
+**Rationale**: Node.js event loop concurrency supports efficient parallel I/O without threads, essential for 100 concurrent users.
 **Alternatives Considered**:
-- Threading: Resource intensive; rejected for scalability
+- Worker threads: More complex and resource intensive for I/O-bound work
 - Synchronous processing: Would exceed 5-second response time; rejected for requirements
 
 ## Error Handling and Observability

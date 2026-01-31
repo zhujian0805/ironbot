@@ -136,7 +136,7 @@ The agent can execute system operations when asked. Available tools:
 |------|-------------|-----------------|
 | `run_powershell` | Execute PowerShell commands | "List all running processes" |
 | `run_bash` | Execute Bash/shell commands | "Show disk usage" |
-| `read_file` | Read file contents | "Show me the contents of config.py" |
+| `read_file` | Read file contents | "Show me the contents of config.ts" |
 | `write_file` | Write to files | "Create a file called test.txt with 'hello'" |
 | `list_directory` | List directory contents | "What files are in the current folder?" |
 

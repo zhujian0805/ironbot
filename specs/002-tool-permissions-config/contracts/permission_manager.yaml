@@ -6,7 +6,7 @@ info:
   description: Internal API contract for the PermissionManager service
   version: "1.0.0"
 
-# Note: This is an internal Python API, not a REST API.
+# Note: This is an internal TypeScript API, not a REST API.
 # Using OpenAPI format for standardized documentation.
 
 paths:

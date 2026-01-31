@@ -5,14 +5,14 @@
 
 ## Summary
 
-Migrate the existing Python CLI Slack agent to a statically typed TypeScript/Node.js codebase while preserving all current behavior, CLI flags, configuration semantics, and integrations. The migration must include functionality introduced in branches `002-tool-permissions-config` and `1-slack-ai-agent`. The plan emphasizes an incremental parity strategy with contract and integration tests, and a library-first structure with a CLI wrapper per constitution requirements.
+Migrate the existing legacy CLI Slack agent to a statically typed TypeScript/Node.js codebase while preserving all current behavior, CLI flags, configuration semantics, and integrations. The migration must include functionality introduced in branches `002-tool-permissions-config` and `1-slack-ai-agent`. The plan emphasizes an incremental parity strategy with contract and integration tests, and a library-first structure with a CLI wrapper per constitution requirements.
 
 ## Technical Context
 
-**Language/Version**: Current: Python 3.11 → Target: TypeScript 5.x on Node.js 20 LTS
+**Language/Version**: Target: TypeScript 5.x on Node.js 20 LTS
 **Primary Dependencies**: Slack Bolt (Socket Mode), Anthropic JS SDK, YAML parser (`yaml`), file watcher (`chokidar`), CLI arg parser (`commander`), structured logging (`pino`)
 **Storage**: Filesystem + environment variables (config YAML, skills directory)
-**Testing**: Current pytest → Target: Vitest + `tsc --noEmit` + CLI tests via `execa`
+**Testing**: Vitest + `tsc --noEmit` + CLI tests via `execa`
 **Target Platform**: Cross-platform CLI/service (Windows, Linux, macOS)
 **Project Type**: Single CLI service with a core library
 **Performance Goals**: Match current baseline behavior and responsiveness for primary workflows

@@ -51,7 +51,7 @@ Represents a Claude Skill that can be loaded and executed.
 
 **Validation Rules**:
 - `name` must be unique and contain only alphanumeric characters, underscores, hyphens
-- `path` must exist and be a valid Python module file
+- `path` must exist and be a valid JavaScript/TypeScript module file
 - `description` must not be empty
 
 **Relationships**:

@@ -122,48 +122,45 @@ PermissionConfig
     └── MCPSettings (1:N, keyed by MCP name)
 ```
 
-## Python Data Classes
+## TypeScript Interfaces
 
-```python
-from dataclasses import dataclass, field
-from typing import Optional
+```ts
+export interface GlobalSettings {
+  default_deny: boolean;
+  log_denials: boolean;
+}
 
-@dataclass
-class GlobalSettings:
-    default_deny: bool = True
-    log_denials: bool = True
+export interface ToolRestriction {
+  allowed_commands: string[];
+  blocked_commands: string[];
+  allowed_paths: string[];
+  timeout_max?: number;
+}
 
-@dataclass
-class ToolRestriction:
-    allowed_commands: list[str] = field(default_factory=list)
-    blocked_commands: list[str] = field(default_factory=list)
-    allowed_paths: list[str] = field(default_factory=list)
-    timeout_max: Optional[int] = None
+export interface ToolPermissions {
+  allowed: string[];
+  restrictions: Record<string, ToolRestriction>;
+}
 
-@dataclass
-class ToolPermissions:
-    allowed: list[str] = field(default_factory=list)
-    restrictions: dict[str, ToolRestriction] = field(default_factory=dict)
+export interface SkillPermissions {
+  allowed: string[];
+}
 
-@dataclass
-class SkillPermissions:
-    allowed: list[str] = field(default_factory=list)
+export interface MCPSettings {
+  allowed_paths: string[];
+  allowed_repos: string[];
+}
 
-@dataclass
-class MCPSettings:
-    allowed_paths: list[str] = field(default_factory=list)
-    allowed_repos: list[str] = field(default_factory=list)
+export interface MCPPermissions {
+  allowed: string[];
+  settings: Record<string, MCPSettings>;
+}
 
-@dataclass
-class MCPPermissions:
-    allowed: list[str] = field(default_factory=list)
-    settings: dict[str, MCPSettings] = field(default_factory=dict)
-
-@dataclass
-class PermissionConfig:
-    version: str = "1.0"
-    settings: GlobalSettings = field(default_factory=GlobalSettings)
-    tools: ToolPermissions = field(default_factory=ToolPermissions)
-    skills: SkillPermissions = field(default_factory=SkillPermissions)
-    mcps: MCPPermissions = field(default_factory=MCPPermissions)
+export interface PermissionConfig {
+  version: string;
+  settings: GlobalSettings;
+  tools: ToolPermissions;
+  skills: SkillPermissions;
+  mcps: MCPPermissions;
+}
 ```

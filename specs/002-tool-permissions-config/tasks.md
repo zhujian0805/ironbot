@@ -24,7 +24,7 @@
 
 **Purpose**: Project initialization and dependency setup
 
-- [x] T001 Add PyYAML and watchdog to requirements.txt
+- [x] T001 Add yaml, picomatch, and chokidar to package.json
 - [x] T002 [P] Create example permissions.yaml configuration file in project root
 - [x] T003 [P] Add PERMISSIONS_FILE environment variable to .env.example
 
@@ -36,9 +36,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [x] T004 Create permission data models in src/models/permission.py (PermissionConfig, GlobalSettings, ToolPermissions, ToolRestriction, SkillPermissions, MCPPermissions, MCPSettings, ResourceDenyRule)
-- [x] T005 [P] Add PERMISSIONS_FILE config loading to src/config.py
-- [x] T006 [P] Add --permissions-file CLI argument to src/main.py
+- [x] T004 Create permission data models in src/models/permission.ts (PermissionConfig, GlobalSettings, ToolPermissions, ToolRestriction, SkillPermissions, MCPPermissions, MCPSettings, ResourceDenyRule)
+- [x] T005 [P] Add PERMISSIONS_FILE config loading to src/config.ts
+- [x] T006 [P] Add --permissions-file CLI argument to src/main.ts
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -54,28 +54,28 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [x] T007 [P] [US1] Unit test for config loading in tests/unit/test_permission_manager.py
-- [x] T008 [P] [US1] Unit test for YAML parsing and validation in tests/unit/test_permission_manager.py
-- [x] T009 [P] [US2] Unit test for is_tool_allowed() with patterns in tests/unit/test_permission_manager.py
-- [x] T010 [P] [US2] Unit test for is_skill_allowed() in tests/unit/test_permission_manager.py
-- [x] T011 [P] [US2] Unit test for is_mcp_allowed() in tests/unit/test_permission_manager.py
-- [x] T012 [P] [US2] Unit test for resource deny rules in tests/unit/test_permission_manager.py
-- [x] T013 [P] [US2] Contract test for permission enforcement in tests/contract/test_permission_enforcement.py
+- [x] T007 [P] [US1] Unit test for config loading in tests/unit/test_permission_manager.ts
+- [x] T008 [P] [US1] Unit test for YAML parsing and validation in tests/unit/test_permission_manager.ts
+- [x] T009 [P] [US2] Unit test for is_tool_allowed() with patterns in tests/unit/test_permission_manager.ts
+- [x] T010 [P] [US2] Unit test for is_skill_allowed() in tests/unit/test_permission_manager.ts
+- [x] T011 [P] [US2] Unit test for is_mcp_allowed() in tests/unit/test_permission_manager.ts
+- [x] T012 [P] [US2] Unit test for resource deny rules in tests/unit/test_permission_manager.ts
+- [x] T013 [P] [US2] Contract test for permission enforcement in tests/contract/test_permission_enforcement.ts
 
 ### Implementation for User Story 1 & 2
 
-- [x] T014 [US1] Implement PermissionManager.load_config() in src/services/permission_manager.py
-- [x] T015 [US1] Implement YAML parsing with validation in src/services/permission_manager.py
-- [x] T016 [US1] Implement default-deny fallback when no config exists in src/services/permission_manager.py
-- [x] T017 [US2] Implement is_tool_allowed(name) with wildcard pattern matching in src/services/permission_manager.py
-- [x] T018 [US2] Implement is_skill_allowed(name) with wildcard pattern matching in src/services/permission_manager.py
-- [x] T019 [US2] Implement is_mcp_allowed(name) with wildcard pattern matching in src/services/permission_manager.py
-- [x] T020 [US2] Implement check_resource_denied(path) for resource deny rules in src/services/permission_manager.py
-- [x] T021 [US2] Implement get_tool_restrictions(name) for per-tool restrictions in src/services/permission_manager.py
-- [x] T022 [US2] Integrate PermissionManager into ToolExecutor in src/services/tools.py
-- [x] T023 [US2] Filter TOOLS list by permissions in src/services/claude_processor.py
-- [x] T024 [US2] Filter loaded skills by permissions in src/services/skill_loader.py
-- [x] T025 [US2] Add permission denial logging with structured format in src/services/permission_manager.py
+- [x] T014 [US1] Implement PermissionManager.load_config() in src/services/permission_manager.ts
+- [x] T015 [US1] Implement YAML parsing with validation in src/services/permission_manager.ts
+- [x] T016 [US1] Implement default-deny fallback when no config exists in src/services/permission_manager.ts
+- [x] T017 [US2] Implement is_tool_allowed(name) with wildcard pattern matching in src/services/permission_manager.ts
+- [x] T018 [US2] Implement is_skill_allowed(name) with wildcard pattern matching in src/services/permission_manager.ts
+- [x] T019 [US2] Implement is_mcp_allowed(name) with wildcard pattern matching in src/services/permission_manager.ts
+- [x] T020 [US2] Implement check_resource_denied(path) for resource deny rules in src/services/permission_manager.ts
+- [x] T021 [US2] Implement get_tool_restrictions(name) for per-tool restrictions in src/services/permission_manager.ts
+- [x] T022 [US2] Integrate PermissionManager into ToolExecutor in src/services/tools.ts
+- [x] T023 [US2] Filter TOOLS list by permissions in src/services/claude_processor.ts
+- [x] T024 [US2] Filter loaded skills by permissions in src/services/skill_loader.ts
+- [x] T025 [US2] Add permission denial logging with structured format in src/services/permission_manager.ts
 
 **Checkpoint**: Bot loads config at startup, enforces tool/skill/MCP permissions, blocks denied resources
 
@@ -89,15 +89,15 @@
 
 ### Tests for User Story 3 (MANDATORY) ⚠️
 
-- [x] T026 [P] [US3] Unit test for denial message formatting in tests/unit/test_permission_manager.py
-- [x] T027 [P] [US3] Unit test for list_allowed_capabilities() in tests/unit/test_permission_manager.py
+- [x] T026 [P] [US3] Unit test for denial message formatting in tests/unit/test_permission_manager.ts
+- [x] T027 [P] [US3] Unit test for list_allowed_capabilities() in tests/unit/test_permission_manager.ts
 
 ### Implementation for User Story 3
 
-- [x] T028 [US3] Implement format_denial_message(capability_type, name, reason) in src/services/permission_manager.py
-- [x] T029 [US3] Implement list_allowed_capabilities() returning tools/skills/mcps in src/services/permission_manager.py
-- [x] T030 [US3] Update ToolExecutor to return formatted denial messages in src/services/tools.py
-- [x] T031 [US3] Update ClaudeProcessor to include denial messages in responses in src/services/claude_processor.py
+- [x] T028 [US3] Implement format_denial_message(capability_type, name, reason) in src/services/permission_manager.ts
+- [x] T029 [US3] Implement list_allowed_capabilities() returning tools/skills/mcps in src/services/permission_manager.ts
+- [x] T030 [US3] Update ToolExecutor to return formatted denial messages in src/services/tools.ts
+- [x] T031 [US3] Update ClaudeProcessor to include denial messages in responses in src/services/claude_processor.ts
 
 **Checkpoint**: Users see clear messages like "Tool 'run_bash' is not enabled. Allowed tools: list_directory, read_file"
 
@@ -111,16 +111,16 @@
 
 ### Tests for User Story 4 (MANDATORY) ⚠️
 
-- [x] T032 [P] [US4] Unit test for reload_config() in tests/unit/test_permission_manager.py
-- [x] T033 [P] [US4] Integration test for file watcher reload in tests/integration/test_permission_reload.py
+- [x] T032 [P] [US4] Unit test for reload_config() in tests/unit/test_permission_manager.ts
+- [x] T033 [P] [US4] Integration test for file watcher reload in tests/integration/test_permission_reload.ts
 
 ### Implementation for User Story 4
 
-- [x] T034 [US4] Implement reload_config() with atomic config swap in src/services/permission_manager.py
-- [x] T035 [US4] Implement file watcher using watchdog in src/services/permission_manager.py
-- [x] T036 [US4] Add debouncing to prevent multiple reloads during rapid edits in src/services/permission_manager.py
-- [x] T037 [US4] Handle invalid config on reload (keep previous config, log error) in src/services/permission_manager.py
-- [x] T038 [US4] Start file watcher in main.py startup sequence in src/main.py
+- [x] T034 [US4] Implement reload_config() with atomic config swap in src/services/permission_manager.ts
+- [x] T035 [US4] Implement file watcher using chokidar in src/services/permission_manager.ts
+- [x] T036 [US4] Add debouncing to prevent multiple reloads during rapid edits in src/services/permission_manager.ts
+- [x] T037 [US4] Handle invalid config on reload (keep previous config, log error) in src/services/permission_manager.ts
+- [x] T038 [US4] Start file watcher in main.ts startup sequence in src/main.ts
 
 **Checkpoint**: Config changes detected automatically, new permissions effective within 5 seconds
 

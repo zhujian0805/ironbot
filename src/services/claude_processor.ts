@@ -13,8 +13,19 @@ When asked to perform system tasks:
 2. Always explain what you're doing before executing commands
 3. Report the results clearly to the user
 4. If a command fails, explain what went wrong and suggest alternatives
+5. If a tool request is denied or blocked, include the exact denial reason in your response
 
 Be helpful, concise, and safe. Never execute destructive commands without explicit user confirmation.`;
+
+type OperationRecord = {
+  kind: "tool" | "skill";
+  name: string;
+  status?: "success" | "denied" | "error";
+  command?: string;
+  resourcePath?: string;
+  workingDirectory?: string;
+  reason?: string;
+};
 
 export class ClaudeProcessor {
   private client: Anthropic;
@@ -76,16 +87,20 @@ export class ClaudeProcessor {
       if (userMessage.includes(`@${skillName}`)) {
         try {
           const result = await Promise.resolve(handler(userMessage));
-          return result;
+          return this.appendOperationSummary(result, [
+            { kind: "skill", name: skillName, status: "success" }
+          ]);
         } catch (error) {
           logger.error({ error, skillName }, "Skill execution failed");
-          return `Sorry, error executing skill ${skillName}.`;
+          return this.appendOperationSummary(`Sorry, error executing skill ${skillName}.`, [
+            { kind: "skill", name: skillName, status: "error", reason: String(error) }
+          ]);
         }
       }
     }
 
     if (this.devMode) {
-      return `[DEV MODE] I would respond to: ${userMessage}`;
+      return this.appendOperationSummary(`[DEV MODE] I would respond to: ${userMessage}`, []);
     }
 
     const conversationHistory = options.conversationHistory ?? [];
@@ -100,6 +115,7 @@ export class ClaudeProcessor {
   ): Promise<string> {
     const messages: MessageParam[] = [...conversationHistory, { role: "user", content: userMessage }];
     let finalResponse = "";
+    const operations: OperationRecord[] = [];
     const systemPrompt = memoryContext
       ? `${SYSTEM_PROMPT}\n\nRelevant memory:\n${memoryContext}\n\nUse this context if it helps answer the user.`
       : SYSTEM_PROMPT;
@@ -145,6 +161,26 @@ export class ClaudeProcessor {
           ? JSON.stringify(result.result ?? result, null, 2)
           : `Error: ${result.error ?? "Unknown error"}`;
         toolResults.push({ type: "tool_result", tool_use_id: toolUse.id, content });
+
+        const command = typeof toolUse.input.command === "string" ? toolUse.input.command : undefined;
+        const resourcePath =
+          typeof toolUse.input.path === "string"
+            ? toolUse.input.path
+            : typeof toolUse.input.working_directory === "string"
+              ? toolUse.input.working_directory
+              : undefined;
+        const workingDirectory =
+          typeof toolUse.input.working_directory === "string" ? toolUse.input.working_directory : undefined;
+
+        operations.push({
+          kind: "tool",
+          name: toolUse.name,
+          status: result.success ? "success" : "denied",
+          command,
+          resourcePath,
+          workingDirectory,
+          reason: result.success ? undefined : result.error
+        });
       }
 
       messages.push({ role: "user", content: toolResults as unknown as MessageParam["content"] });
@@ -154,7 +190,7 @@ export class ClaudeProcessor {
       finalResponse = "Sorry, I could not complete the request.";
     }
 
-    return finalResponse;
+    return this.appendOperationSummary(finalResponse, operations);
   }
 
   async checkConnection(): Promise<boolean> {

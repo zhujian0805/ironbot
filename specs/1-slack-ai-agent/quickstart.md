@@ -2,7 +2,8 @@
 
 ## Prerequisites
 
-- Python 3.11 or later
+- Node.js 20 LTS or later
+- Bun (recommended) or npm
 - Slack workspace with bot token
 - Anthropic Claude API key
 - Directory with Claude Skills (optional)
@@ -15,15 +16,11 @@
    cd ironbot
    ```
 
-2. Create virtual environment:
+2. Install dependencies:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install slack-sdk anthropic
+   bun install
+   # or
+   npm install
    ```
 
 ## Configuration
@@ -41,7 +38,7 @@ SKILLS_DIR=./skills  # Optional: directory containing Claude Skills
 
 1. Start the agent:
    ```bash
-   python src/main.py
+   bun run dev
    ```
 
 2. In Slack, invite the bot to a channel or send direct messages
@@ -50,8 +47,8 @@ SKILLS_DIR=./skills  # Optional: directory containing Claude Skills
 
 ## Development
 
-- Run tests: `pytest`
-- Add new skills: Place Python modules in the skills directory
+- Run tests: `bun run test`
+- Add new skills: Place JavaScript/TypeScript modules in the skills directory
 - Check logs: Structured JSON logs are output to console
 
 ## Troubleshooting

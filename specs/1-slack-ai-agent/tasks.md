@@ -24,7 +24,7 @@
 
 - [x] T001 Create project structure per implementation plan
 - [x] T002 Create tests directory structure (contract/, integration/, unit/)
-- [x] T003 Install Python dependencies (slack-sdk, anthropic, asyncio)
+- [x] T003 Install Node.js dependencies (@slack/bolt, anthropic)
 - [x] T004 Create .env configuration template
 
 ---
@@ -37,10 +37,10 @@
 
 Examples of foundational tasks (adjust based on your project):
 
-- [x] T005 Setup Slack Bolt app configuration in src/config.py
-- [x] T006 Initialize Claude client setup in src/config.py
-- [x] T007 Create base message handler framework in src/handlers/base_handler.py
-- [x] T008 Setup structured logging infrastructure in src/utils/logging.py
+- [x] T005 Setup Slack Bolt app configuration in src/config.ts
+- [x] T006 Initialize Claude client setup in src/config.ts
+- [x] T007 Create base message handler framework in src/handlers/base_handler.ts
+- [x] T008 Setup structured logging infrastructure in src/utils/logging.ts
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -56,16 +56,16 @@ Examples of foundational tasks (adjust based on your project):
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [x] T009 [P] [US1] Contract test for Slack webhook handling in tests/contract/test_slack_webhook.py
-- [x] T010 [P] [US1] Integration test for message processing flow in tests/integration/test_message_flow.py
+- [x] T009 [P] [US1] Contract test for Slack webhook handling in tests/contract/test_slack_webhook.ts
+- [x] T010 [P] [US1] Integration test for message processing flow in tests/integration/test_message_flow.ts
 
 ### Implementation for User Story 1
 
-- [x] T011 [P] [US1] Create Message model in src/models/message.py
-- [x] T012 [P] [US1] Create User model in src/models/user.py
-- [x] T013 [US1] Implement Slack event handler in src/services/slack_handler.py
-- [x] T014 [US1] Implement Claude message processor in src/services/claude_processor.py
-- [x] T015 [US1] Integrate message flow in src/main.py
+- [x] T011 [P] [US1] Create Message model in src/models/message.ts
+- [x] T012 [P] [US1] Create User model in src/models/user.ts
+- [x] T013 [US1] Implement Slack event handler in src/services/slack_handler.ts
+- [x] T014 [US1] Implement Claude message processor in src/services/claude_processor.ts
+- [x] T015 [US1] Integrate message flow in src/main.ts
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -79,14 +79,14 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 2 (MANDATORY) ⚠️
 
-- [x] T016 [P] [US2] Contract test for skill loading in tests/contract/test_skill_loading.py
-- [x] T017 [P] [US2] Integration test for skill execution in tests/integration/test_skill_execution.py
+- [x] T016 [P] [US2] Contract test for skill loading in tests/contract/test_skill_loading.ts
+- [x] T017 [P] [US2] Integration test for skill execution in tests/integration/test_skill_execution.ts
 
 ### Implementation for User Story 2
 
-- [x] T018 [P] [US2] Create Skill model in src/models/skill.py
-- [x] T019 [US2] Implement skill loader in src/services/skill_loader.py
-- [x] T020 [US2] Integrate skill execution in src/services/claude_processor.py
+- [x] T018 [P] [US2] Create Skill model in src/models/skill.ts
+- [x] T019 [US2] Implement skill loader in src/services/skill_loader.ts
+- [x] T020 [US2] Integrate skill execution in src/services/claude_processor.ts
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -111,8 +111,8 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Implementation for User Story 3
 
-- [x] T025 [US3] Update slack_handler.py to post "Thinking..." message on message receipt
-- [x] T026 [US3] Update slack_handler.py to use chat_update to replace thinking message with response
+- [x] T025 [US3] Update slack_handler.ts to post "Thinking..." message on message receipt
+- [x] T026 [US3] Update slack_handler.ts to use chat_update to replace thinking message with response
 - [x] T027 [US3] Handle errors by updating thinking message with error indicator
 
 **Checkpoint**: Thinking indicator working for all messages
@@ -127,17 +127,17 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 4 (MANDATORY) ⚠️
 
-- [x] T028 [P] [US4] Unit tests for tool definitions in tests/unit/test_tools.py
-- [x] T029 [P] [US4] Unit tests for tool executor (PowerShell, Bash, file ops) in tests/unit/test_tools.py
-- [x] T030 [P] [US4] Unit tests for safety checks (blocked commands) in tests/unit/test_tools.py
+- [x] T028 [P] [US4] Unit tests for tool definitions in tests/unit/test_tools.ts
+- [x] T029 [P] [US4] Unit tests for tool executor (PowerShell, Bash, file ops) in tests/unit/test_tools.ts
+- [x] T030 [P] [US4] Unit tests for safety checks (blocked commands) in tests/unit/test_tools.ts
 
 ### Implementation for User Story 4
 
-- [x] T031 [P] [US4] Create tool definitions (run_powershell, run_bash, read_file, write_file, list_directory) in src/services/tools.py
-- [x] T032 [P] [US4] Implement ToolExecutor class with safety checks in src/services/tools.py
-- [x] T033 [US4] Add agentic tool use loop in src/services/claude_processor.py
-- [x] T034 [US4] Add system prompt for tool use in src/services/claude_processor.py
-- [x] T035 [US4] Handle tool_use stop_reason and tool_result messages in src/services/claude_processor.py
+- [x] T031 [P] [US4] Create tool definitions (run_powershell, run_bash, read_file, write_file, list_directory) in src/services/tools.ts
+- [x] T032 [P] [US4] Implement ToolExecutor class with safety checks in src/services/tools.ts
+- [x] T033 [US4] Add agentic tool use loop in src/services/claude_processor.ts
+- [x] T034 [US4] Add system prompt for tool use in src/services/claude_processor.ts
+- [x] T035 [US4] Handle tool_use stop_reason and tool_result messages in src/services/claude_processor.ts
 
 **Checkpoint**: Tool use working - agent can execute system commands
 
@@ -182,12 +182,12 @@ Examples of foundational tasks (adjust based on your project):
 
 ```bash
 # Launch all tests for User Story 1 together:
-- [ ] T009 [P] [US1] Contract test for Slack webhook handling in tests/contract/test_slack_webhook.py
-- [ ] T010 [P] [US1] Integration test for message processing flow in tests/integration/test_message_flow.py
+- [ ] T009 [P] [US1] Contract test for Slack webhook handling in tests/contract/test_slack_webhook.ts
+- [ ] T010 [P] [US1] Integration test for message processing flow in tests/integration/test_message_flow.ts
 
 # Launch all models for User Story 1 together:
-- [ ] T011 [P] [US1] Create Message model in src/models/message.py
-- [ ] T012 [P] [US1] Create User model in src/models/user.py
+- [ ] T011 [P] [US1] Create Message model in src/models/message.ts
+- [ ] T012 [P] [US1] Create User model in src/models/user.ts
 ```
 
 ---

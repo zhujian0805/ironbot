@@ -13,20 +13,20 @@
 - Human-readable and easy to edit
 - Supports comments for documentation
 - Native support for lists and nested structures
-- PyYAML is well-maintained and widely used
+- `yaml` package is well-maintained and widely used
 - Consistent with industry standards for configuration files
 
 **Alternatives Considered**:
 - **JSON**: No comment support, harder to read/edit for humans
-- **TOML**: Less common in Python ecosystem, steeper learning curve
+- **TOML**: Less common in the Node.js ecosystem, steeper learning curve
 - **INI**: Too flat for nested permission structures
 
 ### 2. Wildcard Pattern Matching
 
-**Decision**: Use Python's `fnmatch` module
+**Decision**: Use a glob matcher (e.g., `picomatch`)
 
 **Rationale**:
-- Built into Python standard library (no extra dependency)
+- Lightweight dependency commonly used in Node.js
 - Familiar glob-style patterns (`*`, `?`, `[seq]`)
 - Simple and well-documented
 - Sufficient for tool/skill/MCP name matching
@@ -41,7 +41,7 @@
 **Decision**: File watcher with debouncing + manual reload command
 
 **Rationale**:
-- `watchdog` library provides cross-platform file monitoring
+- `chokidar` provides cross-platform file monitoring
 - Debouncing prevents multiple reloads during rapid edits
 - Manual reload command (`/reload-permissions`) as backup
 - Graceful error handling keeps old config if new one is invalid
@@ -83,16 +83,16 @@
 
 **Current State Analysis**:
 
-1. **Tools** (`src/services/tools.py`):
+1. **Tools** (`src/services/tools.ts`):
    - `TOOLS` list contains tool definitions
    - `ToolExecutor` class has `allowed_tools` parameter already
    - Integration point: Pass filtered tools list to `ToolExecutor`
 
-2. **Skills** (`src/services/skill_loader.py`):
+2. **Skills** (`src/services/skill_loader.ts`):
    - `SkillLoader` loads skills from directory
    - Integration point: Filter loaded skills against permission config
 
-3. **Claude Processor** (`src/services/claude_processor.py`):
+3. **Claude Processor** (`src/services/claude_processor.ts`):
    - Creates `ToolExecutor` and passes `TOOLS` to Claude API
    - Integration point: Filter `TOOLS` list before passing to API
 
@@ -173,6 +173,7 @@ mcps:
 ## Dependencies to Add
 
 ```
-PyYAML>=6.0        # YAML parsing
-watchdog>=3.0      # File system monitoring for hot-reload
+yaml                # YAML parsing
+chokidar            # File system monitoring for hot-reload
+picomatch           # Wildcard pattern matching
 ```

@@ -9,10 +9,10 @@ Implement a permission configuration system that allows administrators to contro
 
 ## Technical Context
 
-**Language/Version**: Python 3.11 (consistent with existing codebase)
-**Primary Dependencies**: PyYAML (config parsing), fnmatch (wildcard patterns), watchdog (file monitoring for hot-reload)
+**Language/Version**: TypeScript 5.x on Node.js 20 LTS
+**Primary Dependencies**: `yaml` (config parsing), `picomatch` (wildcard patterns), `chokidar` (file monitoring for hot-reload)
 **Storage**: YAML configuration file (`permissions.yaml`)
-**Testing**: pytest, pytest-asyncio
+**Testing**: bun run test
 **Target Platform**: Cross-platform (Linux/Windows server)
 **Project Type**: single (extends existing AI agent application)
 **Performance Goals**: Permission checks complete in <1ms, config reload <5 seconds
@@ -48,30 +48,27 @@ specs/002-tool-permissions-config/
 
 ```text
 src/
-├── __init__.py
-├── config.py                    # Add PERMISSIONS_FILE env var
-├── main.py                      # Add --permissions-file CLI arg
+├── config.ts                    # Add PERMISSIONS_FILE env var
+├── main.ts                      # Add --permissions-file CLI arg
 ├── models/
-│   ├── __init__.py
-│   ├── permission.py            # NEW: Permission data models
+│   ├── permission_policy.ts     # NEW: Permission data models
 │   └── ...
 ├── services/
-│   ├── __init__.py
-│   ├── permission_manager.py    # NEW: Core permission management
-│   ├── tools.py                 # MODIFY: Integrate permission checks
-│   ├── claude_processor.py      # MODIFY: Filter tools by permissions
-│   ├── skill_loader.py          # MODIFY: Filter skills by permissions
+│   ├── permission_manager.ts    # NEW: Core permission management
+│   ├── tools.ts                 # MODIFY: Integrate permission checks
+│   ├── claude_processor.ts      # MODIFY: Filter tools by permissions
+│   ├── skill_loader.ts          # MODIFY: Filter skills by permissions
 │   └── ...
 └── utils/
     └── ...
 
 tests/
 ├── contract/
-│   └── test_permission_enforcement.py  # NEW: Permission contract tests
+│   └── test_permission_enforcement.ts  # NEW: Permission contract tests
 ├── integration/
-│   └── test_permission_reload.py       # NEW: Hot-reload tests
+│   └── test_permission_reload.ts       # NEW: Hot-reload tests
 └── unit/
-    └── test_permission_manager.py      # NEW: Permission manager unit tests
+    └── test_permission_manager.ts      # NEW: Permission manager unit tests
 ```
 
 **Structure Decision**: Extends existing single-project structure with new permission module. No new top-level directories needed - integrates cleanly with existing `models/` and `services/` layout.

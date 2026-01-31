@@ -7,14 +7,14 @@
 
 ## Summary
 
-Implement an AI agent system running in Python that integrates with Slack for user messaging, forwards messages to a backend using Claude Agent SDK, and supports loading/executing Claude Skills from a specified directory. The system includes a thinking indicator for UX feedback and tool use support for system operations (PowerShell, Bash, file operations). The system must handle 100 concurrent users with 5-second response times.
+Implement an AI agent system running in TypeScript/Node.js that integrates with Slack for user messaging, forwards messages to a backend using Claude Agent SDK, and supports loading/executing Claude Skills from a specified directory. The system includes a thinking indicator for UX feedback and tool use support for system operations (PowerShell, Bash, file operations). The system must handle 100 concurrent users with 5-second response times.
 
 ## Technical Context
 
-**Language/Version**: Python 3.11
-**Primary Dependencies**: slack-sdk, anthropic, asyncio, httpx, python-dotenv
+**Language/Version**: TypeScript 5.x on Node.js 20 LTS
+**Primary Dependencies**: Slack Bolt (Socket Mode), Anthropic JS SDK, dotenv
 **Storage**: N/A (ephemeral message processing)
-**Testing**: pytest, pytest-asyncio
+**Testing**: bun run test
 **Target Platform**: Cross-platform (Linux/Windows server)
 **Project Type**: single (AI agent application)
 **Performance Goals**: Response time under 5 seconds
@@ -50,40 +50,34 @@ specs/1-slack-ai-agent/
 
 ```text
 src/
-├── __init__.py
-├── config.py              # Configuration and client initialization
-├── main.py                # Application entry point
-├── models/
-│   ├── __init__.py
-│   ├── message.py         # Message data model
-│   ├── user.py            # User data model
-│   └── skill.py           # Skill data model
-├── services/
-│   ├── __init__.py
-│   ├── slack_handler.py   # Slack event handling with thinking indicator
-│   ├── claude_processor.py # Claude API with tool use support
-│   ├── skill_loader.py    # Legacy skill loading
-│   └── tools.py           # Tool definitions and executor
-├── handlers/
-│   ├── __init__.py
-│   └── base_handler.py    # Base handler framework
-├── utils/
-│   ├── __init__.py
-│   └── logging.py         # Structured logging
 ├── cli/
-│   └── __init__.py
-└── lib/
-    └── __init__.py
+│   └── args.ts            # CLI argument parsing
+├── config.ts              # Configuration and client initialization
+├── main.ts                # Application entry point
+├── models/
+│   ├── claude_request.ts
+│   ├── claude_response.ts
+│   ├── permission_policy.ts
+│   ├── skill_definition.ts
+│   ├── slack_event.ts
+│   ├── tool_request.ts
+│   └── workflow.ts
+├── services/
+│   ├── claude_processor.ts
+│   ├── message_router.ts
+│   ├── permission_manager.ts
+│   ├── skill_loader.ts
+│   ├── slack_handler.ts
+│   └── tools.ts
+└── utils/
+    ├── file_watcher.ts
+    └── logging.ts
 
 tests/
+├── cli/
 ├── contract/
-│   ├── test_slack_webhook.py
-│   └── test_skill_loading.py
 ├── integration/
-│   ├── test_message_flow.py
-│   └── test_skill_execution.py
 └── unit/
-    └── test_tools.py      # Tool executor tests
 ```
 
 **Structure Decision**: Single project structure selected for the AI agent application, with clear separation of models, services, and CLI components for maintainability.

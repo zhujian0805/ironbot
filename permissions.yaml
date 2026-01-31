@@ -24,7 +24,9 @@ tools:
     run_powershell:
       allowed_commands:
         - "Get-*"         # Only allow Get commands
+        - "Get-PSDrive"   # Explicitly allow Get-PSDrive
         - "Test-*"        # Allow Test commands
+        - "Format-*"      # Allow Format commands
       blocked_commands:
         - "*-Item"        # Block item manipulation (delete/move/copy)
         - "Remove-*"      # Block all Remove commands

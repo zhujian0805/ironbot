@@ -148,9 +148,9 @@ const BLOCKED_COMMANDS = [
 
 const normalize = (command: string): string => command.toLowerCase().trim();
 
-const isCommandSafe = (command: string): boolean => {
+const findBlockedCommand = (command: string): string | undefined => {
   const lowered = normalize(command);
-  return !BLOCKED_COMMANDS.some((blocked) => lowered.includes(blocked.toLowerCase()));
+  return BLOCKED_COMMANDS.find((blocked) => lowered.includes(blocked.toLowerCase()));
 };
 
 const runProcess = (
@@ -237,13 +237,24 @@ export class ToolExecutor {
 
     if (this.permissionManager) {
       if (!this.permissionManager.isToolAllowed(toolName)) {
-        return { success: false, error: this.permissionManager.formatDenialMessage("tool", toolName) };
-      }
-
-      if (resourcePath && this.permissionManager.checkResourceDenied(resourcePath)) {
+        const allowedTools = this.permissionManager.listAllowedCapabilities().tools;
+        const reason = allowedTools.length
+          ? `Tool '${toolName}' is not in the allowed list (allowed: ${allowedTools.join(", ")})`
+          : `Tool '${toolName}' is not in the allowed list (no tools are enabled)`;
+        logger.debug({ toolName, allowedTools, reason }, "Tool execution denied");
         return {
           success: false,
-          error: `Permission denied: Resource path '${resourcePath}' is blocked by deny rules`
+          error: this.permissionManager.formatDenialMessage("tool", toolName, reason)
+        };
+      }
+
+      const deniedPattern = resourcePath ? this.permissionManager.getDeniedResourcePattern(resourcePath) : undefined;
+      if (resourcePath && deniedPattern) {
+        logger.debug({ toolName, resourcePath, rule: deniedPattern }, "Tool execution denied by resource rule");
+        this.permissionManager.checkResourceDenied(resourcePath);
+        return {
+          success: false,
+          error: `Permission denied: Resource path '${resourcePath}' is blocked by deny rule '${deniedPattern}'`
         };
       }
 
@@ -251,7 +262,9 @@ export class ToolExecutor {
       try {
         validateToolRequest({ toolName, arguments: toolInput, requestedResource: resourcePath });
       } catch (error) {
-        return { success: false, error: "Tool request validation failed" };
+        const reason = `Tool request validation failed: ${String(error)}`;
+        logger.debug({ toolName, reason }, "Tool execution denied by validation");
+        return { success: false, error: reason };
       }
 
       const restrictions = this.permissionManager.getToolRestrictions(toolName);
@@ -260,6 +273,10 @@ export class ToolExecutor {
         if (restrictions.blockedCommands.length > 0 && command) {
           const blockedMatch = findMatchingPattern(command, restrictions.blockedCommands);
           if (blockedMatch) {
+            logger.debug(
+              { toolName, command, rule: blockedMatch },
+              "Tool execution denied by blocked command rule"
+            );
             return {
               success: false,
               error: `Permission denied: Command '${command}' is blocked by rule '${blockedMatch}'`
@@ -269,18 +286,28 @@ export class ToolExecutor {
         if (restrictions.allowedCommands.length > 0 && command) {
           const allowedMatch = findMatchingPattern(command, restrictions.allowedCommands);
           if (!allowedMatch) {
+            const allowedList = restrictions.allowedCommands.join(", ");
+            logger.debug(
+              { toolName, command, allowed: restrictions.allowedCommands },
+              "Tool execution denied by allowed command rules"
+            );
             return {
               success: false,
-              error: `Permission denied: Command '${command}' is not in allowed_commands list`
+              error: `Permission denied: Command '${command}' is not in allowed_commands list (allowed: ${allowedList})`
             };
           }
         }
         if (restrictions.allowedPaths.length > 0 && resourcePath) {
           const allowedPathMatch = findMatchingPattern(resourcePath, restrictions.allowedPaths);
           if (!allowedPathMatch) {
+            const allowedList = restrictions.allowedPaths.join(", ");
+            logger.debug(
+              { toolName, resourcePath, allowed: restrictions.allowedPaths },
+              "Tool execution denied by allowed path rules"
+            );
             return {
               success: false,
-              error: `Permission denied: Resource path '${resourcePath}' is not in allowed_paths list`
+              error: `Permission denied: Resource path '${resourcePath}' is not in allowed_paths list (allowed: ${allowedList})`
             };
           }
         }
@@ -293,7 +320,10 @@ export class ToolExecutor {
         }
       }
     } else if (this.allowedTools && !this.allowedTools.includes(toolName)) {
-      return { success: false, error: `Tool '${toolName}' is not allowed in current configuration` };
+      const allowedList = this.allowedTools.join(", ");
+      const reason = `Tool '${toolName}' is not allowed in current configuration (allowed: ${allowedList})`;
+      logger.debug({ toolName, allowedTools: this.allowedTools, reason }, "Tool execution denied");
+      return { success: false, error: reason };
     }
 
     switch (toolName) {
@@ -319,7 +349,11 @@ export class ToolExecutor {
     const timeout = typeof toolInput.timeout === "number" ? toolInput.timeout : 30;
 
     if (!command) return { success: false, error: "No command provided" };
-    if (!isCommandSafe(command)) return { success: false, error: "Command blocked for safety reasons" };
+    const blocked = findBlockedCommand(command);
+    if (blocked) {
+      logger.debug({ command, rule: blocked }, "Command blocked by safety rule");
+      return { success: false, error: `Command blocked for safety reasons: matched '${blocked}'` };
+    }
 
     logger.info({ command }, "Running PowerShell command");
     return runProcess("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", command], workingDirectory, timeout);
@@ -332,7 +366,11 @@ export class ToolExecutor {
     const timeout = typeof toolInput.timeout === "number" ? toolInput.timeout : 30;
 
     if (!command) return { success: false, error: "No command provided" };
-    if (!isCommandSafe(command)) return { success: false, error: "Command blocked for safety reasons" };
+    const blocked = findBlockedCommand(command);
+    if (blocked) {
+      logger.debug({ command, rule: blocked }, "Command blocked by safety rule");
+      return { success: false, error: `Command blocked for safety reasons: matched '${blocked}'` };
+    }
 
     logger.info({ command }, "Running Bash command");
     const bashResult = await runProcess("bash", ["-c", command], workingDirectory, timeout);

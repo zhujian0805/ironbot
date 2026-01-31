@@ -39,10 +39,10 @@ mcps:
 ```bash
 # Using environment variable
 export PERMISSIONS_FILE=./permissions.yaml
-python src/main.py
+bun run dev
 
 # Or using CLI argument
-python src/main.py --permissions-file ./permissions.yaml
+bun run dev -- --permissions-file ./permissions.yaml
 ```
 
 ### 3. Verify Permissions
@@ -143,10 +143,7 @@ If `write_file` or destructive commands are blocked:
 
 ### Bot Won't Start
 
-Check YAML syntax:
-```bash
-python -c "import yaml; yaml.safe_load(open('permissions.yaml'))"
-```
+Check YAML syntax using a YAML-aware editor or linter.
 
 ### Permissions Not Loading
 

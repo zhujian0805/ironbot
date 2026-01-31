@@ -169,6 +169,14 @@ export class PermissionManager {
     return patterns.some((pattern) => patternToRegex(pattern).test(name));
   }
 
+  private findMatchingPattern(name: string, patterns: string[]): string | undefined {
+    if (!name) return undefined;
+    for (const pattern of patterns) {
+      if (patternToRegex(pattern).test(name)) return pattern;
+    }
+    return undefined;
+  }
+
   isToolAllowed(toolName: string): boolean {
     if (!toolName) return false;
     const allowed = this.matchesPattern(toolName, this.config.tools.allowed);
@@ -196,17 +204,22 @@ export class PermissionManager {
     return allowed;
   }
 
+  getDeniedResourcePattern(resourcePath: string): string | undefined {
+    if (!resourcePath) return undefined;
+    const normalized = resourcePath.replace(/\\/g, "/");
+    return (
+      this.findMatchingPattern(normalized, this.config.resources.deniedPaths) ??
+      this.findMatchingPattern(resourcePath, this.config.resources.deniedPaths)
+    );
+  }
+
   checkResourceDenied(resourcePath: string): boolean {
     if (!resourcePath) return false;
-    const normalized = resourcePath.replace(/\\/g, "/");
-    const denied = this.matchesPattern(normalized, this.config.resources.deniedPaths);
-    if (denied && this.config.settings.logDenials) {
-      logger.warn({ resourcePath }, "Permission denied for resource path");
+    const match = this.getDeniedResourcePattern(resourcePath);
+    if (match && this.config.settings.logDenials) {
+      logger.warn({ resourcePath, rule: match }, "Permission denied for resource path");
     }
-    if (!denied) {
-      return this.matchesPattern(resourcePath, this.config.resources.deniedPaths);
-    }
-    return denied;
+    return Boolean(match);
   }
 
   getToolRestrictions(toolName: string): ToolRestriction | undefined {
@@ -231,9 +244,12 @@ export class PermissionManager {
       if (!result.allowed) result.reason = `MCP '${name}' is not in the allowed list`;
     }
 
-    if (result.allowed && resourcePath && this.checkResourceDenied(resourcePath)) {
-      result.allowed = false;
-      result.reason = `Resource path '${resourcePath}' is denied`;
+    if (result.allowed && resourcePath) {
+      const deniedPattern = this.getDeniedResourcePattern(resourcePath);
+      if (deniedPattern) {
+        result.allowed = false;
+        result.reason = `Resource path '${resourcePath}' is denied by rule '${deniedPattern}'`;
+      }
     }
 
     return result;

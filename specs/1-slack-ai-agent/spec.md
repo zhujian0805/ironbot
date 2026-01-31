@@ -5,7 +5,7 @@
 **Updated**: 2026-01-31
 **Status**: Implemented
 **Input**: User description: "1. you are a AI agent
-2. you run in python
+2. you run in TypeScript/Node.js
 3. you have a frontend listening on events from multiple messages systems, first add slack
 4. you have a backend, you can connect to LLM
 5. frontend forward messages/questions from the user to backend
@@ -96,7 +96,7 @@ As a Slack user, I want the AI agent to execute system commands on my behalf so 
 - **FR-003**: Backend MUST connect to and use LLM via Claude Agent SDK.
 - **FR-004**: Backend MUST support loading and executing Claude Skills from a specified directory.
 - **FR-005**: System MUST send responses back to users through Slack.
-- **FR-006**: System MUST run in Python environment.
+- **FR-006**: System MUST run in Node.js environment.
 - **FR-007**: System MUST load configuration from .env file for Slack tokens, LLM endpoint URL, access key, and model.
 - **FR-008**: System MUST display a "Thinking..." indicator while processing user messages.
 - **FR-009**: System MUST update the thinking message with the actual response when complete.
