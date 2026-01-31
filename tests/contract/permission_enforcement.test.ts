@@ -78,7 +78,7 @@ describe("permission enforcement", () => {
     const result = await executor.executeTool("run_bash", { command: "ls" });
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Command is not in allowed_commands list");
+    expect(result.error).toBe("Permission denied: Command 'ls' is not in allowed_commands list");
 
     await rm(dir, { recursive: true, force: true });
   });

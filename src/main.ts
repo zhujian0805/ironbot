@@ -6,6 +6,7 @@ import { initPermissionManager } from "./services/permission_manager.js";
 import { SlackMessageHandler } from "./services/slack_handler.js";
 import { ClaudeProcessor } from "./services/claude_processor.js";
 import { MessageRouter } from "./services/message_router.js";
+import { MemoryManager } from "./memory/manager.js";
 import { parseCliArgs } from "./cli/args.js";
 
 const { App, LogLevel } = bolt as typeof import("@slack/bolt");
@@ -98,8 +99,11 @@ const main = async (): Promise<void> => {
     logLevel: toSlackLogLevel(config.logLevel)
   });
 
-  const claude = new ClaudeProcessor(config.skillsDir);
-  const router = new MessageRouter(claude, app.client as unknown as { chat: { postMessage: any; update: any } });
+  const memoryManager = new MemoryManager(config);
+  memoryManager.logStatus();
+
+  const claude = new ClaudeProcessor(config.skillsDir, memoryManager);
+  const router = new MessageRouter(claude, app.client as unknown as { chat: { postMessage: any; update: any } }, config);
   const handler = new SlackMessageHandler(app, router);
   handler.registerHandlers();
 

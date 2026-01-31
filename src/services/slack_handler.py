@@ -34,6 +34,8 @@ class SlackMessageHandler:
         """Handle incoming message event."""
         start_time = time.time()
         channel = event.get("channel")
+        thread_ts = event.get("thread_ts") or event.get("ts")
+        response_prefix = "↪️ "
         thinking_ts = None
 
         try:
@@ -57,7 +59,9 @@ class SlackMessageHandler:
             try:
                 thinking_response = await self.slack_app.client.chat_postMessage(
                     channel=channel,
-                    text=":thinking_face: Thinking..."
+                    text=f"{response_prefix}:thinking_face: Thinking...",
+                    thread_ts=thread_ts,
+                    reply_broadcast=False
                 )
                 thinking_ts = thinking_response.get("ts")
                 logger.info(f"Posted thinking indicator: ts={thinking_ts}")
@@ -76,23 +80,30 @@ class SlackMessageHandler:
 
             # Update the thinking message with the actual response, or send new if no thinking message
             logger.info("Sending response to Slack")
+            response_text = f"{response_prefix}{response}"
             try:
                 if thinking_ts:
                     await self.slack_app.client.chat_update(
                         channel=channel,
                         ts=thinking_ts,
-                        text=response
+                        text=response_text
                     )
                     logger.info("Updated thinking message with response")
+                elif thread_ts:
+                    await say({"text": response_text, "thread_ts": thread_ts})
+                    logger.info("Response sent successfully to Slack")
                 else:
-                    await say(response)
+                    await say(response_text)
                     logger.info("Response sent successfully to Slack")
             except Exception as say_error:
                 logger.error(f"Failed to send response to Slack: {say_error}")
                 logger.debug(f"Failed response content: {response[:100] if response else 'None'}{'...' if response and len(response) > 100 else ''}")
                 # Try sending as a new message if update failed
                 try:
-                    await say(response)
+                    if thread_ts:
+                        await say({"text": response_text, "thread_ts": thread_ts})
+                    else:
+                        await say(response_text)
                     logger.info("Fallback: sent response as new message")
                 except Exception as fallback_error:
                     logger.error(f"Fallback send also failed: {fallback_error}")
@@ -107,14 +118,17 @@ class SlackMessageHandler:
             try:
                 # Update thinking message with error, or send new error message
                 error_msg = "Sorry, I encountered an error processing your message."
+                error_text = f"{response_prefix}:x: {error_msg}"
                 if thinking_ts:
                     await self.slack_app.client.chat_update(
                         channel=channel,
                         ts=thinking_ts,
-                        text=f":x: {error_msg}"
+                        text=error_text
                     )
+                elif thread_ts:
+                    await say({"text": error_text, "thread_ts": thread_ts})
                 else:
-                    await say(error_msg)
+                    await say(error_text)
                 logger.info("Error message sent successfully to Slack")
             except Exception as say_error:
                 logger.error(f"Failed to send error message to Slack: {say_error}")

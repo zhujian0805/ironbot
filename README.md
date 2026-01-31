@@ -22,8 +22,12 @@ A TypeScript-based AI agent that integrates with Slack to provide conversational
 
 1. Install dependencies:
    ```bash
+   bun install
+   # or
    npm install
    ```
+
+   Bun is required to run the app and tests because memory indexing uses `bun:sqlite`.
 
 2. Configure environment variables in `.env`:
    ```env
@@ -70,13 +74,13 @@ A TypeScript-based AI agent that integrates with Slack to provide conversational
 
 4. Run the agent (development):
    ```bash
-   npm run dev -- --permissions-file ./permissions.yaml
+   bun run dev -- --permissions-file ./permissions.yaml
    ```
 
 5. Build and run (production):
    ```bash
-   npm run build
-   node dist/main.js --permissions-file ./permissions.yaml
+   bun run build
+   bun run start -- --permissions-file ./permissions.yaml
    ```
 
 ## Permission Configuration
@@ -121,7 +125,7 @@ mcps:
 ### CLI Options
 
 ```bash
-node dist/main.js --permissions-file /path/to/custom-permissions.yaml
+bun dist/main.js --permissions-file /path/to/custom-permissions.yaml
 ```
 
 ## Tool Use
@@ -145,11 +149,11 @@ The following types of commands are blocked:
 
 ## Development
 
-- Run tests: `npm test`
-- Run unit tests: `npm run test:unit`
-- Run integration tests: `npm run test:integration`
-- Run contract tests: `npm run test:contract`
-- Typecheck: `npm run typecheck`
+- Run tests: `bun run test`
+- Run unit tests: `bun run test:unit`
+- Run integration tests: `bun run test:integration`
+- Run contract tests: `bun run test:contract`
+- Typecheck: `bun run typecheck`
 - Add skills: Create JavaScript/TypeScript modules in the skills directory with an `executeSkill(input: string)` export
 - View logs: Structured JSON output to console
 

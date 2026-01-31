@@ -4,15 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx src/main.ts",
+    "dev": "bun src/main.ts",
     "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/main.js",
-    "test": "vitest run",
-    "test:unit": "vitest run --dir tests/unit",
-    "test:integration": "vitest run --dir tests/integration",
-    "test:contract": "vitest run --dir tests/contract",
+    "start": "bun dist/main.js",
+    "test": "bunx vitest run",
+    "test:unit": "bunx vitest run --dir tests/unit",
+    "test:integration": "bunx vitest run --dir tests/integration",
+    "test:contract": "bunx vitest run --dir tests/contract",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "release-check": "tsx src/cli/check_release.ts --permissions-file ./permissions.yaml"
+    "release-check": "bun src/cli/check_release.ts --permissions-file ./permissions.yaml"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.1",
@@ -26,8 +26,10 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
+    "bun-types": "^1.2.0",
     "tsx": "^4.7.0",
     "typescript": "^5.4.0",
     "vitest": "^4.0.18"
-  }
+  },
+  "packageManager": "bun@latest"
 }

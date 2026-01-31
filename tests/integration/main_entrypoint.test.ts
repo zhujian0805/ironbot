@@ -33,6 +33,9 @@ const setupMain = async (configOverrides: Partial<Record<string, unknown>> = {})
 
   const MessageRouter = vi.fn().mockImplementation(() => ({}));
 
+  const memoryManagerInstance = { logStatus: vi.fn() };
+  const MemoryManager = vi.fn().mockImplementation(() => memoryManagerInstance);
+
   const registerHandlers = vi.fn();
   const SlackMessageHandler = vi.fn().mockImplementation(() => ({ registerHandlers }));
 
@@ -68,6 +71,7 @@ const setupMain = async (configOverrides: Partial<Record<string, unknown>> = {})
   vi.doMock("../../src/services/claude_processor.js", () => ({ ClaudeProcessor }));
   vi.doMock("../../src/services/message_router.js", () => ({ MessageRouter }));
   vi.doMock("../../src/services/slack_handler.js", () => ({ SlackMessageHandler }));
+  vi.doMock("../../src/memory/manager.js", () => ({ MemoryManager }));
 
   await import("../../src/main.ts");
   await new Promise((resolve) => setImmediate(resolve));

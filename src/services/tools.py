@@ -3,6 +3,7 @@
 import asyncio
 import subprocess
 import json
+import fnmatch
 from typing import Dict, Any, List, Optional
 from ..utils.logging import logger
 from .permission_manager import get_permission_manager
@@ -158,6 +159,13 @@ class ToolExecutor:
                 return False
         return True
 
+    @staticmethod
+    def _find_matching_pattern(value: str, patterns: List[str]) -> Optional[str]:
+        for pattern in patterns:
+            if fnmatch.fnmatch(value, pattern):
+                return pattern
+        return None
+
     async def execute_tool(self, tool_name: str, tool_input: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a tool and return the result.
 
@@ -186,6 +194,42 @@ class ToolExecutor:
                     "success": False,
                     "error": f"Permission denied: Resource path '{path}' is blocked by deny rules"
                 }
+
+            # Enforce tool-specific restrictions with deny precedence
+            restrictions = self.permission_manager.get_tool_restrictions(tool_name)
+            if restrictions:
+                command = str(tool_input.get("command", ""))
+                if restrictions.blocked_commands and command:
+                    blocked_match = self._find_matching_pattern(command, restrictions.blocked_commands)
+                    if blocked_match:
+                        return {
+                            "success": False,
+                            "error": f"Permission denied: Command '{command}' is blocked by rule '{blocked_match}'"
+                        }
+
+                if restrictions.allowed_commands and command:
+                    allowed_match = self._find_matching_pattern(command, restrictions.allowed_commands)
+                    if not allowed_match:
+                        return {
+                            "success": False,
+                            "error": f"Permission denied: Command '{command}' is not in allowed_commands list"
+                        }
+
+                if restrictions.allowed_paths and path:
+                    allowed_path_match = self._find_matching_pattern(path, restrictions.allowed_paths)
+                    if not allowed_path_match:
+                        return {
+                            "success": False,
+                            "error": f"Permission denied: Resource path '{path}' is not in allowed_paths list"
+                        }
+
+                if restrictions.timeout_max is not None:
+                    requested_timeout = tool_input.get("timeout", restrictions.timeout_max)
+                    try:
+                        requested_timeout = int(requested_timeout)
+                    except (TypeError, ValueError):
+                        requested_timeout = restrictions.timeout_max
+                    tool_input["timeout"] = min(requested_timeout, restrictions.timeout_max)
 
         # Legacy allowed_tools check (for backward compatibility)
         elif self.allowed_tools is not None and tool_name not in self.allowed_tools:

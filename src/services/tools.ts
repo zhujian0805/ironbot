@@ -207,6 +207,15 @@ const matchPattern = (value: string, patterns: string[]): boolean => {
   });
 };
 
+const findMatchingPattern = (value: string, patterns: string[]): string | undefined => {
+  if (!patterns.length) return undefined;
+  for (const pattern of patterns) {
+    const regex = new RegExp(`^${escapeRegex(pattern).replace(/\*/g, ".*").replace(/\?/g, ".")}$`);
+    if (regex.test(value)) return pattern;
+  }
+  return undefined;
+};
+
 export class ToolExecutor {
   private allowedTools?: string[];
   private permissionManager = getPermissionManager();
@@ -248,19 +257,31 @@ export class ToolExecutor {
       const restrictions = this.permissionManager.getToolRestrictions(toolName);
       if (restrictions) {
         const command = typeof toolInput.command === "string" ? toolInput.command : "";
-        if (restrictions.allowedCommands.length > 0 && command) {
-          if (!matchPattern(command, restrictions.allowedCommands)) {
-            return { success: false, error: "Command is not in allowed_commands list" };
+        if (restrictions.blockedCommands.length > 0 && command) {
+          const blockedMatch = findMatchingPattern(command, restrictions.blockedCommands);
+          if (blockedMatch) {
+            return {
+              success: false,
+              error: `Permission denied: Command '${command}' is blocked by rule '${blockedMatch}'`
+            };
           }
         }
-        if (restrictions.blockedCommands.length > 0 && command) {
-          if (matchPattern(command, restrictions.blockedCommands)) {
-            return { success: false, error: "Command is blocked by blocked_commands list" };
+        if (restrictions.allowedCommands.length > 0 && command) {
+          const allowedMatch = findMatchingPattern(command, restrictions.allowedCommands);
+          if (!allowedMatch) {
+            return {
+              success: false,
+              error: `Permission denied: Command '${command}' is not in allowed_commands list`
+            };
           }
         }
         if (restrictions.allowedPaths.length > 0 && resourcePath) {
-          if (!matchPattern(resourcePath, restrictions.allowedPaths)) {
-            return { success: false, error: "Resource path is not in allowed_paths list" };
+          const allowedPathMatch = findMatchingPattern(resourcePath, restrictions.allowedPaths);
+          if (!allowedPathMatch) {
+            return {
+              success: false,
+              error: `Permission denied: Resource path '${resourcePath}' is not in allowed_paths list`
+            };
           }
         }
         if (typeof restrictions.timeoutMax === "number") {

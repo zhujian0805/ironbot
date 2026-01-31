@@ -1,27 +1,81 @@
 import { logger } from "../utils/logging.js";
 import { ClaudeProcessor } from "./claude_processor.js";
+import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
+import { resolveConfig, type AppConfig } from "../config.js";
+import { deriveSlackSessionKey } from "../sessions/session_key.js";
+import { appendTranscriptMessage, loadTranscriptHistory, resolveSessionTranscript } from "../sessions/transcript.js";
+import { updateLastRoute } from "../sessions/store.js";
 
 type SlackClientLike = {
   chat: {
-    postMessage: (args: { channel: string; text: string }) => Promise<{ ts?: string }>;
+    postMessage: (args: { channel: string; text: string; thread_ts?: string; reply_broadcast?: boolean }) => Promise<{ ts?: string }>;
     update: (args: { channel: string; ts: string; text: string }) => Promise<unknown>;
   };
+  assistant?: {
+    threads?: {
+      setStatus?: (args: { token?: string; channel_id: string; thread_ts: string; status: string }) => Promise<unknown>;
+    };
+  };
+  apiCall?: (method: string, args: { token?: string; channel_id: string; thread_ts: string; status: string }) => Promise<unknown>;
+};
+
+type SlackEvent = {
+  text?: string;
+  channel?: string;
+  bot_id?: string;
+  ts?: string;
+  thread_ts?: string;
+  user?: string;
 };
 
 export class MessageRouter {
   private claude: ClaudeProcessor;
   private slackClient?: SlackClientLike;
+  private config: AppConfig;
 
-  constructor(claude: ClaudeProcessor, slackClient?: SlackClientLike) {
+  constructor(claude: ClaudeProcessor, slackClient?: SlackClientLike, config: AppConfig = resolveConfig()) {
     this.claude = claude;
     this.slackClient = slackClient;
+    this.config = config;
   }
 
-  async handleAppMention(event: { text?: string; channel?: string; bot_id?: string }, say: (message: string) => Promise<void>): Promise<void> {
+  private async setThreadStatus(params: { channelId: string; threadTs?: string; status: string }): Promise<void> {
+    if (!this.slackClient || !params.channelId || !params.threadTs) {
+      return;
+    }
+
+    const payload = {
+      token: this.config.slackBotToken,
+      channel_id: params.channelId,
+      thread_ts: params.threadTs,
+      status: params.status
+    };
+
+    try {
+      if (this.slackClient.assistant?.threads?.setStatus) {
+        await this.slackClient.assistant.threads.setStatus(payload);
+        return;
+      }
+
+      if (typeof this.slackClient.apiCall === "function") {
+        await this.slackClient.apiCall("assistant.threads.setStatus", payload);
+      }
+    } catch (error) {
+      logger.warn({ error, channelId: params.channelId }, "Failed to update Slack thread status");
+    }
+  }
+
+  async handleAppMention(
+    event: SlackEvent,
+    say: (message: string | { text: string; thread_ts?: string }) => Promise<void>
+  ): Promise<void> {
     await this.handleMessage(event, say);
   }
 
-  async handleMessage(event: { text?: string; channel?: string; bot_id?: string }, say: (message: string) => Promise<void>): Promise<void> {
+  async handleMessage(
+    event: SlackEvent,
+    say: (message: string | { text: string; thread_ts?: string }) => Promise<void>
+  ): Promise<void> {
     if (event.bot_id) {
       logger.info({ botId: event.bot_id }, "Skipping bot message");
       return;
@@ -29,35 +83,112 @@ export class MessageRouter {
 
     const text = event.text ?? "";
     const channel = event.channel ?? "";
-    let thinkingTs: string | undefined;
+    const threadTs = event.thread_ts ?? event.ts;
+    const responsePrefix = "↪️ ";
 
+    const { sessionKey } = deriveSlackSessionKey({
+      channel,
+      threadTs: event.thread_ts,
+      ts: event.ts,
+      mainKey: this.config.sessions.dmSessionKey
+    });
+
+    let conversationHistory = [] as MessageParam[];
     try {
-      if (this.slackClient && channel) {
-        const thinking = await this.slackClient.chat.postMessage({
-          channel,
-          text: ":thinking_face: Thinking..."
-        });
-        thinkingTs = thinking.ts;
-      }
+      const session = await resolveSessionTranscript({
+        storePath: this.config.sessions.storePath,
+        sessionKey,
+        transcriptsDir: this.config.sessions.transcriptsDir
+      });
+      conversationHistory = await loadTranscriptHistory({
+        sessionFile: session.sessionFile,
+        maxMessages: this.config.sessions.maxHistoryMessages
+      });
     } catch (error) {
-      logger.warn({ error }, "Failed to post thinking indicator");
+      logger.warn({ error }, "Failed to load session transcript history");
     }
 
     try {
-      const response = await this.claude.processMessage(text);
+      await appendTranscriptMessage({
+        storePath: this.config.sessions.storePath,
+        sessionKey,
+        transcriptsDir: this.config.sessions.transcriptsDir,
+        role: "user",
+        content: text
+      });
+    } catch (error) {
+      logger.warn({ error }, "Failed to append user message to transcript");
+    }
 
-      if (this.slackClient && thinkingTs && channel) {
-        await this.slackClient.chat.update({ channel, ts: thinkingTs, text: response });
+    try {
+      await this.setThreadStatus({ channelId: channel, threadTs, status: "is typing..." });
+      const response = await this.claude.processMessage(text, {
+        conversationHistory,
+        sessionKey
+      });
+
+      try {
+        await appendTranscriptMessage({
+          storePath: this.config.sessions.storePath,
+          sessionKey,
+          transcriptsDir: this.config.sessions.transcriptsDir,
+          role: "assistant",
+          content: response
+        });
+      } catch (error) {
+        logger.warn({ error }, "Failed to append assistant message to transcript");
+      }
+
+      const responseText = `${responsePrefix}${response}`;
+      if (this.slackClient && channel) {
+        if (threadTs) {
+          await this.slackClient.chat.postMessage({
+            channel,
+            text: responseText,
+            thread_ts: threadTs,
+            reply_broadcast: false
+          });
+        } else {
+          await this.slackClient.chat.postMessage({ channel, text: responseText });
+        }
+      } else if (threadTs) {
+        await say({ text: responseText, thread_ts: threadTs });
       } else {
-        await say(response);
+        await say(responseText);
       }
     } catch (error) {
       logger.error({ error }, "Failed to handle message");
       const errorMessage = "Sorry, I encountered an error processing your message.";
-      if (this.slackClient && thinkingTs && channel) {
-        await this.slackClient.chat.update({ channel, ts: thinkingTs, text: `:x: ${errorMessage}` });
+      const errorText = `${responsePrefix}:x: ${errorMessage}`;
+      if (this.slackClient && channel) {
+        if (threadTs) {
+          await this.slackClient.chat.postMessage({
+            channel,
+            text: errorText,
+            thread_ts: threadTs,
+            reply_broadcast: false
+          });
+        } else {
+          await this.slackClient.chat.postMessage({ channel, text: errorText });
+        }
+      } else if (threadTs) {
+        await say({ text: errorText, thread_ts: threadTs });
       } else {
-        await say(errorMessage);
+        await say(errorText);
+      }
+    } finally {
+      await this.setThreadStatus({ channelId: channel, threadTs, status: "" });
+      try {
+        await updateLastRoute({
+          storePath: this.config.sessions.storePath,
+          sessionKey,
+          channel,
+          threadId: threadTs,
+          userId: event.user,
+          messageTs: event.ts
+        });
+      } catch (error) {
+        logger.warn({ error }, "Failed to update session metadata");
       }
     }
   }

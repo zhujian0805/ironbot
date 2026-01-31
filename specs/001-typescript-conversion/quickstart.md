@@ -4,7 +4,7 @@
 
 ## Prerequisites
 - Node.js 20 LTS
-- npm (or equivalent package manager)
+- Bun
 
 ## Configure environment
 Set required environment variables:
@@ -18,30 +18,34 @@ Set required environment variables:
 
 ## Install dependencies
 ```bash
+bun install
+# or
 npm install
 ```
 
+Bun is required to run the app and tests because memory indexing uses `bun:sqlite`.
+
 ## Run the CLI (development)
 ```bash
-npm run dev -- --permissions-file ./permissions.yaml
+bun run dev -- --permissions-file ./permissions.yaml
 ```
 
 ## Build and run (production)
 ```bash
-npm run build
-node dist/main.js --permissions-file ./permissions.yaml
+bun run build
+bun run start -- --permissions-file ./permissions.yaml
 ```
 
 ## Run tests
 ```bash
-npm test
-npm run test:unit
-npm run test:integration
-npm run test:contract
-npm run release-check
+bun run test
+bun run test:unit
+bun run test:integration
+bun run test:contract
+bun run release-check
 ```
 
 ## Typecheck
 ```bash
-npm run typecheck
+bun run typecheck
 ```

@@ -4,6 +4,7 @@ import { resolveConfig } from "../config.js";
 import { logger } from "../utils/logging.js";
 import { SkillLoader, type SkillHandler } from "./skill_loader.js";
 import { ToolExecutor, getAllowedTools } from "./tools.js";
+import type { MemoryManager } from "../memory/manager.js";
 
 const SYSTEM_PROMPT = `You are a helpful AI assistant with access to system tools. You can execute PowerShell commands, Bash commands, read and write files, and list directory contents.
 
@@ -24,8 +25,9 @@ export class ClaudeProcessor {
   private skillsLoaded = false;
   private readonly maxToolIterations = 6;
   private skillLoader: SkillLoader;
+  private memoryManager?: MemoryManager;
 
-  constructor(skillsDir: string) {
+  constructor(skillsDir: string, memoryManager?: MemoryManager) {
     const config = resolveConfig();
     this.client = new Anthropic({
       apiKey: config.anthropicAuthToken,
@@ -37,6 +39,7 @@ export class ClaudeProcessor {
     this.devMode = config.devMode;
     this.toolExecutor = new ToolExecutor();
     this.skillLoader = new SkillLoader(skillsDir);
+    this.memoryManager = memoryManager;
   }
 
   private async ensureSkillsLoaded(): Promise<void> {
@@ -46,7 +49,27 @@ export class ClaudeProcessor {
     }
   }
 
-  async processMessage(userMessage: string, conversationHistory: MessageParam[] = []): Promise<string> {
+  private async buildMemoryContext(userMessage: string, sessionKey?: string): Promise<string> {
+    if (!this.memoryManager) return "";
+    try {
+      const hits = await this.memoryManager.search(userMessage, { sessionKey });
+      if (!hits.length) return "";
+      return hits
+        .map((hit, index) => {
+          const label = `${index + 1}. [${hit.source}] ${hit.path}`;
+          return `${label}\n${hit.content}`;
+        })
+        .join("\n\n");
+    } catch (error) {
+      logger.warn({ error }, "Memory search failed");
+      return "";
+    }
+  }
+
+  async processMessage(
+    userMessage: string,
+    options: { conversationHistory?: MessageParam[]; sessionKey?: string } = {}
+  ): Promise<string> {
     await this.ensureSkillsLoaded();
 
     for (const [skillName, handler] of Object.entries(this.skills)) {
@@ -65,21 +88,27 @@ export class ClaudeProcessor {
       return `[DEV MODE] I would respond to: ${userMessage}`;
     }
 
-    return this.processWithTools(userMessage, conversationHistory);
+    const conversationHistory = options.conversationHistory ?? [];
+    const memoryContext = await this.buildMemoryContext(userMessage, options.sessionKey);
+    return this.processWithTools(userMessage, conversationHistory, memoryContext);
   }
 
   private async processWithTools(
     userMessage: string,
-    conversationHistory: MessageParam[]
+    conversationHistory: MessageParam[],
+    memoryContext: string
   ): Promise<string> {
     const messages: MessageParam[] = [...conversationHistory, { role: "user", content: userMessage }];
     let finalResponse = "";
+    const systemPrompt = memoryContext
+      ? `${SYSTEM_PROMPT}\n\nRelevant memory:\n${memoryContext}\n\nUse this context if it helps answer the user.`
+      : SYSTEM_PROMPT;
 
     for (let iteration = 0; iteration < this.maxToolIterations; iteration += 1) {
       const response = await this.client.messages.create({
         model: this.model,
         max_tokens: 2048,
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         tools: getAllowedTools() as Tool[],
         messages
       });
@@ -118,7 +147,8 @@ export class ClaudeProcessor {
         toolResults.push({ type: "tool_result", tool_use_id: toolUse.id, content });
       }
 
-      messages.push({ role: "user", content: toolResults as unknown as MessageParam["content"] });    }
+      messages.push({ role: "user", content: toolResults as unknown as MessageParam["content"] });
+    }
 
     if (!finalResponse) {
       finalResponse = "Sorry, I could not complete the request.";

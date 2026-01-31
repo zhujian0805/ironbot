@@ -120,7 +120,7 @@ describe("ToolExecutor", () => {
     const result = await executor.executeTool("run_bash", { command: "ls" });
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Command is not in allowed_commands list");
+    expect(result.error).toBe("Permission denied: Command 'ls' is not in allowed_commands list");
 
     await rm(dir, { recursive: true, force: true });
   });
@@ -139,7 +139,7 @@ describe("ToolExecutor", () => {
     const result = await executor.executeTool("run_bash", { command: "rm -rf /tmp" });
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Command is blocked by blocked_commands list");
+    expect(result.error).toBe("Permission denied: Command 'rm -rf /tmp' is blocked by rule 'rm *'");
 
     await rm(dir, { recursive: true, force: true });
   });
@@ -161,7 +161,7 @@ describe("ToolExecutor", () => {
     });
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Resource path is not in allowed_paths list");
+    expect(result.error).toBe("Permission denied: Resource path '/blocked' is not in allowed_paths list");
 
     await rm(dir, { recursive: true, force: true });
   });

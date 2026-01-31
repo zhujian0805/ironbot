@@ -5,8 +5,8 @@ export type SlackAppLike = {
 };
 
 export type MessageRouter = {
-  handleAppMention: (event: any, say: (message: string) => Promise<void>) => Promise<void>;
-  handleMessage?: (event: any, say: (message: string) => Promise<void>) => Promise<void>;
+  handleAppMention: (event: any, say: (message: string | { text: string; thread_ts?: string }) => Promise<void>) => Promise<void>;
+  handleMessage?: (event: any, say: (message: string | { text: string; thread_ts?: string }) => Promise<void>) => Promise<void>;
 };
 
 export const registerSlackHandlers = (app: SlackAppLike, router: MessageRouter): void => {
