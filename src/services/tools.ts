@@ -134,6 +134,24 @@ export const TOOLS: ToolDefinition[] = [
 
 const normalize = (command: string): string => command.toLowerCase().trim();
 
+const commandStartsWithPattern = (command: string, patterns: string[]): boolean => {
+  if (!patterns.length || !command) return false;
+  const normalizedCmd = normalize(command);
+  return patterns.some((pattern) => {
+    const normalized = normalize(pattern);
+    return normalizedCmd.startsWith(normalized) ||
+           normalizedCmd.startsWith(`${normalized} `) ||
+           normalizedCmd.startsWith(`${normalized}(`) ||
+           normalizedCmd.startsWith(`${normalized}\n`);
+  });
+};
+
+const commandContainsPattern = (command: string, patterns: string[]): boolean => {
+  if (!patterns.length || !command) return false;
+  const normalizedCmd = normalize(command);
+  return patterns.some((pattern) => normalizedCmd.includes(normalize(pattern)));
+};
+
 const runProcess = (
   command: string,
   args: string[],
@@ -252,21 +270,20 @@ export class ToolExecutor {
       if (restrictions) {
         const command = typeof toolInput.command === "string" ? toolInput.command : "";
         if (restrictions.blockedCommands.length > 0 && command) {
-          const blockedMatch = findMatchingPattern(command, restrictions.blockedCommands);
-          if (blockedMatch) {
+          if (commandContainsPattern(command, restrictions.blockedCommands)) {
             logger.debug(
-              { toolName, command, rule: blockedMatch },
+              { toolName, command, blocked: restrictions.blockedCommands },
               "Tool execution denied by blocked command rule"
             );
             return {
               success: false,
-              error: `Permission denied: Command '${command}' is blocked by rule '${blockedMatch}'`
+              error: `Permission denied: Command contains blocked pattern`
             };
           }
         }
         if (restrictions.allowedCommands.length > 0 && command) {
-          const allowedMatch = findMatchingPattern(command, restrictions.allowedCommands);
-          if (!allowedMatch) {
+          const isAllowed = commandStartsWithPattern(command, restrictions.allowedCommands);
+          if (!isAllowed) {
             const allowedList = restrictions.allowedCommands.join(", ");
             logger.debug(
               { toolName, command, allowed: restrictions.allowedCommands },
@@ -274,7 +291,7 @@ export class ToolExecutor {
             );
             return {
               success: false,
-              error: `Permission denied: Command '${command}' is not in allowed_commands list (allowed: ${allowedList})`
+              error: `Permission denied: Command must start with one of: ${allowedList}`
             };
           }
         }

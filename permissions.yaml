@@ -32,13 +32,13 @@ tools:
   # Per-tool restrictions and configurations
   restrictions:
     run_powershell:
-      allowed_commands: ["*"]            # Allow all PowerShell commands
+      allowed_commands: []                 # Empty = all commands allowed (unless blocked)
       blocked_commands: []              # Additional blocked patterns for this tool
       timeout_max: 30                   # Maximum timeout in seconds
       override_prompt: false            # Allow prompting to override denial
 
     run_bash:
-      allowed_commands: []              # Empty = deny all commands
+      allowed_commands: []              # Empty = all commands allowed (unless blocked)
       blocked_commands: []              # Additional blocked patterns
       timeout_max: 30
       override_prompt: false
