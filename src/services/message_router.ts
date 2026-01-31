@@ -83,9 +83,9 @@ export class MessageRouter {
 
     const text = event.text ?? "";
     const channel = event.channel ?? "";
-    let threadTs = event.thread_ts ?? event.ts;
+    // Use user's message as thread root. For existing threads, use thread_ts; for root messages, use ts
+    const threadTs = event.thread_ts ?? event.ts;
     const responsePrefix = "↪️ ";
-    let thinkingMessageTs: string | undefined;
 
     const { sessionKey } = deriveSlackSessionKey({
       channel,
@@ -122,33 +122,6 @@ export class MessageRouter {
     }
 
     try {
-      // Post initial thinking indicator to establish thread
-      const thinkingTexts = [
-        "Putting it all together...",
-        "Thinking it through...",
-        "Working on that...",
-        "Checking a few things...",
-        "One moment while I prepare a response...",
-        "Let me gather that for you..."
-      ];
-      const thinkingText = thinkingTexts[Math.floor(Math.random() * thinkingTexts.length)];
-
-      if (this.slackClient && channel) {
-        try {
-          const thinkingMsg = await this.slackClient.chat.postMessage({
-            channel,
-            text: thinkingText
-          });
-          thinkingMessageTs = thinkingMsg.ts;
-          // Use thinking message as thread root if not already in a thread
-          if (!event.thread_ts && thinkingMessageTs) {
-            threadTs = thinkingMessageTs;
-          }
-        } catch (error) {
-          logger.warn({ error }, "Failed to post thinking indicator");
-        }
-      }
-
       await this.setThreadStatus({ channelId: channel, threadTs, status: "is typing..." });
       const response = await this.claude.processMessage(text, {
         conversationHistory,
@@ -167,58 +140,28 @@ export class MessageRouter {
         logger.warn({ error }, "Failed to append assistant message to transcript");
       }
 
-      const responseText = `${responsePrefix}Responded in thread.`;
-      if (thinkingMessageTs && this.slackClient && channel) {
-        // Update thinking message with completion status
-        try {
-          await this.slackClient.chat.update({
-            channel,
-            ts: thinkingMessageTs,
-            text: responseText
-          });
-        } catch (error) {
-          logger.warn({ error }, "Failed to update thinking message");
-        }
-
-        // Post actual response in thread
-        await this.slackClient.chat.postMessage({
-          channel,
-          text: `${responsePrefix}${response}`,
-          thread_ts: threadTs,
-          reply_broadcast: false
-        });
-      } else if (this.slackClient && channel) {
+      const responseText = `${responsePrefix}${response}`;
+      if (this.slackClient && channel) {
         if (threadTs) {
           await this.slackClient.chat.postMessage({
             channel,
-            text: `${responsePrefix}${response}`,
+            text: responseText,
             thread_ts: threadTs,
             reply_broadcast: false
           });
         } else {
-          await this.slackClient.chat.postMessage({ channel, text: `${responsePrefix}${response}` });
+          await this.slackClient.chat.postMessage({ channel, text: responseText });
         }
       } else if (threadTs) {
-        await say({ text: `${responsePrefix}${response}`, thread_ts: threadTs });
+        await say({ text: responseText, thread_ts: threadTs });
       } else {
-        await say(`${responsePrefix}${response}`);
+        await say(responseText);
       }
     } catch (error) {
       logger.error({ error }, "Failed to handle message");
       const errorMessage = "Sorry, I encountered an error processing your message.";
       const errorText = `${responsePrefix}:x: ${errorMessage}`;
-
-      if (thinkingMessageTs && this.slackClient && channel) {
-        try {
-          await this.slackClient.chat.update({
-            channel,
-            ts: thinkingMessageTs,
-            text: errorText
-          });
-        } catch (error) {
-          logger.warn({ error }, "Failed to update thinking message with error" );
-        }
-      } else if (this.slackClient && channel) {
+      if (this.slackClient && channel) {
         if (threadTs) {
           await this.slackClient.chat.postMessage({
             channel,
