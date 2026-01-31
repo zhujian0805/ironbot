@@ -1,0 +1,117 @@
+openapi: 3.0.3
+info:
+  title: Claude SDK Integration Contract
+  version: 1.0.0
+  description: Contract for interactions with Anthropic Claude API
+
+paths:
+  /claude/messages:
+    post:
+      summary: Send message to Claude
+      description: Processes user message through Claude AI model
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaudeRequest'
+      responses:
+        '200':
+          description: Successful response from Claude
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaudeResponse'
+        '400':
+          description: Invalid request
+        '429':
+          description: Rate limit exceeded
+        '500':
+          description: Claude API error
+
+components:
+  schemas:
+    ClaudeRequest:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+        model:
+          type: string
+          enum: [claude-3-5-sonnet-20241022]
+        max_tokens:
+          type: integer
+          default: 1024
+        system:
+          type: string
+          description: System prompt
+      required:
+        - messages
+        - model
+
+    Message:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+      required:
+        - role
+        - content
+
+    ClaudeResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        role:
+          type: string
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentBlock'
+        model:
+          type: string
+        stop_reason:
+          type: string
+        stop_sequence:
+          type: string
+        usage:
+          $ref: '#/components/schemas/Usage'
+      required:
+        - id
+        - type
+        - role
+        - content
+        - model
+        - stop_reason
+        - usage
+
+    ContentBlock:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [text]
+        text:
+          type: string
+      required:
+        - type
+        - text
+
+    Usage:
+      type: object
+      properties:
+        input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+      required:
+        - input_tokens
+        - output_tokens

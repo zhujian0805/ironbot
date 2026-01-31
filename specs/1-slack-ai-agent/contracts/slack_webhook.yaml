@@ -1,0 +1,90 @@
+openapi: 3.0.3
+info:
+  title: Slack AI Agent Webhook Contract
+  version: 1.0.0
+  description: Contract for Slack webhook events handled by the AI agent
+
+paths:
+  /slack/events:
+    post:
+      summary: Handle Slack events
+      description: Receives and processes events from Slack (messages, etc.)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SlackEvent'
+      responses:
+        '200':
+          description: Event processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AckResponse'
+        '400':
+          description: Invalid event data
+        '500':
+          description: Internal processing error
+
+components:
+  schemas:
+    SlackEvent:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Slack verification token
+        team_id:
+          type: string
+        api_app_id:
+          type: string
+        event:
+          $ref: '#/components/schemas/EventData'
+        type:
+          type: string
+          enum: [event_callback, url_verification]
+        authed_users:
+          type: array
+          items:
+            type: string
+        event_id:
+          type: string
+        event_time:
+          type: integer
+      required:
+        - token
+        - team_id
+        - api_app_id
+        - event
+        - type
+
+    EventData:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [message]
+        channel:
+          type: string
+        user:
+          type: string
+        text:
+          type: string
+        ts:
+          type: string
+        event_ts:
+          type: string
+      required:
+        - type
+        - channel
+        - user
+        - text
+        - ts
+
+    AckResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
