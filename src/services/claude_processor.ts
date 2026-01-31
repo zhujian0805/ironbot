@@ -214,4 +214,11 @@ export class ClaudeProcessor {
       .map((block) => block.text ?? "");
     return parts.join("\n");
   }
+
+  private appendOperationSummary(response: string, operations: OperationRecord[]): string {
+    if (!operations.length || this.devMode) {
+      return response;
+    }
+    return response;
+  }
 }
