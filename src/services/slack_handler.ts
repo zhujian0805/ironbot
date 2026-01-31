@@ -22,7 +22,15 @@ export const registerSlackHandlers = (app: SlackAppLike, router: MessageRouter):
       if (event?.bot_id) return;
       if (event?.subtype) return;
 
-      logger.debug({ eventType: "message" }, "Handling Slack direct message event");
+      logger.debug(
+        {
+          eventType: "message",
+          hasTs: !!event?.ts,
+          channel,
+          eventKeys: Object.keys(event ?? {})
+        },
+        "Handling Slack direct message event"
+      );
       await router.handleMessage?.(event, say);
     });
   }

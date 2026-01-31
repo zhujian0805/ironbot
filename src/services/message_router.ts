@@ -83,9 +83,24 @@ export class MessageRouter {
 
     const text = event.text ?? "";
     const channel = event.channel ?? "";
+    // Ensure we have a ts value. If missing (can happen in DM events), generate one
+    const messageTs = event.ts ?? `${Date.now() / 1000}`;
     // Use user's message as thread root. For existing threads, use thread_ts; for root messages, use ts
-    const threadTs = event.thread_ts ?? event.ts;
+    const threadTs = event.thread_ts ?? messageTs;
     const responsePrefix = "↪️ ";
+
+    logger.debug(
+      {
+        channel,
+        eventTs: event.ts,
+        eventThreadTs: event.thread_ts,
+        computedMessageTs: messageTs,
+        threadTs,
+        isDm: channel.startsWith("D"),
+        tsWasGenerated: !event.ts
+      },
+      "Message event received"
+    );
 
     const { sessionKey } = deriveSlackSessionKey({
       channel,
@@ -141,8 +156,19 @@ export class MessageRouter {
       }
 
       const responseText = `${responsePrefix}${response}`;
+      logger.debug(
+        {
+          channel,
+          threadTs,
+          hasSlackClient: !!this.slackClient,
+          isDm: channel.startsWith("D")
+        },
+        "Preparing to post response"
+      );
+
       if (this.slackClient && channel) {
         if (threadTs) {
+          logger.debug({ channel, threadTs }, "Posting response to thread via slackClient");
           await this.slackClient.chat.postMessage({
             channel,
             text: responseText,
@@ -150,11 +176,14 @@ export class MessageRouter {
             reply_broadcast: false
           });
         } else {
+          logger.warn({ channel }, "No threadTs available, posting to channel root");
           await this.slackClient.chat.postMessage({ channel, text: responseText });
         }
       } else if (threadTs) {
+        logger.debug({ channel, threadTs }, "Posting response to thread via say()");
         await say({ text: responseText, thread_ts: threadTs });
       } else {
+        logger.warn({ channel }, "No threadTs available, posting via say() without thread");
         await say(responseText);
       }
     } catch (error) {
