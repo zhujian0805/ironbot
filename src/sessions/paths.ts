@@ -1,7 +1,7 @@
 import os from "node:os";
 import path from "node:path";
-import { DEFAULT_AGENT_ID, normalizeAgentId } from "./session_key.js";
-import type { SessionEntry } from "./types.js";
+import { DEFAULT_AGENT_ID, normalizeAgentId } from "./session_key.ts";
+import type { SessionEntry } from "./types.ts";
 
 const DEFAULT_STATE_DIRNAME = ".ironbot";
 

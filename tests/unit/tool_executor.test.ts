@@ -4,8 +4,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
-import { initPermissionManager } from "../../src/services/permission_manager.js";
-import { ToolExecutor } from "../../src/services/tools.js";
+import { initPermissionManager } from "../../src/services/permission_manager.ts";
+import { ToolExecutor } from "../../src/services/tools.ts";
 
 vi.mock("node:child_process", () => ({
   spawn: vi.fn()

@@ -1,10 +1,10 @@
-import { logger } from "../utils/logging.js";
-import { ClaudeProcessor } from "./claude_processor.js";
+import { logger } from "../utils/logging.ts";
+import { ClaudeProcessor } from "./claude_processor.ts";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
-import { resolveConfig, type AppConfig } from "../config.js";
-import { deriveSlackSessionKey } from "../sessions/session_key.js";
-import { appendTranscriptMessage, loadTranscriptHistory, resolveSessionTranscript } from "../sessions/transcript.js";
-import { updateLastRoute } from "../sessions/store.js";
+import { resolveConfig, type AppConfig } from "../config.ts";
+import { deriveSlackSessionKey } from "../sessions/session_key.ts";
+import { appendTranscriptMessage, loadTranscriptHistory, resolveSessionTranscript } from "../sessions/transcript.ts";
+import { updateLastRoute } from "../sessions/store.ts";
 
 type SlackClientLike = {
   chat: {

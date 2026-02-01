@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MessageRouter } from "../../src/services/message_router.js";
-import { resolveConfig } from "../../src/config.js";
+import { MessageRouter } from "../../src/services/message_router.ts";
+import { resolveConfig } from "../../src/config.ts";
 
 const createClaude = (response: string | Promise<string>) => ({
   processMessage: vi.fn().mockResolvedValue(response)

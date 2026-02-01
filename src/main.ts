@@ -1,13 +1,13 @@
 import bolt from "@slack/bolt";
 import type { App as SlackApp, LogLevel as SlackLogLevel } from "@slack/bolt";
-import { resolveConfig } from "./config.js";
-import { setupLogging, logger } from "./utils/logging.js";
-import { initPermissionManager } from "./services/permission_manager.js";
-import { SlackMessageHandler } from "./services/slack_handler.js";
-import { ClaudeProcessor } from "./services/claude_processor.js";
-import { MessageRouter } from "./services/message_router.js";
-import { MemoryManager } from "./memory/manager.js";
-import { parseCliArgs } from "./cli/args.js";
+import { resolveConfig } from "./config.ts";
+import { setupLogging, logger } from "./utils/logging.ts";
+import { initPermissionManager } from "./services/permission_manager.ts";
+import { SlackMessageHandler } from "./services/slack_handler.ts";
+import { ClaudeProcessor } from "./services/claude_processor.ts";
+import { MessageRouter } from "./services/message_router.ts";
+import { MemoryManager } from "./memory/manager.ts";
+import { parseCliArgs } from "./cli/args.ts";
 
 const { App, LogLevel } = bolt as typeof import("@slack/bolt");
 

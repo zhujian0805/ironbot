@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import type { TranscriptMessage } from "./types.js";
+import type { TranscriptMessage } from "./types.ts";
 
 export type TranscriptAppendEvent = {
   sessionKey: string;

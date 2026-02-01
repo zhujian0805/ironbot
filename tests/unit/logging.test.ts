@@ -17,7 +17,7 @@ vi.mock("pino", () => ({
   default: pinoMock
 }));
 
-import { setupLogging, logger } from "../../src/utils/logging.js";
+import { setupLogging, logger } from "../../src/utils/logging.ts";
 
 afterEach(() => {
   destinationMock.mockClear();

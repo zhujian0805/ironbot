@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { resolveConfig } from "../../src/config.js";
-import { resolveEmbeddingClient } from "../../src/memory/embeddings.js";
+import { resolveConfig } from "../../src/config.ts";
+import { resolveEmbeddingClient } from "../../src/memory/embeddings.ts";
 
 const ORIGINAL_ENV = { ...process.env };
 

@@ -1,8 +1,8 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { logger } from "../utils/logging.js";
-import { getPermissionManager } from "./permission_manager.js";
+import { logger } from "../utils/logging.ts";
+import { getPermissionManager } from "./permission_manager.ts";
 
 export type SkillHandler = (input: string) => string | Promise<string>;
 

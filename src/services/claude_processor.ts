@@ -1,10 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { MessageParam, Tool } from "@anthropic-ai/sdk/resources/messages";
-import { resolveConfig } from "../config.js";
-import { logger } from "../utils/logging.js";
-import { SkillLoader, type SkillHandler } from "./skill_loader.js";
-import { ToolExecutor, getAllowedTools } from "./tools.js";
-import type { MemoryManager } from "../memory/manager.js";
+import { resolveConfig } from "../config.ts";
+import { logger } from "../utils/logging.ts";
+import { SkillLoader, type SkillHandler } from "./skill_loader.ts";
+import { ToolExecutor, getAllowedTools } from "./tools.ts";
+import type { MemoryManager } from "../memory/manager.ts";
 
 const SYSTEM_PROMPT = `You are a helpful AI assistant with access to system tools. You can execute PowerShell commands, Bash commands, read and write files, and list directory contents.
 

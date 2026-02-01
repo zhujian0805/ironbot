@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import type { SessionEntry, SessionStoreRecord } from "./types.js";
+import type { SessionEntry, SessionStoreRecord } from "./types.ts";
 
 const DEFAULT_SESSION_STORE_TTL_MS = 45_000;
 

@@ -64,14 +64,14 @@ const setupMain = async (configOverrides: Partial<Record<string, unknown>> = {})
       LogLevel: { DEBUG: "DEBUG", WARN: "WARN", ERROR: "ERROR", INFO: "INFO" }
     }
   }));
-  vi.doMock("../../src/cli/args.js", () => ({ parseCliArgs }));
-  vi.doMock("../../src/config.js", () => ({ resolveConfig }));
-  vi.doMock("../../src/utils/logging.js", () => ({ setupLogging, logger }));
-  vi.doMock("../../src/services/permission_manager.js", () => ({ initPermissionManager }));
-  vi.doMock("../../src/services/claude_processor.js", () => ({ ClaudeProcessor }));
-  vi.doMock("../../src/services/message_router.js", () => ({ MessageRouter }));
-  vi.doMock("../../src/services/slack_handler.js", () => ({ SlackMessageHandler }));
-  vi.doMock("../../src/memory/manager.js", () => ({ MemoryManager }));
+  vi.doMock("../../src/cli/args.ts", () => ({ parseCliArgs }));
+  vi.doMock("../../src/config.ts", () => ({ resolveConfig }));
+  vi.doMock("../../src/utils/logging.ts", () => ({ setupLogging, logger }));
+  vi.doMock("../../src/services/permission_manager.ts", () => ({ initPermissionManager }));
+  vi.doMock("../../src/services/claude_processor.ts", () => ({ ClaudeProcessor }));
+  vi.doMock("../../src/services/message_router.ts", () => ({ MessageRouter }));
+  vi.doMock("../../src/services/slack_handler.ts", () => ({ SlackMessageHandler }));
+  vi.doMock("../../src/memory/manager.ts", () => ({ MemoryManager }));
 
   await import("../../src/main.ts");
   await new Promise((resolve) => setImmediate(resolve));

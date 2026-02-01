@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
-import { logger } from "../utils/logging.js";
-import { watchFile, type WatchHandle } from "../utils/file_watcher.js";
-import { validatePermissionPolicy } from "../validation/permission_policy.js";
+import { logger } from "../utils/logging.ts";
+import { watchFile, type WatchHandle } from "../utils/file_watcher.ts";
+import { validatePermissionPolicy } from "../validation/permission_policy.ts";
 import {
   type PermissionPolicy,
   type GlobalSettings,
@@ -13,7 +13,7 @@ import {
   type McpPermissions,
   type McpSettings,
   type ResourceDenyRules
-} from "../models/permission_policy.js";
+} from "../models/permission_policy.ts";
 
 export type PermissionCheckResult = {
   allowed: boolean;

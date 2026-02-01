@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { initPermissionManager } from "../../src/services/permission_manager.js";
-import { SkillLoader } from "../../src/services/skill_loader.js";
+import { initPermissionManager } from "../../src/services/permission_manager.ts";
+import { SkillLoader } from "../../src/services/skill_loader.ts";
 
 const buildConfig = (allowedSkills: string[]) => `version: "1.0"
 settings:
@@ -25,7 +25,7 @@ describe("skill execution", () => {
     const permissionsFile = join(dir, "permissions.yaml");
     await writeFile(permissionsFile, buildConfig(["*"]));
 
-    const skillPath = join(dir, "hello.js");
+    const skillPath = join(dir, "hello.ts");
     await writeFile(
       skillPath,
       "export const executeSkill = (input) => `Hello ${input}`;"
@@ -47,7 +47,7 @@ describe("skill execution", () => {
     const permissionsFile = join(dir, "permissions.yaml");
     await writeFile(permissionsFile, buildConfig([]));
 
-    const skillPath = join(dir, "blocked.js");
+    const skillPath = join(dir, "blocked.ts");
     await writeFile(skillPath, "export const executeSkill = () => 'nope';");
 
     initPermissionManager(permissionsFile);
@@ -64,7 +64,7 @@ describe("skill execution", () => {
     const permissionsFile = join(dir, "permissions.yaml");
     await writeFile(permissionsFile, buildConfig(["*"]));
 
-    const skillPath = join(dir, "_hidden.js");
+    const skillPath = join(dir, "_hidden.ts");
     await writeFile(skillPath, "export const executeSkill = () => 'hidden';");
 
     initPermissionManager(permissionsFile);

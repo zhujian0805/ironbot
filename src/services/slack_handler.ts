@@ -1,4 +1,4 @@
-import { logger } from "../utils/logging.js";
+import { logger } from "../utils/logging.ts";
 
 export type SlackAppLike = {
   event: (eventName: string, handler: (args: any) => Promise<void>) => void;

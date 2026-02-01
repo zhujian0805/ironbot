@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { getOrCreateSessionEntry, loadSessionStore, updateLastRoute } from "../../src/sessions/store.js";
+import { getOrCreateSessionEntry, loadSessionStore, updateLastRoute } from "../../src/sessions/store.ts";
 
 describe("session store", () => {
   it("creates and updates a session entry", async () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { appendTranscriptMessage, loadTranscriptHistory, resolveSessionTranscript } from "../../src/sessions/transcript.js";
+import { appendTranscriptMessage, loadTranscriptHistory, resolveSessionTranscript } from "../../src/sessions/transcript.ts";
 
 describe("transcripts", () => {
   it("writes a session header and appends messages", async () => {

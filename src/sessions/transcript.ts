@@ -1,10 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
-import { emitTranscriptAppended } from "./transcript_events.js";
-import { resolveSessionFilePath } from "./paths.js";
-import type { SessionEntry, TranscriptMessage, TranscriptMessageEntry, TranscriptHeaderEntry } from "./types.js";
-import { getOrCreateSessionEntry, updateSessionEntry } from "./store.js";
+import { emitTranscriptAppended } from "./transcript_events.ts";
+import { resolveSessionFilePath } from "./paths.ts";
+import type { SessionEntry, TranscriptMessage, TranscriptMessageEntry, TranscriptHeaderEntry } from "./types.ts";
+import { getOrCreateSessionEntry, updateSessionEntry } from "./store.ts";
 
 const CURRENT_SESSION_VERSION = 2;
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { registerSlackHandlers } from "../../src/services/slack_handler.js";
+import { registerSlackHandlers } from "../../src/services/slack_handler.ts";
 
 describe("Slack message flow", () => {
   it("routes app_mention events to the message router", async () => {

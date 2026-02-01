@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import crypto from "node:crypto";
-import type { EmbeddingsConfig } from "../config.js";
+import type { EmbeddingsConfig } from "../config.ts";
 
 export const DEFAULT_OPENAI_MODEL = "text-embedding-3-small";
 export const DEFAULT_GEMINI_MODEL = "gemini-embedding-001";

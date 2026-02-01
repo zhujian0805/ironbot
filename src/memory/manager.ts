@@ -1,14 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Database } from "bun:sqlite";
-import { logger } from "../utils/logging.js";
-import { resolveStateDir } from "../sessions/paths.js";
-import { DEFAULT_AGENT_ID, isMainSessionKey } from "../sessions/session_key.js";
-import { onTranscriptAppended } from "../sessions/transcript_events.js";
-import type { AppConfig } from "../config.js";
-import { resolveEmbeddingClient, type EmbeddingClient } from "./embeddings.js";
-import { ensureMemorySchema } from "./memory_schema.js";
-import { hybridSearch, type HybridSearchConfig, type MemoryHit, type MemoryChunk } from "./search.js";
+import { logger } from "../utils/logging.ts";
+import { resolveStateDir } from "../sessions/paths.ts";
+import { DEFAULT_AGENT_ID, isMainSessionKey } from "../sessions/session_key.ts";
+import { onTranscriptAppended } from "../sessions/transcript_events.ts";
+import type { AppConfig } from "../config.ts";
+import { resolveEmbeddingClient, type EmbeddingClient } from "./embeddings.ts";
+import { ensureMemorySchema } from "./memory_schema.ts";
+import { hybridSearch, type HybridSearchConfig, type MemoryHit, type MemoryChunk } from "./search.ts";
 
 const DEFAULT_CHUNK_TOKENS = 400;
 const DEFAULT_CHUNK_OVERLAP = 80;

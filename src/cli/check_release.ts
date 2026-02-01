@@ -1,8 +1,8 @@
 import { Command } from "commander";
 import fs from "node:fs";
 import { parse as parseYaml } from "yaml";
-import { validatePermissionPolicy } from "../validation/permission_policy.js";
-import { logger } from "../utils/logging.js";
+import { validatePermissionPolicy } from "../validation/permission_policy.ts";
+import { logger } from "../utils/logging.ts";
 
 export const runReleaseCheck = (permissionsFile: string): boolean => {
   if (!fs.existsSync(permissionsFile)) {

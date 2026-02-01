@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { resolveConfig } from "../../src/config.js";
+import { resolveConfig } from "../../src/config.ts";
 
 const originalEnv = { ...process.env };
 

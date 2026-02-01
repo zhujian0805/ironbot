@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveSlackSessionKey } from "../../src/sessions/session_key.js";
+import { deriveSlackSessionKey } from "../../src/sessions/session_key.ts";
 
 describe("deriveSlackSessionKey", () => {
   it("returns main session for DMs", () => {

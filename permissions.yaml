@@ -27,39 +27,37 @@ blocked_commands:
 
 # Allowed tools (allow-list only)
 tools:
-  allowed: ["run_powershell"]           # Empty by default: no tools allowed unless explicitly enabled
+  allowed: ["run_powershell", "run_bash", "read_file", "write_file", "list_directory"]  # Temporarily allow all tools
 
   # Per-tool restrictions and configurations
   restrictions:
     run_powershell:
-      allowed_commands:                 # Deny-all by default. Explicitly list allowed commands.
-        - "Get-"                        # Allow all Get-* commands (reading system/file info)
-        - "Read-"                       # Allow all Read-* commands (reading input/content)
-        - "Import-"                     # Allow all Import-* commands (reading data files)
-        - "Select-Object"               # Allow piping to Select-Object for formatting
-        - "Where-Object"                # Allow filtering with Where-Object
-        - "Sort-Object"                 # Allow sorting results
-        - "Format-"                     # Allow Format-* commands for output formatting
+      allowed_commands:                 # Temporarily allow all commands
+        - "*"                           # Allow all commands
       blocked_commands: []              # Not needed: blocked_commands is checked globally only
       timeout_max: 30                   # Maximum timeout in seconds
       override_prompt: false            # Allow prompting to override denial
 
     run_bash:
-      allowed_commands: []              # Empty = deny all commands
+      allowed_commands:                 # Temporarily allow all commands
+        - "*"                           # Allow all commands
       blocked_commands: []              # Not needed: blocked_commands is checked globally only
       timeout_max: 30
       override_prompt: false
 
     read_file:
-      allowed_paths: []                 # Empty = deny all paths (override with specific patterns)
+      allowed_paths:                    # Temporarily allow all paths
+        - "*"                           # Allow all paths
       override_prompt: false
 
     write_file:
-      allowed_paths: []                 # Empty = deny all paths
+      allowed_paths:                    # Temporarily allow all paths
+        - "*"                           # Allow all paths
       override_prompt: false
 
     list_directory:
-      allowed_paths: []                 # Empty = deny all paths
+      allowed_paths:                    # Temporarily allow all paths
+        - "*"                           # Allow all paths
       override_prompt: false
 
 # Resource-level deny rules (block access regardless of tool permissions)

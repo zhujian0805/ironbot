@@ -5,8 +5,8 @@ import {
   resolveSessionTranscriptsDir,
   resolveStateDir,
   resolveUserPath
-} from "./sessions/paths.js";
-import { DEFAULT_AGENT_ID, DEFAULT_MAIN_SESSION_KEY } from "./sessions/session_key.js";
+} from "./sessions/paths.ts";
+import { DEFAULT_AGENT_ID, DEFAULT_MAIN_SESSION_KEY } from "./sessions/session_key.ts";
 
 loadDotenv();
 

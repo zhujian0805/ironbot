@@ -8,10 +8,11 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "types": ["node", "vitest", "bun-types"],
+    "allowImportingTsExtensions": true,
+    "types": ["node", "vitest"],
     "rootDir": ".",
     "outDir": "dist",
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts"]
+  "include": ["src/**/*.ts", "tests/**/*.ts", "types/**/*.d.ts"]
 }

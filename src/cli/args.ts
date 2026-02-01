@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import type { CliArgs } from "../config.js";
+import type { CliArgs } from "../config.ts";
 
 export const parseCliArgs = (argv: string[] = process.argv.slice(2)): CliArgs => {
   const program = new Command();

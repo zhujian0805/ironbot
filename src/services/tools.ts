@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { promises as fs } from "node:fs";
-import { logger } from "../utils/logging.js";
-import { getPermissionManager } from "./permission_manager.js";
+import { logger } from "../utils/logging.ts";
+import { getPermissionManager } from "./permission_manager.ts";
 
 export type ToolDefinition = {
   name: string;
@@ -251,7 +251,7 @@ export class ToolExecutor {
         };
       }
 
-      const { validateToolRequest } = await import("../validation/tool_request.js");
+      const { validateToolRequest } = await import("../validation/tool_request.ts");
       try {
         validateToolRequest({ toolName, arguments: toolInput, requestedResource: resourcePath });
       } catch (error) {

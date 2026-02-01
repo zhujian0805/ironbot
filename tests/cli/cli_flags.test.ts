@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCliArgs } from "../../src/cli/args.js";
+import { parseCliArgs } from "../../src/cli/args.ts";
 
 describe("CLI flags", () => {
   it("parses all supported flags", () => {

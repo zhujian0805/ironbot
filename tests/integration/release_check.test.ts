@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { runReleaseCheck } from "../../src/cli/check_release.js";
+import { runReleaseCheck } from "../../src/cli/check_release.ts";
 
 const validConfig = `version: "1.0"
 settings:

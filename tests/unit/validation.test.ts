@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { validatePermissionPolicy } from "../../src/validation/permission_policy.js";
-import { validateToolRequest } from "../../src/validation/tool_request.js";
+import { validatePermissionPolicy } from "../../src/validation/permission_policy.ts";
+import { validateToolRequest } from "../../src/validation/tool_request.ts";
 
 describe("validation", () => {
   it("accepts a valid permission policy shape", () => {
