@@ -134,15 +134,24 @@ export const TOOLS: ToolDefinition[] = [
 
 const normalize = (command: string): string => command.toLowerCase().trim();
 
-const commandStartsWithPattern = (command: string, patterns: string[]): boolean => {
+const commandMatchesPattern = (command: string, patterns: string[]): boolean => {
+  logger.debug({ command, patterns }, "Checking command against patterns");
   if (!patterns.length || !command) return false;
   const normalizedCmd = normalize(command);
+  logger.debug({ normalizedCmd }, "Normalized command");
   return patterns.some((pattern) => {
     const normalized = normalize(pattern);
-    return normalizedCmd.startsWith(normalized) ||
+    logger.debug({ pattern, normalized }, "Checking pattern");
+    if (normalized === "*") {
+      logger.debug("Wildcard pattern '*' detected - allowing all commands");
+      return true; // Wildcard allows all commands
+    }
+    const matches = normalizedCmd.startsWith(normalized) ||
            normalizedCmd.startsWith(`${normalized} `) ||
            normalizedCmd.startsWith(`${normalized}(`) ||
            normalizedCmd.startsWith(`${normalized}\n`);
+    logger.debug({ pattern: normalized, command: normalizedCmd, matches }, "Pattern match result");
+    return matches;
   });
 };
 
@@ -262,8 +271,10 @@ export class ToolExecutor {
 
       const restrictions = this.permissionManager.getToolRestrictions(toolName);
       if (restrictions) {
+        logger.debug({ toolName, restrictions }, "Tool has restrictions");
         const command = typeof toolInput.command === "string" ? toolInput.command : "";
         if (command) {
+          logger.debug({ toolName, command, allowedCommands: restrictions.allowedCommands }, "Checking command permissions");
           // Deny-all-by-default for commands: only allow if explicitly listed
           if (restrictions.allowedCommands.length === 0) {
             logger.debug(
@@ -275,7 +286,8 @@ export class ToolExecutor {
               error: `Permission denied: No commands allowed for this tool (allowed_commands is empty)`
             };
           }
-          const isAllowed = commandStartsWithPattern(command, restrictions.allowedCommands);
+          const isAllowed = commandMatchesPattern(command, restrictions.allowedCommands);
+          logger.debug({ toolName, command, isAllowed }, "Command permission check result");
           if (!isAllowed) {
             const allowedList = restrictions.allowedCommands.join(", ");
             logger.debug(

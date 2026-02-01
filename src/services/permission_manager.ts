@@ -127,6 +127,7 @@ export class PermissionManager {
             : undefined,
         overridePrompt: Boolean(restriction.override_prompt ?? false)
       };
+      logger.debug({ toolName, restrictions: restrictions[toolName] }, "Parsed tool restrictions");
     }
 
     const tools: ToolPermissions = {
@@ -231,7 +232,9 @@ export class PermissionManager {
   }
 
   getToolRestrictions(toolName: string): ToolRestriction | undefined {
-    return this.config.tools.restrictions[toolName];
+    const restrictions = this.config.tools.restrictions[toolName];
+    logger.debug({ toolName, restrictions }, "Getting tool restrictions");
+    return restrictions;
   }
 
   getGlobalBlockedCommands(): string[] {
