@@ -1,12 +1,13 @@
 # Bot Permissions Configuration
 # Strategy: Deny-all by default. Only explicitly allowed actions are permitted.
+# Note: default_deny is enforced; setting it to false is ignored.
 # Add actions to allow lists or enable override prompts for additional operations.
 
 version: "1.0"
 
 # Global settings
 settings:
-  default_deny: true                    # Deny all unlisted capabilities (core security model)
+  default_deny: true                    # Enforced deny-by-default (false is ignored)
   log_denials: true                     # Log all permission denial events for audit
   enable_override_prompt: false         # Enable user prompts for permission overrides (global setting)
 
@@ -32,7 +33,8 @@ tools:
   # Per-tool restrictions and configurations
   restrictions:
     run_powershell:
-      allowed_commands:                 # Temporarily allow all commands
+      allowed_commands:                 # Explicitly allow disk inventory cmdlet
+        - "Get-Disk"                    # Allow listing disks
         - "*"                           # Allow all commands
       blocked_commands: []              # Not needed: blocked_commands is checked globally only
       timeout_max: 30                   # Maximum timeout in seconds
@@ -80,6 +82,7 @@ resources:
 skills:
   allowed:
     - "calculator"        # Example skill
+    - "permission_check"  # Diagnostic skill to check permission status
     # - "*"               # Uncomment to allow all skills
 
 # Allowed MCPs (Model Context Protocol servers)

@@ -322,10 +322,16 @@ export class ToolExecutor {
           };
         }
       }
-    } else if (this.allowedTools && !this.allowedTools.includes(toolName)) {
-      const allowedList = this.allowedTools.join(", ");
-      const reason = `Tool '${toolName}' is not allowed in current configuration (allowed: ${allowedList})`;
-      logger.debug({ toolName, allowedTools: this.allowedTools, reason }, "Tool execution denied");
+    } else if (this.allowedTools) {
+      if (!this.allowedTools.includes(toolName)) {
+        const allowedList = this.allowedTools.join(", ");
+        const reason = `Tool '${toolName}' is not allowed in current configuration (allowed: ${allowedList})`;
+        logger.debug({ toolName, allowedTools: this.allowedTools, reason }, "Tool execution denied");
+        return { success: false, error: reason };
+      }
+    } else {
+      const reason = `Tool '${toolName}' is not allowed (permission manager not initialized)`;
+      logger.debug({ toolName, reason }, "Tool execution denied");
       return { success: false, error: reason };
     }
 
@@ -443,6 +449,6 @@ export const getToolDefinitions = (): ToolDefinition[] => TOOLS;
 
 export const getAllowedTools = (): ToolDefinition[] => {
   const permissionManager = getPermissionManager();
-  if (!permissionManager) return TOOLS;
+  if (!permissionManager) return [];
   return TOOLS.filter((tool) => permissionManager.isToolAllowed(tool.name));
 };

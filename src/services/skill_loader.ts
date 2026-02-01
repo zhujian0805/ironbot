@@ -20,6 +20,10 @@ export class SkillLoader {
     try {
       const entries = await fs.readdir(this.skillsDir, { withFileTypes: true });
       const permissionManager = getPermissionManager();
+      if (!permissionManager) {
+        logger.warn("Permission manager not initialized; skipping skill loading (deny-by-default)");
+        return this.skills;
+      }
 
       for (const entry of entries) {
         if (!entry.isFile()) continue;
@@ -29,7 +33,7 @@ export class SkillLoader {
         if (!['.js', '.ts', '.mjs', '.cjs'].includes(ext)) continue;
 
         const skillName = path.basename(entry.name, ext);
-        if (permissionManager && !permissionManager.isSkillAllowed(skillName)) {
+        if (!permissionManager.isSkillAllowed(skillName)) {
           logger.info({ skillName }, "Skill blocked by permission config");
           continue;
         }

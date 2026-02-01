@@ -127,5 +127,6 @@ As a system administrator, I want to update permissions without restarting the b
 
 - Configuration file format will use a standard, human-readable format (YAML or JSON).
 - The bot operates in a "default deny" security model - capabilities must be explicitly allowed.
+- The default-deny model is enforced even if configuration attempts to disable it.
 - Administrators have filesystem access to modify the configuration file.
 - The permission system applies to all users equally (no per-user permissions in this version).

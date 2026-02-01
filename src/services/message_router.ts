@@ -60,6 +60,7 @@ export class MessageRouter {
       if (typeof this.slackClient.apiCall === "function") {
         await this.slackClient.apiCall("assistant.threads.setStatus", payload);
       }
+      logger.info({ channel, threadTs }, "Response sent to user");
     } catch (error) {
       logger.warn({ error, channelId: params.channelId }, "Failed to update Slack thread status");
     }
@@ -120,6 +121,7 @@ export class MessageRouter {
         sessionFile: session.sessionFile,
         maxMessages: this.config.sessions.maxHistoryMessages
       });
+      logger.info({ channel, threadTs }, "Response sent to user");
     } catch (error) {
       logger.warn({ error }, "Failed to load session transcript history");
     }
@@ -132,6 +134,7 @@ export class MessageRouter {
         role: "user",
         content: text
       });
+      logger.info({ channel, threadTs }, "Response sent to user");
     } catch (error) {
       logger.warn({ error }, "Failed to append user message to transcript");
     }
@@ -151,6 +154,7 @@ export class MessageRouter {
           role: "assistant",
           content: response
         });
+      logger.info({ channel, threadTs }, "Response sent to user");
       } catch (error) {
         logger.warn({ error }, "Failed to append assistant message to transcript");
       }

@@ -51,6 +51,7 @@ export class ClaudeProcessor {
     this.toolExecutor = new ToolExecutor();
     this.skillLoader = new SkillLoader(skillsDir);
     this.memoryManager = memoryManager;
+    logger.info({ model: this.model }, "LLM model initialized");
   }
 
   private async ensureSkillsLoaded(): Promise<void> {
@@ -121,6 +122,7 @@ export class ClaudeProcessor {
       : SYSTEM_PROMPT;
 
     for (let iteration = 0; iteration < this.maxToolIterations; iteration += 1) {
+      logger.info({ model: this.model }, "LLM call initiated");
       const response = await this.client.messages.create({
         model: this.model,
         max_tokens: 2048,
@@ -128,6 +130,7 @@ export class ClaudeProcessor {
         tools: getAllowedTools() as Tool[],
         messages
       });
+      logger.info({ model: this.model }, "LLM response received");
 
       if (response.stop_reason === "end_turn") {
         finalResponse = this.extractText(response.content);

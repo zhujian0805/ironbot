@@ -104,8 +104,16 @@ export class PermissionManager {
 
   private parseConfig(raw: Record<string, unknown>): PermissionPolicy {
     const rawSettings = (raw.settings ?? {}) as Record<string, unknown>;
+    let defaultDeny = Boolean(rawSettings.default_deny ?? true);
+    if (defaultDeny === false) {
+      logger.warn(
+        { value: rawSettings.default_deny },
+        "default_deny=false is not supported; enforcing deny-by-default"
+      );
+      defaultDeny = true;
+    }
     const settings: GlobalSettings = {
-      defaultDeny: Boolean(rawSettings.default_deny ?? true),
+      defaultDeny,
       logDenials: Boolean(rawSettings.log_denials ?? true),
       enableOverridePrompt: Boolean(rawSettings.enable_override_prompt ?? false)
     };
