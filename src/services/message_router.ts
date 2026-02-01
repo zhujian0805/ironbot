@@ -1,4 +1,5 @@
 import { logger } from "../utils/logging.ts";
+import { formatForSlack } from "../utils/slack_formatter.ts";
 import { ClaudeProcessor } from "./claude_processor.ts";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 import { resolveConfig, type AppConfig } from "../config.ts";
@@ -8,7 +9,7 @@ import { updateLastRoute } from "../sessions/store.ts";
 
 type SlackClientLike = {
   chat: {
-    postMessage: (args: { channel: string; text: string; thread_ts?: string; reply_broadcast?: boolean }) => Promise<{ ts?: string }>;
+    postMessage: (args: { channel: string; text: string; thread_ts?: string; reply_broadcast?: boolean; mrkdwn?: boolean }) => Promise<{ ts?: string }>;
     update: (args: { channel: string; ts: string; text: string }) => Promise<unknown>;
   };
   assistant?: {
@@ -159,7 +160,7 @@ export class MessageRouter {
         logger.warn({ error }, "Failed to append assistant message to transcript");
       }
 
-      const responseText = `${responsePrefix}${response}`;
+      const responseText = formatForSlack(`${responsePrefix}${response}`);
       logger.debug(
         {
           channel,
@@ -177,11 +178,12 @@ export class MessageRouter {
             channel,
             text: responseText,
             thread_ts: threadTs,
-            reply_broadcast: false
+            reply_broadcast: false,
+            mrkdwn: true
           });
         } else {
           logger.warn({ channel }, "No threadTs available, posting to channel root");
-          await this.slackClient.chat.postMessage({ channel, text: responseText });
+          await this.slackClient.chat.postMessage({ channel, text: responseText, mrkdwn: true });
         }
       } else if (threadTs) {
         logger.debug({ channel, threadTs }, "Posting response to thread via say()");
@@ -193,17 +195,18 @@ export class MessageRouter {
     } catch (error) {
       logger.error({ error }, "Failed to handle message");
       const errorMessage = "Sorry, I encountered an error processing your message.";
-      const errorText = `${responsePrefix}:x: ${errorMessage}`;
+      const errorText = formatForSlack(`${responsePrefix}:x: ${errorMessage}`);
       if (this.slackClient && channel) {
         if (threadTs) {
           await this.slackClient.chat.postMessage({
             channel,
             text: errorText,
             thread_ts: threadTs,
-            reply_broadcast: false
+            reply_broadcast: false,
+            mrkdwn: true
           });
         } else {
-          await this.slackClient.chat.postMessage({ channel, text: errorText });
+          await this.slackClient.chat.postMessage({ channel, text: errorText, mrkdwn: true });
         }
       } else if (threadTs) {
         await say({ text: errorText, thread_ts: threadTs });

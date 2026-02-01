@@ -6,6 +6,7 @@ A TypeScript-based AI agent that integrates with Slack to provide conversational
 
 - **Slack Integration**: Listen for messages in Slack channels and respond with AI-generated content
 - **Claude AI**: Powered by Anthropic's Claude model for high-quality responses
+- **Slack Markdown Formatting**: All responses automatically formatted with Slack's mrkdwn for proper display of bold, links, and other formatting
 - **Thinking Indicator**: Shows "Thinking..." while processing, then updates with the response
 - **Tool Use**: Execute system commands via Claude's tool use API
   - PowerShell commands (Windows)

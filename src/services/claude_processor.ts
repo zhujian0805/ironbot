@@ -15,6 +15,17 @@ When asked to perform system tasks:
 4. If a command fails, explain what went wrong and suggest alternatives
 5. If a tool request is denied or blocked, include the exact denial reason in your response
 
+**Response Formatting Guidelines:**
+- Use headers (###) to organize sections clearly
+- Use **bold** for emphasis on key information (like GPU names, important specs, warnings)
+- Use code blocks (\`\`\`) for command output, file contents, or raw data tables
+- Use inline code (\`) for command names, file paths, and technical terms
+- For tabular data from commands, present it in a code block to preserve formatting
+- Always include a "- Summary:" section at the end with key takeaways using **bold** for important details
+- Keep responses well-structured and easy to scan
+- For lists of items, use bullet points (-)
+- For summaries, use clear, concise language with key points emphasized
+
 Be helpful, concise, and safe. Never execute destructive commands without explicit user confirmation.`;
 
 type OperationRecord = {
