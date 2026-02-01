@@ -196,7 +196,9 @@ export class PermissionManager {
 
   isToolAllowed(toolName: string): boolean {
     if (!toolName) return false;
+    logger.debug({ toolName, allowedPatterns: this.config.tools.allowed }, "Checking if tool is allowed");
     const allowed = this.matchesPattern(toolName, this.config.tools.allowed);
+    logger.debug({ toolName, allowed }, "Tool permission check result");
     if (!allowed && this.config.settings.logDenials) {
       logger.warn({ toolName }, "Permission denied for tool");
     }
@@ -241,7 +243,12 @@ export class PermissionManager {
 
   getToolRestrictions(toolName: string): ToolRestriction | undefined {
     const restrictions = this.config.tools.restrictions[toolName];
-    logger.debug({ toolName, restrictions }, "Getting tool restrictions");
+    logger.debug({ 
+      toolName, 
+      restrictions,
+      hasRestrictions: Boolean(restrictions),
+      allowedCommands: restrictions?.allowedCommands || []
+    }, "Getting tool restrictions");
     return restrictions;
   }
 
@@ -258,10 +265,24 @@ export class PermissionManager {
     if (!command) return false;
 
     const globalBlockedCommands = this.getGlobalBlockedCommands();
+    logger.debug({ command, blockedCommands: globalBlockedCommands }, "Checking if command is globally blocked");
     if (globalBlockedCommands.length === 0) return false;
 
-    const lowerCmd = command.toLowerCase().trim();
-    return globalBlockedCommands.some((blocked) => lowerCmd.includes(blocked.toLowerCase()));
+    // On Windows, use case-sensitive matching to distinguish PowerShell cmdlets (Format-Table) 
+    // from legacy commands (format). On Unix, use case-insensitive for compatibility.
+    const isWindows = process.platform === "win32";
+    const cmdToCheck = isWindows ? command.trim() : command.toLowerCase().trim();
+    
+    const blocked = globalBlockedCommands.some((blocked) => {
+      const patternToMatch = isWindows ? blocked : blocked.toLowerCase();
+      const isMatch = cmdToCheck.includes(patternToMatch);
+      if (isMatch) {
+        logger.debug({ command: cmdToCheck, blockedBy: blocked, caseSensitive: isWindows }, "Command matched blocked pattern");
+      }
+      return isMatch;
+    });
+    logger.debug({ command, blocked, platform: process.platform, caseSensitive: isWindows }, "Command blocking check result");
+    return blocked;
   }
 
   checkPermission(

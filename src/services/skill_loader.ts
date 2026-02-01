@@ -15,13 +15,14 @@ export class SkillLoader {
   }
 
   async loadSkills(): Promise<Record<string, SkillHandler>> {
-    logger.debug({ directory: this.skillsDir }, "Loading skills");
+    logger.debug({ directory: this.skillsDir }, "[SKILL-FLOW] Loading skills");
 
     try {
       const entries = await fs.readdir(this.skillsDir, { withFileTypes: true });
       const permissionManager = getPermissionManager();
+      logger.debug({ hasPermissionManager: Boolean(permissionManager) }, "[SKILL-FLOW] Permission manager status");
       if (!permissionManager) {
-        logger.warn("Permission manager not initialized; skipping skill loading (deny-by-default)");
+        logger.warn("[SKILL-FLOW] Permission manager not initialized; skipping skill loading (deny-by-default)");
         return this.skills;
       }
 
@@ -33,10 +34,12 @@ export class SkillLoader {
         if (!['.js', '.ts', '.mjs', '.cjs'].includes(ext)) continue;
 
         const skillName = path.basename(entry.name, ext);
+        logger.debug({ skillName }, "[SKILL-FLOW] Checking if skill is allowed");
         if (!permissionManager.isSkillAllowed(skillName)) {
-          logger.info({ skillName }, "Skill blocked by permission config");
+          logger.info({ skillName }, "[SKILL-FLOW] Skill blocked by permission config");
           continue;
         }
+        logger.debug({ skillName }, "[SKILL-FLOW] Skill is allowed, loading...");
 
         const skillPath = path.join(this.skillsDir, entry.name);
         try {

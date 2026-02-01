@@ -227,7 +227,8 @@ export class ToolExecutor {
   }
 
   async executeTool(toolName: string, toolInput: Record<string, unknown>): Promise<ToolResult> {
-    logger.info({ toolName }, "Executing tool");
+    logger.info({ toolName, input: toolInput }, "[TOOL-FLOW] Executing tool");
+    logger.debug({ toolName, hasPermissionManager: Boolean(this.permissionManager) }, "[TOOL-FLOW] Permission manager status");
 
     let effectiveInput = { ...toolInput };
     const resourcePath =
@@ -238,12 +239,13 @@ export class ToolExecutor {
           : undefined;
 
     if (this.permissionManager) {
+      logger.debug({ toolName }, "[TOOL-FLOW] Checking tool permission");
       if (!this.permissionManager.isToolAllowed(toolName)) {
         const allowedTools = this.permissionManager.listAllowedCapabilities().tools;
         const reason = allowedTools.length
           ? `Tool '${toolName}' is not in the allowed list (allowed: ${allowedTools.join(", ")})`
           : `Tool '${toolName}' is not in the allowed list (no tools are enabled)`;
-        logger.debug({ toolName, allowedTools, reason }, "Tool execution denied");
+        logger.debug({ toolName, allowedTools, reason }, "[TOOL-FLOW] Tool execution denied - not in allowed list");
         return {
           success: false,
           error: this.permissionManager.formatDenialMessage("tool", toolName, reason)
@@ -270,11 +272,12 @@ export class ToolExecutor {
       }
 
       const restrictions = this.permissionManager.getToolRestrictions(toolName);
+      logger.debug({ toolName, hasRestrictions: Boolean(restrictions) }, "[TOOL-FLOW] Checked for tool restrictions");
       if (restrictions) {
-        logger.debug({ toolName, restrictions }, "Tool has restrictions");
+        logger.debug({ toolName, restrictions }, "[TOOL-FLOW] Tool has restrictions");
         const command = typeof toolInput.command === "string" ? toolInput.command : "";
         if (command) {
-          logger.debug({ toolName, command, allowedCommands: restrictions.allowedCommands }, "Checking command permissions");
+          logger.debug({ toolName, command, allowedCommands: restrictions.allowedCommands }, "[TOOL-FLOW] Checking command against allowed patterns");
           // Deny-all-by-default for commands: only allow if explicitly listed
           if (restrictions.allowedCommands.length === 0) {
             logger.debug(
@@ -287,7 +290,7 @@ export class ToolExecutor {
             };
           }
           const isAllowed = commandMatchesPattern(command, restrictions.allowedCommands);
-          logger.debug({ toolName, command, isAllowed }, "Command permission check result");
+          logger.debug({ toolName, command, isAllowed, patterns: restrictions.allowedCommands }, "[TOOL-FLOW] Command pattern match result");
           if (!isAllowed) {
             const allowedList = restrictions.allowedCommands.join(", ");
             logger.debug(
@@ -360,8 +363,9 @@ export class ToolExecutor {
     if (!command) return { success: false, error: "No command provided" };
 
     const permissionManager = getPermissionManager();
+    logger.debug({ command, hasPermissionManager: Boolean(permissionManager) }, "[TOOL-FLOW] Checking global blocked commands for PowerShell");
     if (permissionManager?.isCommandBlocked(command)) {
-      logger.debug({ command }, "Command blocked by global policy");
+      logger.warn({ command }, "[TOOL-FLOW] PowerShell command blocked by global policy");
       return { success: false, error: "Command blocked: This operation is not permitted by policy" };
     }
 
@@ -378,8 +382,9 @@ export class ToolExecutor {
     if (!command) return { success: false, error: "No command provided" };
 
     const permissionManager = getPermissionManager();
+    logger.debug({ command, hasPermissionManager: Boolean(permissionManager) }, "[TOOL-FLOW] Checking global blocked commands for Bash");
     if (permissionManager?.isCommandBlocked(command)) {
-      logger.debug({ command }, "Command blocked by global policy");
+      logger.warn({ command }, "[TOOL-FLOW] Bash command blocked by global policy");
       return { success: false, error: "Command blocked: This operation is not permitted by policy" };
     }
 

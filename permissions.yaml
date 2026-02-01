@@ -13,15 +13,25 @@ settings:
 
 # Global blocked commands - applied to all command-based tools
 # These represent destructive, dangerous, or system-critical operations
+# Note: On Windows, matching is case-sensitive to distinguish Format-Table (safe) from format (dangerous)
+#       On Unix/Linux, matching is case-insensitive for compatibility
 blocked_commands:
   - "rm -rf /"                          # Recursive delete entire filesystem (Linux)
   - "del /f /s /q c:\\\\"               # Recursive delete entire drive (Windows)
-  - "format"                            # Format disk
+  - "format "                           # Format disk command (lowercase, with space)
+  - "format.com"                        # Windows format executable
+  - "FORMAT "                           # Format disk command (uppercase variant)
+  - "Format "                           # Format disk command (title case variant)
+  - "diskpart"                          # Disk partitioning utility (lowercase)
+  - "DISKPART"                          # Disk partitioning utility (uppercase)
   - ":(){:|:&};:"                       # Bash fork bomb
   - "mkfs"                              # Make filesystem
   - "dd if=/dev/zero"                   # Destructive disk write
   - "shutdown"                          # System shutdown
+  - "Shutdown"                          # System shutdown (title case)
+  - "SHUTDOWN"                          # System shutdown (uppercase)
   - "reboot"                            # System reboot
+  - "Reboot"                            # System reboot (title case)
   - "halt"                              # System halt
   - "init 0"                            # Runlevel 0 (shutdown)
   - "init 6"                            # Runlevel 6 (reboot)
