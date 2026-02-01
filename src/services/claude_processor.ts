@@ -1,12 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { MessageParam, Tool } from "@anthropic-ai/sdk/resources/messages";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { resolveConfig } from "../config.ts";
 import { logger } from "../utils/logging.ts";
 import { SkillLoader, type SkillHandler } from "./skill_loader.ts";
 import { ToolExecutor, getAllowedTools } from "./tools.ts";
 import type { MemoryManager } from "../memory/manager.ts";
 
-const SYSTEM_PROMPT = `You are a helpful AI assistant with access to system tools. You can execute PowerShell commands, Bash commands, read and write files, and list directory contents.
+const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant with access to system tools. You can execute PowerShell commands, Bash commands, read and write files, and list directory contents.
 
 **CRITICAL RULES:**
 1. ALWAYS use tools to get information - NEVER make up or guess command output
@@ -35,6 +37,34 @@ When asked to perform system tasks:
 - For summaries, use clear, concise language with key points emphasized
 
 Be helpful, concise, and safe. Never execute destructive commands without explicit user confirmation.`;
+
+function loadSystemPrompt(): string {
+  const customPromptPath = process.env.SYSTEM_PROMPT_FILE;
+  
+  if (customPromptPath) {
+    try {
+      const content = readFileSync(customPromptPath, "utf-8");
+      logger.info({ path: customPromptPath }, "Loaded custom system prompt");
+      return content;
+    } catch (error) {
+      logger.warn({ path: customPromptPath, error }, "Failed to load custom system prompt, using default");
+    }
+  }
+  
+  // Try default location
+  try {
+    const defaultPath = join(process.cwd(), "system_prompt.txt");
+    const content = readFileSync(defaultPath, "utf-8");
+    logger.info({ path: defaultPath }, "Loaded system prompt from default location");
+    return content;
+  } catch {
+    logger.info("Using built-in default system prompt");
+  }
+  
+  return DEFAULT_SYSTEM_PROMPT;
+}
+
+const SYSTEM_PROMPT = loadSystemPrompt();
 
 type OperationRecord = {
   kind: "tool" | "skill";
@@ -140,9 +170,6 @@ export class ClaudeProcessor {
       ? `${SYSTEM_PROMPT}\n\nRelevant memory:\n${memoryContext}\n\nUse this context if it helps answer the user.`
       : SYSTEM_PROMPT;
 
-    // Force tool use for system information queries
-    const requiresToolUse = /主机名|hostname|打印机|printer|磁盘|disk|驱动器|drive|系统信息|system info|进程|process/i.test(userMessage);
-
     for (let iteration = 0; iteration < this.maxToolIterations; iteration += 1) {
       logger.info({ model: this.model }, "LLM call initiated");
       const response = await this.client.messages.create({
@@ -150,8 +177,7 @@ export class ClaudeProcessor {
         max_tokens: 2048,
         system: systemPrompt,
         tools: getAllowedTools() as Tool[],
-        messages,
-        ...(requiresToolUse && iteration === 0 ? { tool_choice: { type: "any" } } : {})
+        messages
       });
       logger.info({ model: this.model }, "LLM response received");
 
