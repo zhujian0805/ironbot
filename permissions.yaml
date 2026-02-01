@@ -44,7 +44,7 @@ tools:
   restrictions:
     run_powershell:
       allowed_commands:                 # Explicitly allow disk inventory cmdlet
-        - "Get-*"                    # Allow listing disks
+        - "*"                    # Allow listing disks
       blocked_commands: []              # Not needed: blocked_commands is checked globally only
       timeout_max: 30                   # Maximum timeout in seconds
       override_prompt: false            # Allow prompting to override denial

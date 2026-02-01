@@ -8,12 +8,20 @@ import type { MemoryManager } from "../memory/manager.ts";
 
 const SYSTEM_PROMPT = `You are a helpful AI assistant with access to system tools. You can execute PowerShell commands, Bash commands, read and write files, and list directory contents.
 
+**CRITICAL RULES:**
+1. ALWAYS use tools to get information - NEVER make up or guess command output
+2. You MUST execute the appropriate tool for EVERY request that asks for system information
+3. NEVER respond with example or fake data - only use actual tool output
+4. If asked about system information (hostname, disks, printers, processes, etc.), you MUST use run_powershell or run_bash
+
 When asked to perform system tasks:
 1. Use the appropriate tool to accomplish the task
 2. Always explain what you're doing before executing commands
 3. Report the results clearly to the user
 4. If a command fails, explain what went wrong and suggest alternatives
 5. If a tool request is denied or blocked, include the exact denial reason in your response
+6. Always use the exact output from tools without modifying, filtering, or summarizing it unless explicitly asked
+7. Do not reference previous queries or conversations unless directly relevant to the current request
 
 **Response Formatting Guidelines:**
 - Use headers (###) to organize sections clearly
@@ -132,6 +140,9 @@ export class ClaudeProcessor {
       ? `${SYSTEM_PROMPT}\n\nRelevant memory:\n${memoryContext}\n\nUse this context if it helps answer the user.`
       : SYSTEM_PROMPT;
 
+    // Force tool use for system information queries
+    const requiresToolUse = /主机名|hostname|打印机|printer|磁盘|disk|驱动器|drive|系统信息|system info|进程|process/i.test(userMessage);
+
     for (let iteration = 0; iteration < this.maxToolIterations; iteration += 1) {
       logger.info({ model: this.model }, "LLM call initiated");
       const response = await this.client.messages.create({
@@ -139,7 +150,8 @@ export class ClaudeProcessor {
         max_tokens: 2048,
         system: systemPrompt,
         tools: getAllowedTools() as Tool[],
-        messages
+        messages,
+        ...(requiresToolUse && iteration === 0 ? { tool_choice: { type: "any" } } : {})
       });
       logger.info({ model: this.model }, "LLM response received");
 
@@ -161,6 +173,11 @@ export class ClaudeProcessor {
           assistantContent.push({ type: "text", text: block.text });
         }
         if (block.type === "tool_use") {
+          logger.debug({ 
+            toolId: block.id, 
+            toolName: block.name, 
+            toolInput: JSON.stringify(block.input, null, 2) 
+          }, "[LLM-FLOW] Tool use requested by LLM");
           assistantContent.push({ type: "tool_use", id: block.id, name: block.name, input: block.input });
           toolUses.push({ id: block.id, name: block.name, input: block.input as Record<string, unknown> });
         }
@@ -170,10 +187,18 @@ export class ClaudeProcessor {
 
       const toolResults: Array<Record<string, unknown>> = [];
       for (const toolUse of toolUses) {
+        logger.debug({ toolName: toolUse.name, toolId: toolUse.id }, "[LLM-FLOW] Executing tool requested by LLM");
         const result = await this.toolExecutor.executeTool(toolUse.name, toolUse.input);
         const content = result.success
           ? JSON.stringify(result.result ?? result, null, 2)
           : `Error: ${result.error ?? "Unknown error"}`;
+        logger.debug({ 
+          toolName: toolUse.name, 
+          toolId: toolUse.id,
+          success: result.success,
+          resultLength: content.length,
+          error: result.error
+        }, "[LLM-FLOW] Tool execution result");
         toolResults.push({ type: "tool_result", tool_use_id: toolUse.id, content });
 
         const command = typeof toolUse.input.command === "string" ? toolUse.input.command : undefined;

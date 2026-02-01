@@ -228,7 +228,11 @@ export class ToolExecutor {
 
   async executeTool(toolName: string, toolInput: Record<string, unknown>): Promise<ToolResult> {
     logger.info({ toolName, input: toolInput }, "[TOOL-FLOW] Executing tool");
-    logger.debug({ toolName, hasPermissionManager: Boolean(this.permissionManager) }, "[TOOL-FLOW] Permission manager status");
+    logger.debug({ 
+      toolName, 
+      toolInput: JSON.stringify(toolInput, null, 2),
+      hasPermissionManager: Boolean(this.permissionManager) 
+    }, "[TOOL-FLOW] Tool execution started with full input");
 
     let effectiveInput = { ...toolInput };
     const resourcePath =
@@ -338,6 +342,8 @@ export class ToolExecutor {
       return { success: false, error: reason };
     }
 
+    logger.debug({ toolName, effectiveInput: JSON.stringify(effectiveInput, null, 2) }, "[TOOL-FLOW] Dispatching to tool implementation");
+    
     switch (toolName) {
       case "run_powershell":
         return this.runPowerShell(effectiveInput);
@@ -360,6 +366,13 @@ export class ToolExecutor {
       typeof toolInput.working_directory === "string" ? toolInput.working_directory : undefined;
     const timeout = typeof toolInput.timeout === "number" ? toolInput.timeout : 30;
 
+    logger.debug({ 
+      tool: 'run_powershell',
+      command, 
+      workingDirectory, 
+      timeout 
+    }, "[TOOL-EXEC] PowerShell execution parameters");
+
     if (!command) return { success: false, error: "No command provided" };
 
     const permissionManager = getPermissionManager();
@@ -370,7 +383,16 @@ export class ToolExecutor {
     }
 
     logger.info({ command }, "Running PowerShell command");
-    return runProcess("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", command], workingDirectory, timeout);
+    const result = await runProcess("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", command], workingDirectory, timeout);
+    logger.debug({ 
+      tool: 'run_powershell',
+      command,
+      success: result.success,
+      exitCode: result.exitCode,
+      stdoutLength: result.stdout?.length,
+      stderrLength: result.stderr?.length
+    }, "[TOOL-EXEC] PowerShell execution completed");
+    return result;
   }
 
   private async runBash(toolInput: Record<string, unknown>): Promise<ToolResult> {
@@ -378,6 +400,13 @@ export class ToolExecutor {
     const workingDirectory =
       typeof toolInput.working_directory === "string" ? toolInput.working_directory : undefined;
     const timeout = typeof toolInput.timeout === "number" ? toolInput.timeout : 30;
+
+    logger.debug({ 
+      tool: 'run_bash',
+      command, 
+      workingDirectory, 
+      timeout 
+    }, "[TOOL-EXEC] Bash execution parameters");
 
     if (!command) return { success: false, error: "No command provided" };
 
@@ -390,9 +419,25 @@ export class ToolExecutor {
 
     logger.info({ command }, "Running Bash command");
     const bashResult = await runProcess("bash", ["-c", command], workingDirectory, timeout);
+    logger.debug({ 
+      tool: 'run_bash',
+      command,
+      shell: 'bash',
+      success: bashResult.success,
+      exitCode: bashResult.exitCode
+    }, "[TOOL-EXEC] Bash execution completed");
     if (bashResult.success) return bashResult;
     if (bashResult.error?.includes("ENOENT")) {
-      return runProcess("sh", ["-c", command], workingDirectory, timeout);
+      logger.debug({ command }, "[TOOL-EXEC] Bash not found, falling back to sh");
+      const shResult = await runProcess("sh", ["-c", command], workingDirectory, timeout);
+      logger.debug({ 
+        tool: 'run_bash',
+        command,
+        shell: 'sh',
+        success: shResult.success,
+        exitCode: shResult.exitCode
+      }, "[TOOL-EXEC] Sh execution completed");
+      return shResult;
     }
     return bashResult;
   }
@@ -401,12 +446,30 @@ export class ToolExecutor {
     const filePath = typeof toolInput.path === "string" ? toolInput.path : "";
     const encoding = typeof toolInput.encoding === "string" ? toolInput.encoding : "utf-8";
 
+    logger.debug({ 
+      tool: 'read_file',
+      filePath, 
+      encoding 
+    }, "[TOOL-EXEC] Reading file");
+
     if (!filePath) return { success: false, error: "No path provided" };
 
     try {
       const content = await fs.readFile(filePath, { encoding: encoding as BufferEncoding });
+      logger.debug({ 
+        tool: 'read_file',
+        filePath,
+        success: true,
+        contentLength: content.length
+      }, "[TOOL-EXEC] File read completed");
       return { success: true, result: content, path: filePath, size: content.length } as ToolResult;
     } catch (error) {
+      logger.debug({ 
+        tool: 'read_file',
+        filePath,
+        success: false,
+        error: String(error)
+      }, "[TOOL-EXEC] File read failed");
       return { success: false, error: String(error) };
     }
   }
@@ -416,10 +479,23 @@ export class ToolExecutor {
     const content = typeof toolInput.content === "string" ? toolInput.content : "";
     const encoding = typeof toolInput.encoding === "string" ? toolInput.encoding : "utf-8";
 
+    logger.debug({ 
+      tool: 'write_file',
+      filePath, 
+      contentLength: content.length,
+      encoding 
+    }, "[TOOL-EXEC] Writing file");
+
     if (!filePath) return { success: false, error: "No path provided" };
 
     try {
       await fs.writeFile(filePath, content, { encoding: encoding as BufferEncoding });
+      logger.debug({ 
+        tool: 'write_file',
+        filePath,
+        success: true,
+        bytesWritten: content.length
+      }, "[TOOL-EXEC] File write completed");
       return {
         success: true,
         result: `Successfully wrote ${content.length} bytes to ${filePath}`,
@@ -427,6 +503,12 @@ export class ToolExecutor {
         size: content.length
       } as ToolResult;
     } catch (error) {
+      logger.debug({ 
+        tool: 'write_file',
+        filePath,
+        success: false,
+        error: String(error)
+      }, "[TOOL-EXEC] File write failed");
       return { success: false, error: String(error) };
     }
   }
@@ -434,6 +516,12 @@ export class ToolExecutor {
   private async listDirectory(toolInput: Record<string, unknown>): Promise<ToolResult> {
     const dirPath = typeof toolInput.path === "string" ? toolInput.path : ".";
     const includeHidden = Boolean(toolInput.include_hidden ?? false);
+
+    logger.debug({ 
+      tool: 'list_directory',
+      dirPath, 
+      includeHidden 
+    }, "[TOOL-EXEC] Listing directory");
 
     try {
       const entries = await fs.readdir(dirPath, { withFileTypes: true });
@@ -443,8 +531,20 @@ export class ToolExecutor {
           name: entry.name,
           type: entry.isDirectory() ? "directory" : "file"
         }));
+      logger.debug({ 
+        tool: 'list_directory',
+        dirPath,
+        success: true,
+        itemCount: items.length
+      }, "[TOOL-EXEC] Directory listing completed");
       return { success: true, result: items, path: dirPath, count: items.length } as ToolResult;
     } catch (error) {
+      logger.debug({ 
+        tool: 'list_directory',
+        dirPath,
+        success: false,
+        error: String(error)
+      }, "[TOOL-EXEC] Directory listing failed");
       return { success: false, error: String(error) };
     }
   }
