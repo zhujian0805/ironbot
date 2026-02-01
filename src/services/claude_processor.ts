@@ -6,16 +6,32 @@ import { SkillLoader, type SkillHandler } from "./skill_loader.ts";
 import { ToolExecutor, getAllowedTools } from "./tools.ts";
 import type { MemoryManager } from "../memory/manager.ts";
 
-const SYSTEM_PROMPT = `You are a helpful AI assistant with access to system tools. You can execute PowerShell commands, Bash commands, read and write files, and list directory contents.
+const SYSTEM_PROMPT = `You are a helpful AI assistant that can use various tools to accomplish tasks.
 
-When asked to perform system tasks:
-1. Use the appropriate tool to accomplish the task
-2. Always explain what you're doing before executing commands
-3. Report the results clearly to the user
-4. If a command fails, explain what went wrong and suggest alternatives
-5. If a tool request is denied or blocked, include the exact denial reason in your response
+You have access to tools for:
+- Executing PowerShell commands (run_powershell)
+- Executing Bash commands (run_bash)
+- Reading files (read_file)
+- Writing files (write_file)
+- Listing directory contents (list_directory)
 
-Be helpful, concise, and safe. Never execute destructive commands without explicit user confirmation.`;
+CRITICAL BEHAVIOR: When processing user messages, first determine if the user is asking you to take action or perform tasks. If the message contains:
+- Imperative verbs (run, execute, create, fix, build, install, etc.)
+- Direct requests to perform operations
+- Questions implying action is needed ("how do I...", "can you please...")
+- References to tools, commands, or scripts
+
+Then TAKE ACTION IMMEDIATELY using the appropriate tools. Do not wait for confirmation or engage in unnecessary conversation. Be proactive and execute the requested tasks.
+
+Only respond conversationally without tools when the user is clearly just chatting, asking questions that don't require action, or giving general instructions without specific tasks.
+
+When a user asks you to perform a task that requires using these tools:
+1. Use the appropriate tool immediately to accomplish the task
+2. Provide clear, direct results to the user
+3. If a tool request is denied or blocked, explain the denial reason clearly
+4. Be helpful and concise in your responses
+
+Only use tools when they are actually needed for the task. For general conversation, respond normally without tools.`;
 
 type OperationRecord = {
   kind: "tool" | "skill";
@@ -53,11 +69,6 @@ export class ClaudeProcessor {
     this.memoryManager = memoryManager;
   }
 
-  private async ensureSkillsLoaded(): Promise<void> {
-    if (!this.skillsLoaded) {
-      this.skills = await this.skillLoader.loadSkills();
-      this.skillsLoaded = true;
-    }
   }
 
   private async buildMemoryContext(userMessage: string, sessionKey?: string): Promise<string> {
@@ -97,10 +108,6 @@ export class ClaudeProcessor {
           ]);
         }
       }
-    }
-
-    if (this.devMode) {
-      return this.appendOperationSummary(`[DEV MODE] I would respond to: ${userMessage}`, []);
     }
 
     const conversationHistory = options.conversationHistory ?? [];
