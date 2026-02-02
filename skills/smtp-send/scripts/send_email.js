@@ -352,11 +352,12 @@ async function main() {
     }
   }
   
-  // Format as table if requested or if body contains tabular data (but not if already HTML)
+  // Format as table only if explicitly requested with --format-table flag
+  // Do NOT auto-format just because content contains ' : ' pattern
   const isAlreadyHtml = body.includes('<') && body.includes('>');
-  const shouldFormatTable = (args['format-table'] || (body.includes(' : ') && !isAlreadyHtml));
+  const shouldFormatTable = args['format-table'] && !isAlreadyHtml;
   
-  console.log(`[SMTP-SKILL] Table formatting: shouldFormat=${shouldFormatTable}, isAlreadyHtml=${isAlreadyHtml}, containsColons=${body.includes(' : ')}`);
+  console.log(`[SMTP-SKILL] Table formatting: shouldFormat=${shouldFormatTable}, isAlreadyHtml=${isAlreadyHtml}, formatTableFlag=${!!args['format-table']}`);
   
   if (shouldFormatTable) {
     console.log('[SMTP-SKILL] Applying table formatting to body content');
@@ -364,7 +365,7 @@ async function main() {
     args.html = true; // Force HTML for table formatting
     console.log(`[SMTP-SKILL] Table formatting complete, body length: ${body.length} characters`);
   } else {
-    console.log('[SMTP-SKILL] Skipping table formatting');
+    console.log('[SMTP-SKILL] Skipping table formatting (only format with explicit --format-table flag)');
   }
   
   const config = loadConfig();
