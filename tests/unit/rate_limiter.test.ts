@@ -178,4 +178,4 @@ describe("RateLimiter", () => {
       // Should still function (with clamped values)
       expect(rateLimiter.canMakeRequest("postMessage")).toBe(true);
     });
-  });
+  });});

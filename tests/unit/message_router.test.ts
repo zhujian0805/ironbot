@@ -40,14 +40,10 @@ describe("MessageRouter", () => {
 
     expect(postMessage).toHaveBeenCalledWith({
       channel: "C1",
-      text: expect.stringMatching(/(Putting it all together|Thinking it through|Working on that|Checking a few things|One moment while I prepare a response|Let me gather that for you)\.{1,3}$/) as unknown as string
-    });
-    expect(update).toHaveBeenCalledWith({ channel: "C1", ts: "123", text: "✅ Responded in thread." });
-    expect(postMessage).toHaveBeenCalledWith({
-      channel: "C1",
       text: "↪️ Hello!",
       thread_ts: "111",
-      reply_broadcast: false
+      reply_broadcast: false,
+      mrkdwn: true
     });
     expect(say).not.toHaveBeenCalled();
 
@@ -103,10 +99,12 @@ describe("MessageRouter", () => {
     await vi.advanceTimersByTimeAsync(1100);
     await handlePromise;
 
-    expect(update).toHaveBeenCalledWith({
+    expect(postMessage).toHaveBeenCalledWith({
       channel: "C1",
-      ts: "777",
-      text: "↪️ :x: Sorry, I encountered an error processing your message."
+      text: "↪️ :x: Sorry, I encountered an error processing your message.",
+      thread_ts: "111",
+      reply_broadcast: false,
+      mrkdwn: true
     });
     expect(say).not.toHaveBeenCalled();
 
@@ -115,7 +113,7 @@ describe("MessageRouter", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it("handles /new slash command", async () => {
+  it("handles /clear slash command", async () => {
     const { dir, config } = await createConfig();
     const postMessage = vi.fn().mockResolvedValue({ ts: "123" });
     const slackClient = { chat: { postMessage } };
@@ -126,7 +124,7 @@ describe("MessageRouter", () => {
     const respond = vi.fn().mockResolvedValue(undefined);
 
     const command = {
-      command: "/new",
+      command: "/clear",
       text: "",
       channel_id: "C123",
       user_id: "U456",
@@ -137,23 +135,23 @@ describe("MessageRouter", () => {
 
     expect(ack).toHaveBeenCalledTimes(1);
     expect(respond).toHaveBeenCalledWith({
-      text: "🆕 Starting a new conversation! Your next message will begin fresh without previous history.",
+      text: "🧹 Clearing conversation history! Your next message will start fresh without previous context.",
       response_type: "ephemeral"
     });
-    expect(postMessage).toHaveBeenCalledWith({
-      channel: "C123",
-      text: "👋 <@U456> wants to start a new conversation. Send your message and I'll begin fresh!",
-      mrkdwn: true
-    });
+    expect(respond).toHaveBeenCalledWith("🧹 <@U456> has cleared the conversation history. Send your message and I'll start fresh!");
 
     await rm(dir, { recursive: true, force: true });
   });
 
   it("handles /remember command", async () => {
-    const { router, slackClient, dir } = await createRouterWithSlack();
+    const { dir, config } = await createConfig();
+    const postMessage = vi.fn().mockResolvedValue({ ts: "123" });
+    const slackClient = { chat: { postMessage } };
+    const claude = createClaude("Response");
+    const router = new MessageRouter(claude as unknown as { processMessage: (text: string) => Promise<string> }, slackClient, config);
+
     const ack = vi.fn().mockResolvedValue(undefined);
     const respond = vi.fn().mockResolvedValue(undefined);
-    const postMessage = vi.mocked(slackClient.chat.postMessage);
 
     const command = {
       command: "/remember",
@@ -170,11 +168,51 @@ describe("MessageRouter", () => {
       text: "🧠 Cross-session memory enabled! I will now remember all historical conversations across threads.",
       response_type: "ephemeral"
     });
-    expect(postMessage).toHaveBeenCalledWith({
-      channel: "C123",
+    expect(respond).toHaveBeenCalledWith({
       text: "🧠 <@U456> has enabled cross-session memory for this channel. I will now remember all historical conversations!",
-      mrkdwn: true
+      thread_ts: ""
     });
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("does not store /clear commands in transcript", async () => {
+    const { dir, config } = await createConfig();
+    const postMessage = vi.fn().mockResolvedValue({ ts: "123" });
+    const slackClient = { chat: { postMessage } };
+    const claude = createClaude("Response");
+    const router = new MessageRouter(claude as unknown as { processMessage: (text: string) => Promise<string> }, slackClient, config);
+    const say = vi.fn().mockResolvedValue(undefined);
+
+    // Handle a /clear command
+    await router.handleMessage({ text: "/clear", channel: "C1", ts: "111", user: "U1" }, say);
+
+    // Check that the transcript doesn't contain the /clear command
+    // We need to load the transcript and verify it's empty or doesn't contain the command
+    const { deriveSlackSessionKey } = await import("../../src/sessions/session_key.ts");
+    const { resolveSessionTranscript, loadTranscriptHistory } = await import("../../src/sessions/transcript.ts");
+
+    const { sessionKey } = deriveSlackSessionKey({
+      channel: "C1",
+      threadTs: undefined,
+      ts: "111",
+      mainKey: config.sessions.dmSessionKey,
+      forceNewSession: false
+    });
+
+    const session = await resolveSessionTranscript({
+      storePath: config.sessions.storePath,
+      sessionKey,
+      transcriptsDir: config.sessions.transcriptsDir
+    });
+
+    const history = await loadTranscriptHistory({
+      sessionFile: session.sessionFile,
+      maxMessages: 100
+    });
+
+    // The transcript should not contain any messages since /clear was handled and not stored
+    expect(history).toHaveLength(0);
 
     await rm(dir, { recursive: true, force: true });
   });

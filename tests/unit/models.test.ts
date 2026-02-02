@@ -134,5 +134,4 @@ describe("Model Validation", () => {
       expect(message.content).not.toBe("");
     });
   });
-});</content>
-<parameter name="file_path">D:\repos\ironbot\tests\unit\models.test.ts
+});

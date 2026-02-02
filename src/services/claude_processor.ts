@@ -113,18 +113,24 @@ export class ClaudeProcessor {
   private async buildMemoryContext(userMessage: string, sessionKey?: string, crossSessionMemory?: boolean): Promise<string> {
     if (!this.memoryManager) return "";
     try {
-      const hits = await this.memoryManager.search(userMessage, { sessionKey, crossSessionMemory });
-      if (!hits.length) return "";
-      return hits
-        .map((hit, index) => {
-          const label = `${index + 1}. [${hit.source}] ${hit.path}`;
-          return `${label}\n${hit.content}`;
+      const results = await this.memoryManager.search(userMessage, { sessionKey, crossSessionMemory });
+      if (!results.length) return "";
+      return results
+        .map((result, index) => {
+          const label = `${index + 1}. [${result.source}] ${result.path}:${result.startLine}-${result.endLine}`;
+          return `${label}\n${result.snippet}`;
         })
         .join("\n\n");
     } catch (error) {
+      console.error('Memory search error:', error);
       logger.warn({ error }, "Memory search failed");
       return "";
     }
+  }
+
+  async clearMemoryForSession(sessionKey: string): Promise<void> {
+    if (!this.memoryManager) return;
+    await this.memoryManager.clearMemoryForSession(sessionKey);
   }
 
   async processMessage(
@@ -154,7 +160,9 @@ export class ClaudeProcessor {
     }
 
     const conversationHistory = options.conversationHistory ?? [];
-    const memoryContext = await this.buildMemoryContext(userMessage, options.sessionKey, options.crossSessionMemory);
+    const memoryContext = options.crossSessionMemory
+      ? await this.buildMemoryContext(userMessage, options.sessionKey, options.crossSessionMemory)
+      : ""; // Only use memory when explicitly enabled via /remember
     return this.processWithTools(userMessage, conversationHistory, memoryContext);
   }
 

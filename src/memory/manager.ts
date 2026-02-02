@@ -5,31 +5,26 @@ import { logger } from "../utils/logging.ts";
 import { resolveStateDir } from "../sessions/paths.ts";
 import { DEFAULT_AGENT_ID, isMainSessionKey } from "../sessions/session_key.ts";
 import { onTranscriptAppended } from "../sessions/transcript_events.ts";
+import { loadTranscriptHistory } from "../sessions/transcript.ts";
 import type { AppConfig } from "../config.ts";
 import { resolveEmbeddingClient, type EmbeddingClient } from "./embeddings.ts";
 import { ensureMemorySchema } from "./memory_schema.ts";
-import { hybridSearch, type HybridSearchConfig, type MemoryHit, type MemoryChunk } from "./search.ts";
+import { hybridSearch, type MemoryChunk, type HybridSearchConfig, tokenize } from "./search.ts";
+import type { TranscriptMessage } from "../sessions/types.ts";
 
-const DEFAULT_CHUNK_TOKENS = 400;
-const DEFAULT_CHUNK_OVERLAP = 80;
+export type MemorySource = "memory" | "sessions";
 
-const tokenize = (text: string): string[] => text.split(/\s+/).filter(Boolean);
-
-const extractTranscriptText = (content: unknown): string => {
-  if (typeof content === "string") return content;
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => {
-        if (part && typeof part === "object" && "text" in part) {
-          return String((part as { text?: unknown }).text ?? "");
-        }
-        return "";
-      })
-      .filter(Boolean)
-      .join("\n");
-  }
-  return "";
+export type MemorySearchResult = {
+  path: string;
+  startLine: number;
+  endLine: number;
+  score: number;
+  snippet: string;
+  source: MemorySource;
 };
+
+const DEFAULT_CHUNK_TOKENS = 1000;
+const DEFAULT_CHUNK_OVERLAP = 200;
 
 const chunkText = (text: string, maxTokens = DEFAULT_CHUNK_TOKENS, overlap = DEFAULT_CHUNK_OVERLAP): string[] => {
   const tokens = tokenize(text);
@@ -48,6 +43,14 @@ const ensureDir = async (dir: string): Promise<void> => {
   await fs.promises.mkdir(dir, { recursive: true });
 };
 
+const safeRealpath = async (filePath: string): Promise<string> => {
+  try {
+    return await fs.promises.realpath(filePath);
+  } catch {
+    return filePath;
+  }
+};
+
 const readFileIfExists = async (filePath: string): Promise<string | null> => {
   try {
     return await fs.promises.readFile(filePath, "utf-8");
@@ -56,12 +59,19 @@ const readFileIfExists = async (filePath: string): Promise<string | null> => {
   }
 };
 
-const safeRealpath = async (filePath: string): Promise<string> => {
-  try {
-    return await fs.promises.realpath(filePath);
-  } catch {
-    return filePath;
+const extractTranscriptText = (content: TranscriptMessage["content"]): string | null => {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => {
+        if (part.type === "text") return part.text;
+        if (part.type === "tool_use") return `[Tool: ${(part as any).name}]`;
+        if (part.type === "tool_result") return `[Tool Result: ${(part as any).tool_call_id}]`;
+        return "";
+      })
+      .join(" ");
   }
+  return null;
 };
 
 export class MemoryManager {
@@ -79,8 +89,10 @@ export class MemoryManager {
     ensureMemorySchema(this.db);
     this.embeddingClient = resolveEmbeddingClient(config.embeddings);
 
-    if (this.config.memory.sessionIndexing && this.config.memorySearch.sources.includes("sessions")) {
+    if (this.config.memory.sessionIndexing || this.config.memorySearch.crossSessionMemory) {
       onTranscriptAppended((event) => {
+        // Only index user messages for memory, not assistant responses
+        if (event.message.role !== "user") return;
         const text = extractTranscriptText(event.message.content);
         if (!text) return;
         void this.recordTranscriptMessage({
@@ -89,6 +101,8 @@ export class MemoryManager {
           content: text
         });
       });
+      // Index existing transcripts asynchronously
+      void this.indexExistingTranscripts();
     }
   }
 
@@ -278,7 +292,7 @@ export class MemoryManager {
     return filtered;
   }
 
-  async search(query: string, params: { sessionKey?: string; crossSessionMemory?: boolean } = {}): Promise<MemoryHit[]> {
+  async search(query: string, params: { sessionKey?: string; crossSessionMemory?: boolean } = {}): Promise<MemorySearchResult[]> {
     if (!this.config.memorySearch.enabled) return [];
 
     await ensureDir(this.getDailyMemoryDir());
@@ -287,10 +301,15 @@ export class MemoryManager {
 
     const sources = this.config.memorySearch.sources.filter((source) => {
       if (source === "sessions") {
-        return this.config.memory.sessionIndexing;
+        return this.config.memory.sessionIndexing || params.crossSessionMemory;
       }
       return true;
     });
+
+    // Always include sessions source when cross-session memory is enabled
+    if (params.crossSessionMemory && !sources.includes("sessions")) {
+      sources.push("sessions");
+    }
 
     if (!sources.length) return [];
 
@@ -300,11 +319,28 @@ export class MemoryManager {
     const shouldEmbed = this.embeddingClient.provider !== "none" && this.config.memorySearch.vectorWeight > 0;
     const queryEmbedding = shouldEmbed ? (await this.embeddingClient.embed([query]))[0] : undefined;
 
-    return hybridSearch({
+    const hits = await hybridSearch({
       query,
       queryEmbedding,
       chunks: filtered,
       config: this.getHybridConfig()
+    });
+
+    // Transform MemoryHit[] to MemorySearchResult[]
+    return hits.map(hit => {
+      const lines = hit.content.split('\n');
+      const startLine = 0; // Memory chunks don't have line numbers, so we use 0
+      const endLine = lines.length - 1;
+      const snippet = hit.content.length > 200 ? hit.content.substring(0, 200) + '...' : hit.content;
+
+      return {
+        path: hit.path,
+        startLine,
+        endLine,
+        score: hit.score,
+        snippet,
+        source: hit.source as MemorySource
+      };
     });
   }
 
@@ -313,8 +349,8 @@ export class MemoryManager {
     sessionFile: string;
     content: string;
   }): Promise<void> {
-    if (!this.config.memory.sessionIndexing) return;
-    if (!this.config.memorySearch.sources.includes("sessions")) return;
+    if (!this.config.memory.sessionIndexing && !this.config.memorySearch.crossSessionMemory) return;
+    if (!this.config.memorySearch.sources.includes("sessions") && !this.config.memorySearch.crossSessionMemory) return;
 
     const content = params.content.trim();
     if (!content) return;
@@ -356,6 +392,38 @@ export class MemoryManager {
     });
   }
 
+  async indexExistingTranscripts(): Promise<void> {
+    if (!this.config.memory.sessionIndexing && !this.config.memorySearch.crossSessionMemory) return;
+
+    const transcriptsDir = this.config.sessions.transcriptsDir;
+
+    try {
+      const files = await fs.promises.readdir(transcriptsDir);
+      const jsonlFiles = files.filter(file => file.endsWith('.jsonl'));
+
+      for (const file of jsonlFiles) {
+        const sessionFile = path.join(transcriptsDir, file);
+        const sessionKey = path.basename(file, '.jsonl');
+
+        const messages = await loadTranscriptHistory({ sessionFile });
+        for (const message of messages) {
+          // Only index user messages for memory
+          if (message.role !== "user") continue;
+          const text = extractTranscriptText(message.content);
+          if (text) {
+            await this.recordTranscriptMessage({
+              sessionKey,
+              sessionFile,
+              content: text
+            });
+          }
+        }
+      }
+    } catch (error) {
+      logger.warn({ error }, "Failed to index existing transcripts");
+    }
+  }
+
   logStatus(): void {
     logger.info(
       {
@@ -366,5 +434,10 @@ export class MemoryManager {
       },
       "Memory manager initialized"
     );
+  }
+
+  async clearMemoryForSession(sessionKey: string): Promise<void> {
+    this.db.prepare("DELETE FROM files WHERE source = 'sessions' AND session_key = ?").run(sessionKey);
+    logger.info({ sessionKey }, "Cleared memory for session");
   }
 }

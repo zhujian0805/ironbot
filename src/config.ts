@@ -86,6 +86,31 @@ export type SlackRetryConfig = {
   maxDelayMs: number;
 };
 
+export type EmbeddingsConfig = {
+  provider: EmbeddingProvider;
+  fallback: EmbeddingProvider;
+  local: {
+    modelPath: string;
+    modelCacheDir?: string;
+  };
+  openai: {
+    apiKey?: string;
+    baseUrl?: string;
+    model: string;
+  };
+  gemini: {
+    apiKey?: string;
+    baseUrl?: string;
+    model: string;
+  };
+};
+
+export type RetryConfig = {
+  maxAttempts: number;
+  baseDelayMs: number;
+  maxDelayMs: number;
+};
+
 export type AppConfig = {
   slackBotToken: string | undefined;
   slackAppToken: string | undefined;
@@ -145,7 +170,7 @@ const loadBaseConfig = (): AppConfig => {
     },
     memory: {
       workspaceDir: resolveUserPath(process.env.IRONBOT_MEMORY_WORKSPACE_DIR ?? defaultWorkspace),
-      sessionIndexing: parseBoolean(process.env.IRONBOT_MEMORY_SESSION_INDEXING, false)
+      sessionIndexing: parseBoolean(process.env.IRONBOT_MEMORY_SESSION_INDEXING, false) || parseBoolean(process.env.IRONBOT_MEMORY_CROSS_SESSION, true)
     },
     memorySearch: {
       enabled: parseBoolean(process.env.IRONBOT_MEMORY_SEARCH_ENABLED, true),
@@ -155,7 +180,7 @@ const loadBaseConfig = (): AppConfig => {
       maxResults: parseInteger(process.env.IRONBOT_MEMORY_MAX_RESULTS, 6),
       minScore: parseNumber(process.env.IRONBOT_MEMORY_MIN_SCORE, 0.35),
       sources: parseStringArray(process.env.IRONBOT_MEMORY_SOURCES, ["memory"]) as Array<"memory" | "sessions">,
-      crossSessionMemory: parseBoolean(process.env.IRONBOT_MEMORY_CROSS_SESSION, false),
+      crossSessionMemory: parseBoolean(process.env.IRONBOT_MEMORY_CROSS_SESSION, true),
       storePath: memoryStorePath
     },
     embeddings: {

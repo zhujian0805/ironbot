@@ -222,4 +222,4 @@ describe("Embedding Clients", () => {
       expect(client.provider).toBe("gemini");
     });
   });
-});</content>
+});

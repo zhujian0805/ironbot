@@ -258,4 +258,4 @@ describe("Memory Search", () => {
       expect(results.every(hit => hit.vectorScore === 0)).toBe(true);
     });
   });
-});</content>
+});

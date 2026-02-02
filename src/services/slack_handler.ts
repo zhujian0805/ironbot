@@ -37,7 +37,7 @@ export const registerSlackHandlers = (app: SlackAppLike, router: MessageRouter):
   }
 
   if (router.handleSlashCommand) {
-    (app as any).command("/new", async ({ command, ack, respond }) => {
+    (app as any).command("/clear", async ({ command, ack, respond }) => {
       logger.debug({ command: command.command }, "Handling Slack slash command");
       await router.handleSlashCommand?.(command, ack, respond);
     });

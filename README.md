@@ -150,7 +150,7 @@ IronBot includes a sophisticated memory system for maintaining context across co
 
 ### Memory Commands
 - **`/remember`**: Enable cross-session memory for the current channel/thread
-- **`/new`**: Start a fresh conversation without previous context
+- **`/clear`**: Clear conversation history and start fresh without previous context
 
 ## Configuration
 

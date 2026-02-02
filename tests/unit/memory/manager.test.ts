@@ -179,7 +179,9 @@ describe("MemoryManager", () => {
       const results = await manager.search("test");
 
       expect(results.length).toBeGreaterThan(0);
-      expect(results[0].content).toContain("test");
+      expect(results[0].snippet).toContain("test");
+      expect(results[0].path).toBe("/test/file.md");
+      expect(results[0].source).toBe("memory");
     });
 
     it("filters results by session key", async () => {
@@ -193,7 +195,8 @@ describe("MemoryManager", () => {
       const results = await manager.search("content", { sessionKey: "session-1" });
 
       expect(results.length).toBeGreaterThan(0);
-      expect(results[0].sessionKey).toBe("session-1");
+      expect(results[0].path).toBe("/test/session.md");
+      expect(results[0].source).toBe("sessions");
     });
   });
 

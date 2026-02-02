@@ -28,6 +28,8 @@ const tokenize = (text: string): string[] =>
     .map((token) => token.trim())
     .filter(Boolean);
 
+export { tokenize };
+
 const cosineSimilarity = (a: number[], b: number[]): number => {
   if (!a.length || !b.length) return 0;
   const size = Math.min(a.length, b.length);

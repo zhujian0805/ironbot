@@ -6,6 +6,8 @@ import { resolveConfig, type AppConfig } from "../config.ts";
 import { deriveSlackSessionKey } from "../sessions/session_key.ts";
 import { appendTranscriptMessage, loadTranscriptHistory, resolveSessionTranscript } from "../sessions/transcript.ts";
 import { updateLastRoute } from "../sessions/store.ts";
+import fs from "node:fs";
+import path from "node:path";
 
 type SlackClientLike = {
   chat: {
@@ -35,6 +37,7 @@ export class MessageRouter {
   private config: AppConfig;
   private newConversationChannels: Set<string> = new Set();
   private crossSessionMemoryChannels: Set<string> = new Set();
+  private globalCrossSessionMemory: boolean = false;
 
   constructor(claude: ClaudeProcessor, slackClient?: SlackClientLike, config: AppConfig = resolveConfig()) {
     this.claude = claude;
@@ -63,7 +66,7 @@ export class MessageRouter {
       if (typeof this.slackClient.apiCall === "function") {
         await this.slackClient.apiCall("assistant.threads.setStatus", payload);
       }
-      logger.info({ channel, threadTs }, "Response sent to user");
+      logger.info({ channelId: params.channelId, threadTs: params.threadTs }, "Response sent to user");
     } catch (error) {
       logger.warn({ error, channelId: params.channelId }, "Failed to update Slack thread status");
     }
@@ -87,6 +90,37 @@ export class MessageRouter {
 
     const text = event.text ?? "";
     const channel = event.channel ?? "";
+    
+    // Check for commands in messages (e.g., "/remember" typed as a message)
+    // Handle these BEFORE storing the message in transcript
+    if (text.trim().startsWith("/")) {
+      const commandParts = text.trim().split(/\s+/);
+      const commandName = commandParts[0];
+      const commandText = commandParts.slice(1).join(" ");
+      
+      if (commandName === "/remember") {
+        await this.handleRememberCommand({
+          command: commandName,
+          text: commandText,
+          channel_id: channel,
+          user_id: event.user || "",
+          trigger_id: ""
+        }, say);
+        return; // Don't store command messages in transcript
+      }
+      if (commandName === "/clear") {
+        await this.handleClearCommand({
+          command: commandName,
+          text: commandText,
+          channel_id: channel,
+          user_id: event.user || "",
+          trigger_id: ""
+        }, say);
+        return; // Don't store command messages in transcript
+      }
+    }
+    
+    // Ensure we have a ts value. If missing (can happen in DM events), generate one
     // Ensure we have a ts value. If missing (can happen in DM events), generate one
     const messageTs = event.ts ?? `${Date.now() / 1000}`;
     // Use user's message as thread root. For existing threads, use thread_ts; for root messages, use ts
@@ -124,20 +158,30 @@ export class MessageRouter {
       forceNewSession
     });
 
+    // Check if cross-session memory is enabled for this channel/thread
+    const channelKey = event.thread_ts ? `${channel}:${event.thread_ts}` : `${channel}`;
+    const crossSessionMemory = this.globalCrossSessionMemory || this.crossSessionMemoryChannels.has(channelKey);
+
     let conversationHistory = [] as MessageParam[];
-    try {
-      const session = await resolveSessionTranscript({
-        storePath: this.config.sessions.storePath,
-        sessionKey,
-        transcriptsDir: this.config.sessions.transcriptsDir
-      });
-      conversationHistory = await loadTranscriptHistory({
-        sessionFile: session.sessionFile,
-        maxMessages: this.config.sessions.maxHistoryMessages
-      });
-      logger.info({ channel, threadTs }, "Response sent to user");
-    } catch (error) {
-      logger.warn({ error }, "Failed to load session transcript history");
+    
+    // Only load conversation history for threads or when cross-session memory is enabled
+    if (event.thread_ts || crossSessionMemory) {
+      try {
+        const session = await resolveSessionTranscript({
+          storePath: this.config.sessions.storePath,
+          sessionKey,
+          transcriptsDir: this.config.sessions.transcriptsDir
+        });
+        conversationHistory = await loadTranscriptHistory({
+          sessionFile: session.sessionFile,
+          maxMessages: this.config.sessions.maxHistoryMessages
+        });
+        logger.info({ channel, threadTs }, "Loaded conversation history");
+      } catch (error) {
+        logger.warn({ error }, "Failed to load session transcript history");
+      }
+    } else {
+      logger.info({ channel, threadTs }, "Starting fresh conversation (no thread, no cross-session memory)");
     }
 
     try {
@@ -155,10 +199,6 @@ export class MessageRouter {
 
     try {
       await this.setThreadStatus({ channelId: channel, threadTs, status: "is typing..." });
-      
-      // Check if cross-session memory is enabled for this channel/thread
-      const channelKey = threadTs ? `${channel}:${threadTs}` : `${channel}`;
-      const crossSessionMemory = this.crossSessionMemoryChannels.has(channelKey);
       
       const response = await this.claude.processMessage(text, {
         conversationHistory,
@@ -256,60 +296,104 @@ export class MessageRouter {
   ): Promise<void> {
     await ack();
 
-    if (command.command === "/new") {
-      const channel = command.channel_id;
-      const userId = command.user_id;
-
-      logger.info({ channel, userId, command: command.command }, "Handling /new command");
-
-      // Mark this channel as starting a new conversation
-      this.newConversationChannels.add(`${channel}:${userId}`);
-
-      // Respond with confirmation
-      await respond({
-        text: "🆕 Starting a new conversation! Your next message will begin fresh without previous history.",
-        response_type: "ephemeral" // Only visible to the user who ran the command
-      });
-
-      // Send a public message to acknowledge
-      if (this.slackClient) {
-        await this.slackClient.chat.postMessage({
-          channel,
-          text: `👋 <@${userId}> wants to start a new conversation. Send your message and I'll begin fresh!`,
-          mrkdwn: true
-        });
-      }
-
-      logger.info({ channel, userId }, "New conversation initiated");
+    if (command.command === "/clear") {
+      await this.handleClearCommand(command, respond);
     } else if (command.command === "/remember") {
-      const channel = command.channel_id;
-      const userId = command.user_id;
-      const threadTs = command.text?.trim(); // Allow specifying a thread_ts
+      await this.handleRememberCommand(command, respond);
+    }
+  }
 
-      logger.info({ channel, userId, command: command.command, threadTs }, "Handling /remember command");
+  private async handleClearCommand(
+    command: { command: string; text: string; channel_id: string; user_id: string; trigger_id: string },
+    respondOrSay: (message: string | { text: string; response_type?: string; thread_ts?: string }) => Promise<void>
+  ): Promise<void> {
+    const channel = command.channel_id;
+    const userId = command.user_id;
 
-      // Mark this channel/thread as having cross-session memory enabled
-      const key = threadTs ? `${channel}:${threadTs}` : `${channel}`;
-      this.crossSessionMemoryChannels.add(key);
+    logger.info({ channel, userId, command: command.command }, "Handling /clear command");
 
-      // Respond with confirmation
-      await respond({
-        text: "🧠 Cross-session memory enabled! I will now remember all historical conversations across threads.",
-        response_type: "ephemeral" // Only visible to the user who ran the command
+    // Disable cross-session memory for this channel (make memory per-thread)
+    this.crossSessionMemoryChannels.delete(channel);
+
+    // Derive the current session key for the channel (main channel session)
+    const { sessionKey } = deriveSlackSessionKey({
+      channel,
+      mainKey: this.config.sessions.dmSessionKey
+    });
+
+    // Get the session entry and transcript file path
+    try {
+      const { entry, sessionFile } = await resolveSessionTranscript({
+        storePath: this.config.sessions.storePath,
+        sessionKey,
+        transcriptsDir: this.config.sessions.transcriptsDir
       });
 
-      // Send a public message to acknowledge
-      if (this.slackClient) {
-        const scope = threadTs ? "this thread" : "this channel";
-        await this.slackClient.chat.postMessage({
-          channel,
-          text: `🧠 <@${userId}> has enabled cross-session memory for ${scope}. I will now remember all historical conversations!`,
-          thread_ts: threadTs,
-          mrkdwn: true
-        });
+      // Delete the transcript file if it exists
+      try {
+        await fs.promises.access(sessionFile, fs.constants.F_OK);
+        await fs.promises.unlink(sessionFile);
+        logger.info({ sessionFile }, "Deleted transcript file for cleared session");
+      } catch (error) {
+        // File doesn't exist or can't be deleted, that's ok
+        logger.debug({ sessionFile, error }, "Transcript file not found or could not be deleted");
       }
-
-      logger.info({ channel, userId, threadTs }, "Cross-session memory enabled");
+    } catch (error) {
+      logger.warn({ sessionKey, error }, "Failed to resolve or delete session transcript");
     }
+
+    // Clear memory for the session
+    try {
+      await this.claude.clearMemoryForSession(sessionKey);
+    } catch (error) {
+      logger.warn({ sessionKey, error }, "Failed to clear memory for session");
+    }
+    this.newConversationChannels.add(`${channel}:${userId}`);
+
+    // Check if this is a slash command (has response_type support) or regular message
+    const isSlashCommand = typeof respondOrSay === 'function' && command.trigger_id;
+
+    if (isSlashCommand) {
+      // For slash commands, send ephemeral confirmation
+      await (respondOrSay as any)({
+        text: "🧹 Clearing conversation history and disabling cross-session memory! Memory is now per-thread.",
+        response_type: "ephemeral"
+      });
+    }
+
+    // Send a public message to acknowledge
+    await respondOrSay(`🧹 <@${userId}> has cleared the conversation history and disabled cross-session memory. Memory is now per-thread!`);
+
+    logger.info({ channel, userId }, "Conversation cleared and cross-session memory disabled");
+  }
+
+  private async handleRememberCommand(
+    command: { command: string; text: string; channel_id: string; user_id: string; trigger_id: string },
+    respondOrSay: (message: string | { text: string; response_type?: string; thread_ts?: string }) => Promise<void>
+  ): Promise<void> {
+    const channel = command.channel_id;
+    const userId = command.user_id;
+    const threadTs = command.text?.trim(); // Allow specifying a thread_ts
+
+    logger.info({ channel, userId, command: command.command, threadTs }, "Handling /remember command");
+
+    // Enable global cross-session memory
+    this.globalCrossSessionMemory = true;
+
+    // Check if this is a slash command (has response_type support) or regular message
+    const isSlashCommand = typeof respondOrSay === 'function' && command.trigger_id;
+
+    if (isSlashCommand) {
+      // For slash commands, send ephemeral confirmation
+      await (respondOrSay as any)({
+        text: "🧠 Global cross-session memory enabled! I will now remember all historical conversations across all channels and threads.",
+        response_type: "ephemeral"
+      });
+    }
+
+    // Send a public message to acknowledge
+    await respondOrSay(`🧠 <@${userId}> has enabled global cross-session memory. I will now remember all historical conversations across all channels and threads!`);
+
+    logger.info({ channel, userId, threadTs }, "Global cross-session memory enabled");
   }
 }
