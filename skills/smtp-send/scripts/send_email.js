@@ -19,6 +19,131 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
+function validateAndFixHtml(html) {
+  console.log('[SMTP-SKILL] Starting HTML validation and fixing');
+  console.log(`[SMTP-SKILL] HTML length: ${html.length} characters`);
+  
+  const issues = [];
+  let fixedHtml = html;
+  
+  // Check for unclosed tags
+  const tagRegex = /<(\w+)[^>]*>/g;
+  const closedTagRegex = /<\/(\w+)>/g;
+  
+  const openTags = {};
+  let match;
+  
+  // Count opening tags
+  while ((match = tagRegex.exec(html)) !== null) {
+    const tagName = match[1].toLowerCase();
+    // Skip self-closing tags
+    if (!['br', 'hr', 'img', 'input', 'meta', 'link', 'area', 'base', 'col', 'embed', 'source', 'track', 'wbr'].includes(tagName)) {
+      openTags[tagName] = (openTags[tagName] || 0) + 1;
+    }
+  }
+  
+  // Count closing tags
+  const closedTags = {};
+  const closedTagRegex2 = /<\/(\w+)>/g;
+  while ((match = closedTagRegex2.exec(html)) !== null) {
+    const tagName = match[1].toLowerCase();
+    closedTags[tagName] = (closedTags[tagName] || 0) + 1;
+  }
+  
+  // Check for mismatches
+  for (const tag in openTags) {
+    const opened = openTags[tag];
+    const closed = closedTags[tag] || 0;
+    if (opened !== closed) {
+      issues.push(`Tag mismatch: <${tag}> opened ${opened} times but closed ${closed} times`);
+    }
+  }
+  
+  // Check for common HTML issues
+  if (!html.includes('<table')) {
+    console.log('[SMTP-SKILL] No table tag found in HTML');
+  }
+  
+  // Check for unclosed table elements
+  const tableRegex = /<table[^>]*>[\s\S]*<\/table>/i;
+  if (!tableRegex.test(html)) {
+    issues.push('Table tag not properly closed');
+  }
+  
+  // Check for unclosed tr elements
+  const trCount = (html.match(/<tr[^>]*>/gi) || []).length;
+  const trCloseCount = (html.match(/<\/tr>/gi) || []).length;
+  if (trCount !== trCloseCount) {
+    issues.push(`Table row mismatch: <tr> opened ${trCount} times but closed ${trCloseCount} times`);
+  }
+  
+  // Check for unclosed td/th elements
+  const tdCount = (html.match(/<td[^>]*>/gi) || []).length;
+  const tdCloseCount = (html.match(/<\/td>/gi) || []).length;
+  if (tdCount !== tdCloseCount) {
+    issues.push(`Table data mismatch: <td> opened ${tdCount} times but closed ${tdCloseCount} times`);
+  }
+  
+  const thCount = (html.match(/<th[^>]*>/gi) || []).length;
+  const thCloseCount = (html.match(/<\/th>/gi) || []).length;
+  if (thCount !== thCloseCount) {
+    issues.push(`Table header mismatch: <th> opened ${thCount} times but closed ${thCloseCount} times`);
+  }
+  
+  // Check for unescaped special characters in content (not in attributes)
+  const specialCharRegex = />[^<]*[<>&]/;
+  if (specialCharRegex.test(html)) {
+    console.log('[SMTP-SKILL] Warning: Special characters found in content (may need escaping)');
+  }
+  
+  // Log issues
+  if (issues.length > 0) {
+    console.log(`[SMTP-SKILL] Found ${issues.length} HTML formatting issue(s):`);
+    issues.forEach((issue, index) => {
+      console.log(`  ${index + 1}. ${issue}`);
+    });
+    
+    // Try to fix unclosed tags
+    console.log('[SMTP-SKILL] Attempting to fix HTML issues...');
+    
+    // Fix unclosed tr tags
+    if (trCount !== trCloseCount && trCount > trCloseCount) {
+      const missingCount = trCount - trCloseCount;
+      fixedHtml = fixedHtml + '</tr>'.repeat(missingCount);
+      console.log(`[SMTP-SKILL] Added ${missingCount} missing </tr> tag(s)`);
+    }
+    
+    // Fix unclosed td tags
+    if (tdCount !== tdCloseCount && tdCount > tdCloseCount) {
+      const missingCount = tdCount - tdCloseCount;
+      fixedHtml = fixedHtml + '</td>'.repeat(missingCount);
+      console.log(`[SMTP-SKILL] Added ${missingCount} missing </td> tag(s)`);
+    }
+    
+    // Fix unclosed th tags
+    if (thCount !== thCloseCount && thCount > thCloseCount) {
+      const missingCount = thCount - thCloseCount;
+      fixedHtml = fixedHtml + '</th>'.repeat(missingCount);
+      console.log(`[SMTP-SKILL] Added ${missingCount} missing </th> tag(s)`);
+    }
+    
+    // Fix unclosed table tags
+    if (!tableRegex.test(fixedHtml)) {
+      if ((fixedHtml.match(/<table/gi) || []).length > (fixedHtml.match(/<\/table>/gi) || []).length) {
+        fixedHtml = fixedHtml + '</table>';
+        console.log('[SMTP-SKILL] Added missing </table> tag');
+      }
+    }
+  } else {
+    console.log('[SMTP-SKILL] HTML format validation passed - no issues found');
+  }
+  
+  
+  console.log(`[SMTP-SKILL] HTML validation complete. Final HTML length: ${fixedHtml.length} characters`);
+  
+  return fixedHtml;
+}
+
 function formatAsTable(body) {
   console.log('[SMTP-SKILL] Starting table formatting process');
   const lines = body.split('\n').filter(line => line.trim());
@@ -244,6 +369,12 @@ async function main() {
   
   const config = loadConfig();
   console.log(`[SMTP-SKILL] Using SMTP config: ${config.host}:${config.port}, from: ${config.from}, secure: ${config.secure}, auth: ${config.user ? 'yes' : 'no'}`);
+  
+  // Validate and fix HTML if applicable
+  if (args.html) {
+    console.log('[SMTP-SKILL] HTML email detected, performing format validation');
+    body = validateAndFixHtml(body);
+  }
   
   console.log(`[SMTP-SKILL] Preparing to send email: to=${args.to}, subject=${args.subject}, html=${args.html}, bodyPreview=${body.substring(0, 100)}${body.length > 100 ? '...' : ''}`);
   

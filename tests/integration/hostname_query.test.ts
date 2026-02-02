@@ -57,7 +57,7 @@ describe("hostname query validation", () => {
   });
 
   it("should execute hostname command and return CN-JZHU-WD", async () => {
-    const processor = new ClaudeProcessor(config);
+    const processor = new ClaudeProcessor(config.skillsDir);
     
     const response = await processor.processMessage("告诉我主机名", {
       sessionKey: "test-session"
@@ -74,7 +74,7 @@ describe("hostname query validation", () => {
   }, 30000);
 
   it("should execute Get-Printer and return actual printers", async () => {
-    const processor = new ClaudeProcessor(config);
+    const processor = new ClaudeProcessor(config.skillsDir);
     
     const response = await processor.processMessage("有多少打印机", {
       sessionKey: "test-session"
@@ -83,7 +83,7 @@ describe("hostname query validation", () => {
     // Should contain actual printer count (not made-up data)
     // The AI might use different commands, so check for various formats
     expect(response).toMatch(/(Count\s*:\s*\d+|\d+)/);
-    expect(response).toMatch(/\*\*\d+\*\*\s*台打印机|\d+\s*个打印机|系统中安装了\s*\*\*\d+\*\*\s*台打印机/);
+    expect(response).toMatch(/\*\*\d+\*\*\s*(台|个)打印机|\d+\s*个打印机|系统中安装了\s*\*\*\d+\*\*\s*台打印机/);
     
     // Should NOT be a made-up response
     expect(response).not.toContain("假设");

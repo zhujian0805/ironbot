@@ -30,13 +30,20 @@ node skills/smtp-send/scripts/send_email.js --to recipient@example.com --subject
 
 **Step 1:** Use `run_powershell` tool ONLY
 **Step 2:** Execute: `node skills/smtp-send/scripts/send_email.js --to jzhu@blizzard.com --subject "Your Subject" --body "Your message" --html`
-**Step 3:** For tabular data, the script will automatically format as HTML table, or use --format-table to force formatting
-**Step 4:** Wait for success message: "EMAIL_SENT_TO:recipient"
-**Step 5:** Done - email is sent
+**Step 3:** For tabular data, the script will automatically format as HTML table and validate HTML before sending, or use --format-table to force formatting
+**Step 4:** HTML format is automatically validated and fixed if needed
+**Step 5:** Wait for success message: "EMAIL_SENT_TO:recipient"
+**Step 6:** Done - email is sent
 
 ## HTML Email Formatting (Recommended)
 
-For pretty, formatted emails, always use the `--html` flag and format your body with HTML:
+For pretty, formatted emails, always use the `--html` flag and format your body with HTML. The script will automatically validate and fix any HTML formatting issues:
+
+### HTML Validation Features
+- Automatically detects and fixes unclosed tags (`<table>`, `<tr>`, `<td>`, `</th>`)
+- Validates tag matching (opening and closing pairs)
+- Provides detailed logging of any issues found
+- Fixes issues automatically before sending
 
 ### Basic HTML Structure
 ```html
