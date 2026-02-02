@@ -97,7 +97,13 @@ const main = async (): Promise<void> => {
     appToken: config.slackAppToken,
     signingSecret: config.slackSigningSecret ?? "",
     socketMode: true,
-    logLevel: toSlackLogLevel(config.logLevel)
+    logLevel: toSlackLogLevel(config.logLevel),
+    retryConfig: {
+      retries: config.slackRetry.maxAttempts,
+      factor: 2, // backoff multiplier
+      minTimeout: config.slackRetry.baseDelayMs,
+      maxTimeout: config.slackRetry.maxDelayMs
+    }
   });
 
   const memoryManager = new MemoryManager(config);

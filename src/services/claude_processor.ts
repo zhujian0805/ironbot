@@ -255,6 +255,7 @@ export class ClaudeProcessor {
       finalResponse = "Sorry, I could not complete the request.";
     }
 
+    finalResponse = this.sanitizeResponse(finalResponse);
     return this.appendOperationSummary(finalResponse, operations);
   }
 
@@ -278,6 +279,22 @@ export class ClaudeProcessor {
       .filter((block) => block.type === "text")
       .map((block) => block.text ?? "");
     return parts.join("\n");
+  }
+
+  private sanitizeResponse(response: string): string {
+    // Remove LaTeX \boxed{} syntax and other LaTeX commands that don't render in markdown
+    return response
+      .replace(/\\boxed\{[^}]*\}/g, (match) => {
+        // Extract content inside \boxed{} and format as bold markdown
+        const content = match.match(/\\boxed\{([^}]*)\}/)?.[1] || '';
+        return `**${content}**`;
+      })
+      .replace(/\\[a-zA-Z]+\{[^}]*\}/g, (match) => {
+        // Remove other LaTeX commands like \frac{}, \sqrt{}, etc.
+        const content = match.match(/\\[a-zA-Z]+\{([^}]*)\}/)?.[1] || '';
+        return content; // Just return the inner content
+      })
+      .replace(/\\[a-zA-Z]+/g, ''); // Remove standalone LaTeX commands
   }
 
   private appendOperationSummary(response: string, operations: OperationRecord[]): string {

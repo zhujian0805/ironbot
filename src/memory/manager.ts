@@ -265,9 +265,16 @@ export class MemoryManager {
   }
 
   private filterLongTermMemory(chunks: MemoryChunk[], sessionKey?: string): MemoryChunk[] {
-    if (isMainSessionKey(sessionKey)) return chunks;
-    if (!this.longTermPaths.size) return chunks;
-    return chunks.filter((chunk) => !this.longTermPaths.has(path.resolve(chunk.path)));
+    let filtered = chunks;
+    // Filter long-term memory for non-main sessions
+    if (!isMainSessionKey(sessionKey) && this.longTermPaths.size) {
+      filtered = filtered.filter((chunk) => !this.longTermPaths.has(path.resolve(chunk.path)));
+    }
+    // Filter session chunks to only include the current session
+    if (sessionKey) {
+      filtered = filtered.filter((chunk) => chunk.source !== "sessions" || chunk.sessionKey === sessionKey);
+    }
+    return filtered;
   }
 
   async search(query: string, params: { sessionKey?: string } = {}): Promise<MemoryHit[]> {

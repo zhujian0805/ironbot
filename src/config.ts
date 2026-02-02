@@ -79,23 +79,10 @@ export type MemorySearchConfig = {
   storePath?: string;
 };
 
-export type EmbeddingsConfig = {
-  provider: EmbeddingProvider;
-  fallback: EmbeddingProvider;
-  local: {
-    modelPath?: string;
-    modelCacheDir?: string;
-  };
-  openai: {
-    apiKey?: string;
-    baseUrl?: string;
-    model: string;
-  };
-  gemini: {
-    apiKey?: string;
-    baseUrl?: string;
-    model: string;
-  };
+export type SlackRetryConfig = {
+  maxAttempts: number;
+  baseDelayMs: number;
+  maxDelayMs: number;
 };
 
 export type AppConfig = {
@@ -116,6 +103,8 @@ export type AppConfig = {
   memory: MemoryConfig;
   memorySearch: MemorySearchConfig;
   embeddings: EmbeddingsConfig;
+  retry: RetryConfig;
+  slackRetry: SlackRetryConfig;
 };
 
 const DEFAULT_OPENAI_MODEL = "text-embedding-3-small";
@@ -186,6 +175,18 @@ const loadBaseConfig = (): AppConfig => {
         baseUrl: process.env.IRONBOT_GEMINI_BASE_URL,
         model: process.env.IRONBOT_GEMINI_EMBEDDINGS_MODEL ?? DEFAULT_GEMINI_MODEL
       }
+    },
+    retry: {
+      maxAttempts: parseInteger(process.env.IRONBOT_RETRY_MAX_ATTEMPTS, 3),
+      baseDelayMs: parseInteger(process.env.IRONBOT_RETRY_BASE_DELAY_MS, 1000),
+      maxDelayMs: parseInteger(process.env.IRONBOT_RETRY_MAX_DELAY_MS, 30000),
+      backoffMultiplier: parseNumber(process.env.IRONBOT_RETRY_BACKOFF_MULTIPLIER, 2),
+      jitterMax: parseNumber(process.env.IRONBOT_RETRY_JITTER_MAX, 0.1)
+    },
+    slackRetry: {
+      maxAttempts: parseInteger(process.env.IRONBOT_SLACK_RETRY_MAX_ATTEMPTS, 3),
+      baseDelayMs: parseInteger(process.env.IRONBOT_SLACK_RETRY_BASE_DELAY_MS, 10000),
+      maxDelayMs: parseInteger(process.env.IRONBOT_SLACK_RETRY_MAX_DELAY_MS, 120000)
     }
   };
 };

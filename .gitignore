@@ -30,3 +30,6 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+
+# Temp directory
+temp/
