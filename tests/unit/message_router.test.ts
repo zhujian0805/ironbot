@@ -148,4 +148,34 @@ describe("MessageRouter", () => {
 
     await rm(dir, { recursive: true, force: true });
   });
+
+  it("handles /remember command", async () => {
+    const { router, slackClient, dir } = await createRouterWithSlack();
+    const ack = vi.fn().mockResolvedValue(undefined);
+    const respond = vi.fn().mockResolvedValue(undefined);
+    const postMessage = vi.mocked(slackClient.chat.postMessage);
+
+    const command = {
+      command: "/remember",
+      text: "",
+      channel_id: "C123",
+      user_id: "U456",
+      trigger_id: "trigger123"
+    };
+
+    await router.handleSlashCommand(command, ack, respond);
+
+    expect(ack).toHaveBeenCalledTimes(1);
+    expect(respond).toHaveBeenCalledWith({
+      text: "🧠 Cross-session memory enabled! I will now remember all historical conversations across threads.",
+      response_type: "ephemeral"
+    });
+    expect(postMessage).toHaveBeenCalledWith({
+      channel: "C123",
+      text: "🧠 <@U456> has enabled cross-session memory for this channel. I will now remember all historical conversations!",
+      mrkdwn: true
+    });
+
+    await rm(dir, { recursive: true, force: true });
+  });
 });

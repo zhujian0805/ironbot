@@ -34,6 +34,7 @@ export class MessageRouter {
   private slackClient?: SlackClientLike;
   private config: AppConfig;
   private newConversationChannels: Set<string> = new Set();
+  private crossSessionMemoryChannels: Set<string> = new Set();
 
   constructor(claude: ClaudeProcessor, slackClient?: SlackClientLike, config: AppConfig = resolveConfig()) {
     this.claude = claude;
@@ -154,9 +155,15 @@ export class MessageRouter {
 
     try {
       await this.setThreadStatus({ channelId: channel, threadTs, status: "is typing..." });
+      
+      // Check if cross-session memory is enabled for this channel/thread
+      const channelKey = threadTs ? `${channel}:${threadTs}` : `${channel}`;
+      const crossSessionMemory = this.crossSessionMemoryChannels.has(channelKey);
+      
       const response = await this.claude.processMessage(text, {
         conversationHistory,
-        sessionKey
+        sessionKey,
+        crossSessionMemory
       });
 
       try {
@@ -274,6 +281,35 @@ export class MessageRouter {
       }
 
       logger.info({ channel, userId }, "New conversation initiated");
+    } else if (command.command === "/remember") {
+      const channel = command.channel_id;
+      const userId = command.user_id;
+      const threadTs = command.text?.trim(); // Allow specifying a thread_ts
+
+      logger.info({ channel, userId, command: command.command, threadTs }, "Handling /remember command");
+
+      // Mark this channel/thread as having cross-session memory enabled
+      const key = threadTs ? `${channel}:${threadTs}` : `${channel}`;
+      this.crossSessionMemoryChannels.add(key);
+
+      // Respond with confirmation
+      await respond({
+        text: "🧠 Cross-session memory enabled! I will now remember all historical conversations across threads.",
+        response_type: "ephemeral" // Only visible to the user who ran the command
+      });
+
+      // Send a public message to acknowledge
+      if (this.slackClient) {
+        const scope = threadTs ? "this thread" : "this channel";
+        await this.slackClient.chat.postMessage({
+          channel,
+          text: `🧠 <@${userId}> has enabled cross-session memory for ${scope}. I will now remember all historical conversations!`,
+          thread_ts: threadTs,
+          mrkdwn: true
+        });
+      }
+
+      logger.info({ channel, userId, threadTs }, "Cross-session memory enabled");
     }
   }
 }

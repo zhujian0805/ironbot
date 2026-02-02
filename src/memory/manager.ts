@@ -264,20 +264,21 @@ export class MemoryManager {
     }));
   }
 
-  private filterLongTermMemory(chunks: MemoryChunk[], sessionKey?: string): MemoryChunk[] {
+  private filterLongTermMemory(chunks: MemoryChunk[], sessionKey?: string, crossSessionMemory?: boolean): MemoryChunk[] {
     let filtered = chunks;
     // Filter long-term memory for non-main sessions
     if (!isMainSessionKey(sessionKey) && this.longTermPaths.size) {
       filtered = filtered.filter((chunk) => !this.longTermPaths.has(path.resolve(chunk.path)));
     }
     // Filter session chunks based on cross-session memory setting
-    if (sessionKey && !this.config.memorySearch.crossSessionMemory) {
+    const useCrossSession = crossSessionMemory ?? this.config.memorySearch.crossSessionMemory;
+    if (sessionKey && !useCrossSession) {
       filtered = filtered.filter((chunk) => chunk.source !== "sessions" || chunk.sessionKey === sessionKey);
     }
     return filtered;
   }
 
-  async search(query: string, params: { sessionKey?: string } = {}): Promise<MemoryHit[]> {
+  async search(query: string, params: { sessionKey?: string; crossSessionMemory?: boolean } = {}): Promise<MemoryHit[]> {
     if (!this.config.memorySearch.enabled) return [];
 
     await ensureDir(this.getDailyMemoryDir());
@@ -294,7 +295,7 @@ export class MemoryManager {
     if (!sources.length) return [];
 
     const chunks = await this.loadChunks(sources);
-    const filtered = this.filterLongTermMemory(chunks, params.sessionKey);
+    const filtered = this.filterLongTermMemory(chunks, params.sessionKey, params.crossSessionMemory);
 
     const shouldEmbed = this.embeddingClient.provider !== "none" && this.config.memorySearch.vectorWeight > 0;
     const queryEmbedding = shouldEmbed ? (await this.embeddingClient.embed([query]))[0] : undefined;

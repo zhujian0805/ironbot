@@ -45,6 +45,7 @@ describe("Slack Handler", () => {
       registerSlackHandlers(mockApp as any, mockRouter);
 
       expect(mockApp.command).toHaveBeenCalledWith("/new", expect.any(Function));
+      expect(mockApp.command).toHaveBeenCalledWith("/remember", expect.any(Function));
     });
 
     it("does not register slash command handler when handleSlashCommand is not provided", () => {

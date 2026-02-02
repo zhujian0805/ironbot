@@ -110,10 +110,10 @@ export class ClaudeProcessor {
     }
   }
 
-  private async buildMemoryContext(userMessage: string, sessionKey?: string): Promise<string> {
+  private async buildMemoryContext(userMessage: string, sessionKey?: string, crossSessionMemory?: boolean): Promise<string> {
     if (!this.memoryManager) return "";
     try {
-      const hits = await this.memoryManager.search(userMessage, { sessionKey });
+      const hits = await this.memoryManager.search(userMessage, { sessionKey, crossSessionMemory });
       if (!hits.length) return "";
       return hits
         .map((hit, index) => {
@@ -129,7 +129,7 @@ export class ClaudeProcessor {
 
   async processMessage(
     userMessage: string,
-    options: { conversationHistory?: MessageParam[]; sessionKey?: string } = {}
+    options: { conversationHistory?: MessageParam[]; sessionKey?: string; crossSessionMemory?: boolean } = {}
   ): Promise<string> {
     await this.ensureSkillsLoaded();
 
@@ -154,7 +154,7 @@ export class ClaudeProcessor {
     }
 
     const conversationHistory = options.conversationHistory ?? [];
-    const memoryContext = await this.buildMemoryContext(userMessage, options.sessionKey);
+    const memoryContext = await this.buildMemoryContext(userMessage, options.sessionKey, options.crossSessionMemory);
     return this.processWithTools(userMessage, conversationHistory, memoryContext);
   }
 

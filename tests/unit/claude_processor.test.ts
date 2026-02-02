@@ -208,7 +208,8 @@ describe("ClaudeProcessor", () => {
       });
 
       expect(mockMemoryManager.search).toHaveBeenCalledWith("What were we talking about?", {
-        sessionKey: "test-session"
+        sessionKey: "test-session",
+        crossSessionMemory: undefined
       });
 
       expect(mockAnthropicClient.messages.create).toHaveBeenCalledWith({
