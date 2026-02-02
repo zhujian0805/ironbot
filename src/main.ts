@@ -70,8 +70,8 @@ const main = async (): Promise<void> => {
 
   setupLogging({ debug: config.debug, logLevel: config.logLevel, logFile: config.logFile });
 
-  if (!config.slackBotToken || !config.slackAppToken || !config.slackSigningSecret) {
-    logger.error("Slack tokens/signing secret not configured");
+  if (!config.slackBotToken || !config.slackAppToken) {
+    logger.error("Slack tokens not configured");
   }
 
   logger.info("Starting Slack AI Agent");
@@ -95,7 +95,6 @@ const main = async (): Promise<void> => {
   const app = new App({
     token: config.slackBotToken,
     appToken: config.slackAppToken,
-    signingSecret: config.slackSigningSecret ?? "",
     socketMode: true,
     logLevel: toSlackLogLevel(config.logLevel),
     retryConfig: {

@@ -44,7 +44,6 @@ const setupMain = async (configOverrides: Partial<Record<string, unknown>> = {})
   const resolveConfig = vi.fn().mockReturnValue({
     slackBotToken: "x",
     slackAppToken: "y",
-    slackSigningSecret: "z",
     anthropicBaseUrl: undefined,
     anthropicAuthToken: "token",
     anthropicModel: "model",
@@ -108,10 +107,9 @@ describe("main entrypoint", () => {
   it("logs when Slack tokens are missing", async () => {
     const { logger } = await setupMain({
       slackBotToken: undefined,
-      slackAppToken: undefined,
-      slackSigningSecret: undefined
+      slackAppToken: undefined
     });
 
-    expect(logger.error).toHaveBeenCalledWith("Slack tokens/signing secret not configured");
+    expect(logger.error).toHaveBeenCalledWith("Slack tokens not configured");
   });
 });

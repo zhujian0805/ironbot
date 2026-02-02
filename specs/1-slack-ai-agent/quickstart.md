@@ -29,7 +29,6 @@ Create a `.env` file in the project root:
 
 ```env
 SLACK_BOT_TOKEN=xoxb-your-bot-token
-SLACK_SIGNING_SECRET=your-signing-secret
 ANTHROPIC_API_KEY=your-claude-api-key
 SKILLS_DIR=./skills  # Optional: directory containing Claude Skills
 ```

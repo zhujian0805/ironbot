@@ -89,7 +89,6 @@ export type SlackRetryConfig = {
 export type AppConfig = {
   slackBotToken: string | undefined;
   slackAppToken: string | undefined;
-  slackSigningSecret: string | undefined;
   anthropicBaseUrl: string | undefined;
   anthropicAuthToken: string | undefined;
   anthropicModel: string;
@@ -128,7 +127,6 @@ const loadBaseConfig = (): AppConfig => {
   return {
     slackBotToken: process.env.SLACK_BOT_TOKEN,
     slackAppToken: process.env.SLACK_APP_TOKEN,
-    slackSigningSecret: process.env.SLACK_SIGNING_SECRET,
     anthropicBaseUrl: process.env.ANTHROPIC_BASE_URL,
     anthropicAuthToken: process.env.ANTHROPIC_AUTH_TOKEN,
     anthropicModel: process.env.ANTHROPIC_MODEL ?? "gpt-5-mini",

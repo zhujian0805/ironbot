@@ -10,7 +10,6 @@
 Set required environment variables:
 - `SLACK_BOT_TOKEN`
 - `SLACK_APP_TOKEN`
-- `SLACK_SIGNING_SECRET`
 - `ANTHROPIC_AUTH_TOKEN`
 - `ANTHROPIC_MODEL` (optional)
 - `SKILLS_DIR` (optional, default `./skills`)

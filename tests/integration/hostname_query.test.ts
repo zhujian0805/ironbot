@@ -34,7 +34,6 @@ describe("hostname query validation", () => {
     config = {
       slackBotToken: "",
       slackAppToken: "",
-      slackSigningSecret: "",
       anthropicBaseUrl: process.env.ANTHROPIC_BASE_URL || "",
       anthropicAuthToken: process.env.ANTHROPIC_AUTH_TOKEN || "",
       anthropicModel: process.env.ANTHROPIC_MODEL || "grok-code-fast-1",
