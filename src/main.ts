@@ -108,6 +108,7 @@ const main = async (): Promise<void> => {
   const memoryManager = new MemoryManager(config);
   memoryManager.logStatus();
 
+  logger.info({ skillsDir: config.skillsDir }, "[INIT] Creating ClaudeProcessor");
   const claude = new ClaudeProcessor(config.skillsDir, memoryManager);
   const router = new MessageRouter(claude, app.client as unknown as { chat: { postMessage: any; update: any } }, config);
   const handler = new SlackMessageHandler(app, router);

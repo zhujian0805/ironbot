@@ -3,21 +3,56 @@ import path from "node:path";
 import { createReadStream } from "node:fs";
 import { createWriteStream } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { exec } from "node:child_process";
+import { exec, spawn } from "node:child_process";
 import { promisify } from "node:util";
 
 const execAsync = promisify(exec);
+
+/**
+ * Sanitizes a skill name to prevent path traversal attacks.
+ * Removes path traversal sequences and restricts to safe characters.
+ */
+export function sanitizeSkillName(name: string): string {
+  // Remove path traversal sequences
+  let sanitized = name
+    .replace(/\.\./g, '') // Remove all .. sequences
+    .replace(/[\/\\]/g, '') // Remove path separators
+    .replace(/^[.-]+|[.-]+$/g, '') // Remove leading/trailing dots and dashes
+    .replace(/[^a-zA-Z0-9_-]/g, '-') // Replace unsafe chars with dashes
+    .substring(0, 50); // Limit length
+
+  // Ensure we have a valid name
+  if (!sanitized || sanitized.length === 0) {
+    sanitized = 'downloaded-skill';
+  }
+
+  return sanitized;
+}
 
 async function installFromGitHub(skillUrl: string, skillName: string): Promise<string> {
   try {
     const skillsDir = path.join(process.cwd(), 'skills');
     const skillDir = path.join(skillsDir, skillName);
 
-    // Clone the repository
-    const cloneCommand = `git clone "${skillUrl}" "${skillDir}"`;
-    await execAsync(cloneCommand);
+    // Clone the repository using spawn to avoid command injection
+    const gitProcess = spawn('git', ['clone', skillUrl, skillDir], {
+      stdio: 'inherit',
+      cwd: process.cwd()
+    });
 
-    return `✅ Successfully installed skill "${skillName}" from GitHub\n📁 Location: ${skillDir}\n🔄 Please restart the bot to load the new skill.`;
+    return new Promise<string>((resolve, reject) => {
+      gitProcess.on('close', (code) => {
+        if (code === 0) {
+          resolve(`✅ Successfully installed skill "${skillName}" from GitHub\n📁 Location: ${skillDir}\n🔄 Please restart the bot to load the new skill.`);
+        } else {
+          reject(new Error(`Git clone failed with exit code ${code}`));
+        }
+      });
+
+      gitProcess.on('error', (error) => {
+        reject(error);
+      });
+    });
   } catch (error) {
     return `❌ Failed to clone GitHub repository: ${error instanceof Error ? error.message : String(error)}`;
   }
@@ -108,7 +143,7 @@ export const executeSkill = async (input: string): Promise<string> => {
       const hostname = urlObj.hostname;
       const hasSlug = urlObj.searchParams.has('slug');
       const isClawHub = hostname.includes('clawdhub.com');
-      
+
       if (isClawHub && hasSlug) {
         const slug = urlObj.searchParams.get('slug');
         if (slug) {
@@ -127,6 +162,9 @@ export const executeSkill = async (input: string): Promise<string> => {
       skillNameFromUrl = skillNameFromUrl.split('?')[0];
     }
 
+    // Sanitize skill name to prevent path traversal
+    skillNameFromUrl = sanitizeSkillName(skillNameFromUrl);
+
     // Check if it's a GitHub repository URL
     if (skillUrl.includes('github.com')) {
       return await installFromGitHub(skillUrl, skillNameFromUrl);
@@ -140,24 +178,25 @@ export const executeSkill = async (input: string): Promise<string> => {
     if (skillUrl.includes('clawhub.ai') && skillUrl.includes('/lxgicstudios/')) {
       const slug = skillUrl.split('/').pop();
       if (slug) {
-        const authDownloadUrl = `https://auth.clawhub.com/api/v1/download?slug=${slug}`;
-        console.log(`Trying ClawHub auth download: ${authDownloadUrl}`);
+        const sanitizedSlug = sanitizeSkillName(slug);
+        const authDownloadUrl = `https://auth.clawhub.com/api/v1/download?slug=${sanitizedSlug}`;
+        // console.log(`Trying ClawHub auth download: ${authDownloadUrl}`);
         try {
           const authResponse = await fetch(authDownloadUrl);
           if (authResponse.ok) {
             const contentType = authResponse.headers.get('content-type') || '';
             if (contentType.includes('application/zip') || contentType.includes('application/octet-stream') || contentType.includes('application/json')) {
-              console.log(`Success! Downloading from ClawHub auth endpoint`);
+              // console.log(`Success! Downloading from ClawHub auth endpoint`);
               const downloadBuffer = await authResponse.arrayBuffer();
               const tempSkillPath = path.join(tempDir, `${skillNameFromUrl}.zip`);
               await fs.writeFile(tempSkillPath, new Uint8Array(downloadBuffer));
-              
+
               // Extract and install as SKILL.md format
               return await installSkillFromZip(tempSkillPath, skillNameFromUrl);
             }
           }
         } catch (error) {
-          console.log(`ClawHub auth download failed: ${error}`);
+          // console.log(`ClawHub auth download failed: ${error}`);
         }
       }
     }
@@ -166,8 +205,8 @@ export const executeSkill = async (input: string): Promise<string> => {
     
     const tempSkillPath = path.join(tempDir, `${skillNameFromUrl}.zip`);
 
-    console.log(`Downloading from: ${skillUrl}`);
-    console.log(`Skill name: ${skillNameFromUrl}`);
+    // console.log(`Downloading from: ${skillUrl}`);
+    // console.log(`Skill name: ${skillNameFromUrl}`);
     
     const response = await fetch(skillUrl);
     if (!response.ok) {
@@ -195,19 +234,19 @@ export const executeSkill = async (input: string): Promise<string> => {
 
       for (const apiUrl of apiUrls) {
         try {
-          console.log(`Trying API URL: ${apiUrl}`);
+          // console.log(`Trying API URL: ${apiUrl}`);
           const apiResponse = await fetch(apiUrl);
           if (apiResponse.ok) {
             const contentType = apiResponse.headers.get('content-type') || '';
             if (contentType.includes('application/zip') || contentType.includes('application/octet-stream')) {
-              console.log(`Success! Downloading from ${apiUrl}`);
+              // console.log(`Success! Downloading from ${apiUrl}`);
               const downloadBuffer = await apiResponse.arrayBuffer();
               await fs.writeFile(tempSkillPath, new Uint8Array(downloadBuffer));
               break;
             }
           }
         } catch (error) {
-          console.log(`API URL ${apiUrl} failed: ${error}`);
+          // console.log(`API URL ${apiUrl} failed: ${error}`);
         }
       }
 
@@ -215,7 +254,7 @@ export const executeSkill = async (input: string): Promise<string> => {
       const downloadMatch = html.match(/href="([^"]*(?:download|\.skill|\.zip)[^"]*)"/i);
       if (downloadMatch) {
         const downloadUrl = downloadMatch[1];
-        console.log(`Found download link: ${downloadUrl}`);
+        // console.log(`Found download link: ${downloadUrl}`);
         const downloadResponse = await fetch(downloadUrl.startsWith('http') ? downloadUrl : new URL(downloadUrl, skillUrl).href);
         if (!downloadResponse.ok) {
           return `❌ Failed to download skill file: HTTP ${downloadResponse.status} ${downloadResponse.statusText}`;

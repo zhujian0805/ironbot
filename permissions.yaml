@@ -99,9 +99,11 @@ skills:
     - "calculator"        # Example skill
     - "permission_check"  # Diagnostic skill to check permission status
     - "skill_installer"   # Skill for installing new skills
+    - "skill_update"      # Skill for updating existing skills
     - "weather"           # Weather skill for testing
     - "weather-2"         # Weather-2 skill from ClawHub
     - "yahoo-finance-clksb"  # Yahoo Finance skill for stock data
+    - "smtp-send"         # Skill for sending emails via SMTP
     # - "*"               # Uncomment to allow all skills
 
 # Allowed MCPs (Model Context Protocol servers)

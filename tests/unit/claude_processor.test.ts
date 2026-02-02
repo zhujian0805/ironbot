@@ -36,7 +36,43 @@ vi.mock("../../src/services/tools.ts", () => ({
 }));
 
 const mockSkillLoaderInstance = {
-  loadSkills: vi.fn()
+  loadSkills: vi.fn(),
+  getSkillInfo: vi.fn()
+};
+
+const mockSkillInfos: Record<string, any> = {
+  'skill_installer': {
+    name: 'skill_installer',
+    description: 'Installs skills',
+    triggers: ['install', 'setup', 'add skill'],
+    executable: false,
+    parameters: [],
+    handler: vi.fn()
+  },
+  'permission_check': {
+    name: 'permission_check',
+    description: 'Checks permissions',
+    triggers: ['what skills', 'permission', 'access', 'can I'],
+    executable: false,
+    parameters: [],
+    handler: vi.fn()
+  },
+  'calculator': {
+    name: 'calculator',
+    description: 'Calculates',
+    triggers: ['use calculator', 'calculate'],
+    executable: false,
+    parameters: [],
+    handler: vi.fn()
+  },
+  'testskill': {
+    name: 'testskill',
+    description: 'Test skill',
+    triggers: [],
+    executable: false,
+    parameters: [],
+    handler: vi.fn()
+  },
 };
 
 vi.mock("../../src/services/skill_loader.ts", () => ({
@@ -89,8 +125,6 @@ describe("ClaudeProcessor", () => {
   let mockMemoryManager: any;
 
   beforeEach(() => {
-    vi.clearAllMocks();
-
     // Set up default mock responses
     mockAnthropicClient.messages.create.mockResolvedValue({
       stop_reason: "end_turn",
@@ -114,11 +148,27 @@ describe("ClaudeProcessor", () => {
       result: "Mock tool result"
     });
 
-    mockSkillLoaderInstance.loadSkills.mockResolvedValue({});
+    mockSkillLoaderInstance.loadSkills.mockReturnValue({});
+
+    mockSkillLoaderInstance.getSkillInfo.mockReturnValue(mockSkillInfos);
+
+    // Set up mock handlers
+    mockSkillInfos['skill_installer'].handler.mockResolvedValue("Skill installed successfully");
+    mockSkillInfos['permission_check'].handler.mockResolvedValue("🤖 **IronBot System Status**\n\n**🛠️ Available Skills:**\n• permission_check\n\n**🔧 Allowed Tools:** run_powershell\n\n**📋 Allowed Skills:** permission_check\n\n**⚙️ Key Restrictions:**\n• PowerShell: All commands allowed\n• Blocked: \n\n**💡 Pro Tips:**\n• Use natural language to install skills: \"install this skill: <url>\"\n• Ask me \"what skills do you have?\" anytime\n• Skills are automatically loaded on restart\n\nNeed help with something specific? Just ask! 🚀");
+    mockSkillInfos['calculator'].handler.mockResolvedValue("42");
+    mockSkillInfos['testskill'].handler.mockResolvedValue("Skill executed successfully");
 
     mockMemoryManager.search.mockResolvedValue([]);
 
-    // Create processor with mocked memory manager
+    const mockConfig = {
+      anthropicAuthToken: "test-token",
+      anthropicBaseUrl: undefined,
+      anthropicModel: "claude-3-sonnet-20240229",
+      devMode: false,
+      skillsDir: "./skills"
+    };
+
+    // Create processor with mocked dependencies
     processor = new ClaudeProcessor("./skills", mockMemoryManager);
   });
 
@@ -149,62 +199,110 @@ describe("ClaudeProcessor", () => {
 
   describe("processMessage", () => {
     it("handles skill execution when message contains skill reference", async () => {
-      const skillHandler = vi.fn().mockResolvedValue("Skill executed successfully");
-      mockSkillLoaderInstance.loadSkills.mockResolvedValue({
-        "testskill": skillHandler
-      });
-
       const result = await processor.processMessage("Please run @testskill");
 
-      expect(skillHandler).toHaveBeenCalledWith("Please run @testskill");
+      expect(mockSkillInfos['testskill'].handler).toHaveBeenCalledWith("Please run @testskill");
       expect(result).toBe("Skill executed successfully");
     });
 
     it("handles skill execution errors gracefully", async () => {
-      const skillHandler = vi.fn().mockRejectedValue(new Error("Skill failed"));
-      mockSkillLoaderInstance.loadSkills.mockResolvedValue({
-        "failing": skillHandler
-      });
+      mockSkillInfos['permission_check'].handler.mockRejectedValueOnce(new Error("Skill failed"));
 
-      const result = await processor.processMessage("Run @failing");
+      const result = await processor.processMessage("Run @permission_check");
 
-      expect(result).toBe("Sorry, error executing skill failing.");
+      expect(result).toBe("Sorry, error executing skill permission_check.");
     });
 
     it("auto-routes install commands to skill_installer", async () => {
-      const skillInstaller = vi.fn().mockResolvedValue("Skill installed successfully");
-      mockSkillLoaderInstance.loadSkills.mockResolvedValue({
-        "skill_installer": skillInstaller
-      });
-
       const result = await processor.processMessage("install this skill: https://github.com/example/skill");
 
-      expect(skillInstaller).toHaveBeenCalledWith("install this skill: https://github.com/example/skill");
+      expect(mockSkillInfos['skill_installer'].handler).toHaveBeenCalledWith("install this skill: https://github.com/example/skill");
       expect(result).toBe("Skill installed successfully");
     });
 
     it("auto-routes capability queries to permission_check", async () => {
-      const permissionCheck = vi.fn().mockResolvedValue("🤖 **IronBot System Status**\n\n**🛠️ Available Skills:**\n• permission_check\n\n**🔧 Allowed Tools:** run_powershell\n\n**📋 Allowed Skills:** permission_check\n\n**⚙️ Key Restrictions:**\n• PowerShell: All commands allowed\n• Blocked: \n\n**💡 Pro Tips:**\n• Use natural language to install skills: \"install this skill: <url>\"\n• Ask me \"what skills do you have?\" anytime\n• Skills are automatically loaded on restart\n\nNeed help with something specific? Just ask! 🚀");
-      mockSkillLoaderInstance.loadSkills.mockResolvedValue({
-        "permission_check": permissionCheck
-      });
-
       const result = await processor.processMessage("what skills do you have?");
 
-      expect(permissionCheck).toHaveBeenCalledWith("what skills do you have?");
+      expect(mockSkillInfos['permission_check'].handler).toHaveBeenCalledWith("what skills do you have?");
       expect(result).toContain("🤖 **IronBot System Status**");
     });
 
     it("auto-routes direct skill execution requests", async () => {
-      const calculatorSkill = vi.fn().mockResolvedValue("42");
-      mockSkillLoaderInstance.loadSkills.mockResolvedValue({
-        "calculator": calculatorSkill
-      });
-
       const result = await processor.processMessage("use calculator");
 
-      expect(calculatorSkill).toHaveBeenCalledWith("use calculator");
+      expect(mockSkillInfos['calculator'].handler).toHaveBeenCalledWith("use calculator");
       expect(result).toBe("42");
+    });
+
+    it("auto-routes unknown skill usage requests to skill_installer", async () => {
+      const result = await processor.processMessage("use skill smtp-send to send an email");
+
+      expect(mockSkillInfos['skill_installer'].handler).toHaveBeenCalledWith("use skill smtp-send to send an email");
+      expect(result).toBe("Skill installed successfully");
+    });
+
+    it("does NOT auto-route SKILL.md-based documentation skills, passes to Claude instead", async () => {
+      // Add a SKILL.md-based skill to the mock
+      mockSkillInfos['smtp-send'] = {
+        name: 'smtp-send',
+        description: 'Sends emails via SMTP',
+        triggers: ['email', 'send email', 'smtp'],
+        executable: false,
+        parameters: [],
+        handler: vi.fn().mockResolvedValue("**Skill: smtp-send**\n\nSKILL.md documentation content..."),
+        isDocumentationSkill: true,
+        skillDirectory: './skills/smtp-send'
+      };
+
+      mockSkillLoaderInstance.getSkillInfo.mockReturnValue(mockSkillInfos);
+
+      // Mock Claude's response to processing with skill documentation
+      mockAnthropicClient.messages.create.mockResolvedValueOnce({
+        stop_reason: "tool_use",
+        content: [
+          { type: "text", text: "I'll send that email for you using the smtp-send skill." },
+          { 
+            type: "tool_use", 
+            id: "tool_1",
+            name: "run_bash",
+            input: { 
+              command: "python3 scripts/send_email.py --to jzhu@blizzard.com --subject 'Test' --body 'Test email'",
+              working_directory: "./skills/smtp-send"
+            }
+          }
+        ]
+      }).mockResolvedValueOnce({
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: "Email sent successfully!" }]
+      });
+
+      mockToolExecutorInstance.executeTool.mockResolvedValueOnce({
+        success: true,
+        result: { stdout: "Email sent to jzhu@blizzard.com", stderr: "", exitCode: 0 }
+      });
+
+      const result = await processor.processMessage("run skill smtp-send to send a test email to jzhu@blizzard.com");
+
+      // The handler WILL be called once to get the documentation content for Claude's context
+      // But it should not be the final response - Claude should process it and use tools
+      expect(mockSkillInfos['smtp-send'].handler).toHaveBeenCalledTimes(1);
+      
+      // Claude should be called with the skill documentation in context
+      expect(mockAnthropicClient.messages.create).toHaveBeenCalled();
+      
+      // Check the system prompt includes skill documentation
+      const firstCall = mockAnthropicClient.messages.create.mock.calls[0][0];
+      if (firstCall.system) {
+        expect(firstCall.system).toContain("smtp-send");
+        expect(firstCall.system).toContain("Available Skills");
+      }
+      
+      // Claude should execute the tool
+      expect(mockToolExecutorInstance.executeTool).toHaveBeenCalledWith("run_bash", expect.objectContaining({
+        command: expect.stringContaining("python3")
+      }));
+      
+      expect(result).toContain("Email sent successfully!");
     });
 
     it("does not auto-route regular messages", async () => {
@@ -411,30 +509,37 @@ describe("ClaudeProcessor", () => {
     it("limits tool iteration cycles", async () => {
       mockMemoryManager.search.mockResolvedValue([]);
 
-      // Mock continuous tool use responses
-      for (let i = 0; i < 6; i++) {
-        mockAnthropicClient.messages.create
-          .mockResolvedValueOnce({
+      let callCount = 0;
+      mockAnthropicClient.messages.create.mockImplementation(() => {
+        callCount++;
+        if (callCount <= 6) {
+          return Promise.resolve({
             stop_reason: "tool_use",
             content: [
               {
                 type: "tool_use",
-                id: `tool_${i}`,
+                id: `tool_${callCount}`,
                 name: "run_bash",
                 input: { command: "echo test" }
               }
             ]
           });
+        } else {
+          return Promise.resolve({
+            stop_reason: "end_turn",
+            content: [{ type: "text", text: "Done" }]
+          });
+        }
+      });
 
-        mockToolExecutorInstance.executeTool.mockResolvedValue({
-          success: true,
-          result: "test output"
-        });
-      }
+      mockToolExecutorInstance.executeTool.mockResolvedValue({
+        success: true,
+        result: "test output"
+      });
 
       const result = await processor.processMessage("Loop test");
 
-      expect(mockAnthropicClient.messages.create).toHaveBeenCalledTimes(6); // maxToolIterations
+      expect(callCount).toBe(6); // maxToolIterations
       expect(result).toBe("Sorry, I could not complete the request.");
     });
   });
@@ -442,10 +547,12 @@ describe("ClaudeProcessor", () => {
   describe("clearAllMemory", () => {
     it("calls clearAllMemory on memory manager when available", async () => {
       const testMemoryManager = {
-        clearAllMemory: vi.fn().mockResolvedValue(undefined)
+        search: vi.fn(),
+        clearAllMemory: vi.fn().mockResolvedValue(undefined),
+        clearMemoryForSession: vi.fn()
       };
 
-      const processor = new ClaudeProcessor("./skills", testMemoryManager as any);
+      const processor = new ClaudeProcessor("./skills", testMemoryManager);
 
       await processor.clearAllMemory();
 
@@ -453,7 +560,7 @@ describe("ClaudeProcessor", () => {
     });
 
     it("does nothing when memory manager is not available", async () => {
-      const processor = new ClaudeProcessor("./skills", undefined);
+      const processor = new ClaudeProcessor("./skills");
 
       // Should not throw an error
       await expect(processor.clearAllMemory()).resolves.toBeUndefined();

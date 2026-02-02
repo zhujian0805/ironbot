@@ -155,7 +155,7 @@ const loadBaseConfig = (): AppConfig => {
     anthropicBaseUrl: process.env.ANTHROPIC_BASE_URL,
     anthropicAuthToken: process.env.ANTHROPIC_AUTH_TOKEN,
     anthropicModel: process.env.ANTHROPIC_MODEL ?? "gpt-5-mini",
-    skillsDir: process.env.SKILLS_DIR ?? "./skills",
+    skillsDir: process.env.SKILLS_DIR ?? path.join(process.cwd(), "skills"),
     permissionsFile: process.env.PERMISSIONS_FILE ?? "./permissions.yaml",
     debug: parseBoolean(process.env.DEBUG),
     logLevel: process.env.LOG_LEVEL ?? "INFO",
