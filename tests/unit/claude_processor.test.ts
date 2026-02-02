@@ -171,6 +171,57 @@ describe("ClaudeProcessor", () => {
       expect(result).toBe("Sorry, error executing skill failing.");
     });
 
+    it("auto-routes install commands to skill_installer", async () => {
+      const skillInstaller = vi.fn().mockResolvedValue("Skill installed successfully");
+      mockSkillLoaderInstance.loadSkills.mockResolvedValue({
+        "skill_installer": skillInstaller
+      });
+
+      const result = await processor.processMessage("install this skill: https://github.com/example/skill");
+
+      expect(skillInstaller).toHaveBeenCalledWith("install this skill: https://github.com/example/skill");
+      expect(result).toBe("Skill installed successfully");
+    });
+
+    it("auto-routes capability queries to permission_check", async () => {
+      const permissionCheck = vi.fn().mockResolvedValue("🤖 **IronBot System Status**\n\n**🛠️ Available Skills:**\n• permission_check\n\n**🔧 Allowed Tools:** run_powershell\n\n**📋 Allowed Skills:** permission_check\n\n**⚙️ Key Restrictions:**\n• PowerShell: All commands allowed\n• Blocked: \n\n**💡 Pro Tips:**\n• Use natural language to install skills: \"install this skill: <url>\"\n• Ask me \"what skills do you have?\" anytime\n• Skills are automatically loaded on restart\n\nNeed help with something specific? Just ask! 🚀");
+      mockSkillLoaderInstance.loadSkills.mockResolvedValue({
+        "permission_check": permissionCheck
+      });
+
+      const result = await processor.processMessage("what skills do you have?");
+
+      expect(permissionCheck).toHaveBeenCalledWith("what skills do you have?");
+      expect(result).toContain("🤖 **IronBot System Status**");
+    });
+
+    it("auto-routes direct skill execution requests", async () => {
+      const calculatorSkill = vi.fn().mockResolvedValue("42");
+      mockSkillLoaderInstance.loadSkills.mockResolvedValue({
+        "calculator": calculatorSkill
+      });
+
+      const result = await processor.processMessage("use calculator");
+
+      expect(calculatorSkill).toHaveBeenCalledWith("use calculator");
+      expect(result).toBe("42");
+    });
+
+    it("does not auto-route regular messages", async () => {
+      mockSkillLoaderInstance.loadSkills.mockResolvedValue({});
+
+      mockAnthropicClient.messages.create
+        .mockResolvedValueOnce({
+          stop_reason: "end_turn",
+          content: [{ type: "text", text: "Hello, how can I help you?" }]
+        });
+
+      const result = await processor.processMessage("hello world");
+
+      expect(result).toBe("Hello, how can I help you?");
+      expect(mockAnthropicClient.messages.create).toHaveBeenCalled();
+    });
+
     it.skip("returns dev mode response when in dev mode", async () => {
       // Create processor in dev mode
       const configModule = require("../../src/config.ts");

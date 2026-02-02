@@ -103,6 +103,97 @@ export class ClaudeProcessor {
     logger.info({ model: this.model }, "LLM model initialized");
   }
 
+  private async checkAutoRouteSkills(userMessage: string): Promise<string | null> {
+    const trimmedMessage = userMessage.trim().toLowerCase();
+
+    // Smart auto-routing for install commands - look for install keywords and URLs
+    const installKeywords = ['install', 'add', 'download', 'get'];
+    const hasInstallKeyword = installKeywords.some(keyword => trimmedMessage.includes(keyword));
+    
+    // Check if message contains a URL
+    const urlRegex = /https?:\/\/[^\s<>"']+/gi;
+    const hasUrl = urlRegex.test(userMessage);
+
+    if (hasInstallKeyword && hasUrl) {
+      const skillInstaller = this.skills['skill_installer'];
+      if (skillInstaller) {
+        try {
+          const result = await Promise.resolve(skillInstaller(userMessage));
+          return this.appendOperationSummary(result, [
+            { kind: "skill", name: "skill_installer", status: "success" }
+          ]);
+        } catch (error) {
+          logger.error({ error }, "Auto-routed skill execution failed");
+          return this.appendOperationSummary(`Sorry, error executing skill skill_installer.`, [
+            { kind: "skill", name: "skill_installer", status: "error", reason: String(error) }
+          ]);
+        }
+      }
+    }
+
+    // Auto-route skill/capability queries to permission_check
+    const skillQueryKeywords = ['skill', 'skills', 'available', 'installed', 'permission', 'capabilities', 'what can you do', 'what do you have'];
+    const hasSkillQuery = skillQueryKeywords.some(keyword => trimmedMessage.includes(keyword));
+    
+    // Look for question patterns
+    const questionPatterns = ['what', 'which', 'show me', 'list', 'tell me', 'can you'];
+    const isQuestion = questionPatterns.some(pattern => trimmedMessage.includes(pattern));
+
+    if (hasSkillQuery && isQuestion) {
+      const permissionCheck = this.skills['permission_check'];
+      if (permissionCheck) {
+        try {
+          const result = await Promise.resolve(permissionCheck(userMessage));
+          return this.appendOperationSummary(result, [
+            { kind: "skill", name: "permission_check", status: "success" }
+          ]);
+        } catch (error) {
+          logger.error({ error }, "Auto-routed permission check failed");
+          return this.appendOperationSummary(`Sorry, error checking permissions.`, [
+            { kind: "skill", name: "permission_check", status: "error", reason: String(error) }
+          ]);
+        }
+      }
+    }
+
+    // Auto-route direct skill execution requests like "use permission_check" or "run calculator"
+    const executionKeywords = ['use', 'run', 'execute', 'call'];
+    const hasExecutionKeyword = executionKeywords.some(keyword => trimmedMessage.includes(keyword));
+    
+    if (hasExecutionKeyword) {
+      // Extract skill name from message (look for known skill names)
+      for (const skillName of Object.keys(this.skills)) {
+        if (trimmedMessage.includes(skillName)) {
+          const skillHandler = this.skills[skillName];
+          if (skillHandler) {
+            try {
+              const result = await Promise.resolve(skillHandler(userMessage));
+              return this.appendOperationSummary(result, [
+                { kind: "skill", name: skillName, status: "success" }
+              ]);
+            } catch (error) {
+              logger.error({ error, skillName }, "Direct skill execution failed");
+              return this.appendOperationSummary(`Sorry, error executing skill ${skillName}.`, [
+                { kind: "skill", name: skillName, status: "error", reason: String(error) }
+              ]);
+            }
+          }
+        }
+      }
+    }
+
+    // Add more auto-routing rules here as needed
+    // For example:
+    // if (trimmedMessage.startsWith('weather ')) {
+    //   const weatherSkill = this.skills['weather'];
+    //   if (weatherSkill) {
+    //     // ... route to weather skill
+    //   }
+    // }
+
+    return null; // No auto-routing applied
+  }
+
   private async ensureSkillsLoaded(): Promise<void> {
     if (!this.skillsLoaded) {
       this.skills = await this.skillLoader.loadSkills();
@@ -143,6 +234,12 @@ export class ClaudeProcessor {
     options: { conversationHistory?: MessageParam[]; sessionKey?: string; crossSessionMemory?: boolean } = {}
   ): Promise<string> {
     await this.ensureSkillsLoaded();
+
+    // Check for automatic skill routing based on command patterns
+    const autoRouteResult = await this.checkAutoRouteSkills(userMessage);
+    if (autoRouteResult) {
+      return autoRouteResult;
+    }
 
     for (const [skillName, handler] of Object.entries(this.skills)) {
       if (userMessage.includes(`@${skillName}`)) {

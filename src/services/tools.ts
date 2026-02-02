@@ -129,6 +129,24 @@ export const TOOLS: ToolDefinition[] = [
       },
       required: []
     }
+  },
+  {
+    name: "download_file",
+    description: "Download a file from a URL and save it to the filesystem.",
+    input_schema: {
+      type: "object",
+      properties: {
+        url: {
+          type: "string",
+          description: "The URL to download the file from."
+        },
+        path: {
+          type: "string",
+          description: "The local path where to save the downloaded file."
+        }
+      },
+      required: ["url", "path"]
+    }
   }
 ];
 
@@ -368,6 +386,8 @@ export class ToolExecutor {
         return this.writeFile(effectiveInput);
       case "list_directory":
         return this.listDirectory(effectiveInput);
+      case "download_file":
+        return this.downloadFile(effectiveInput);
       default:
         return { success: false, error: `Unknown tool: ${toolName}` };
     }
@@ -558,6 +578,51 @@ export class ToolExecutor {
         success: false,
         error: String(error)
       }, "[TOOL-EXEC] Directory listing failed");
+      return { success: false, error: String(error) };
+    }
+  }
+
+  private async downloadFile(toolInput: Record<string, unknown>): Promise<ToolResult> {
+    const url = typeof toolInput.url === "string" ? toolInput.url : "";
+    const filePath = typeof toolInput.path === "string" ? toolInput.path : "";
+
+    logger.debug({ 
+      tool: 'download_file',
+      url, 
+      filePath 
+    }, "[TOOL-EXEC] Downloading file");
+
+    if (!url) return { success: false, error: "No URL provided" };
+    if (!filePath) return { success: false, error: "No path provided" };
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        return { success: false, error: `HTTP ${response.status}: ${response.statusText}` };
+      }
+      const buffer = await response.arrayBuffer();
+      await fs.writeFile(filePath, new Uint8Array(buffer));
+      logger.debug({ 
+        tool: 'download_file',
+        url,
+        filePath,
+        success: true,
+        bytesDownloaded: buffer.byteLength
+      }, "[TOOL-EXEC] File download completed");
+      return {
+        success: true,
+        result: `Successfully downloaded ${buffer.byteLength} bytes from ${url} to ${filePath}`,
+        path: filePath,
+        size: buffer.byteLength
+      } as ToolResult;
+    } catch (error) {
+      logger.debug({ 
+        tool: 'download_file',
+        url,
+        filePath,
+        success: false,
+        error: String(error)
+      }, "[TOOL-EXEC] File download failed");
       return { success: false, error: String(error) };
     }
   }

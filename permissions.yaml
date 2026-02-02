@@ -38,7 +38,7 @@ blocked_commands:
 
 # Allowed tools (allow-list only)
 tools:
-  allowed: ["run_powershell", "run_bash", "read_file", "write_file", "list_directory"]  # Temporarily allow all tools
+  allowed: ["run_powershell", "run_bash", "read_file", "write_file", "list_directory", "download_file"]  # Temporarily allow all tools
 
   # Per-tool restrictions and configurations
   restrictions:
@@ -71,6 +71,12 @@ tools:
         - "*"                           # Allow all paths
       override_prompt: false
 
+    download_file:
+      allowed_paths:                    # Allow downloading to temp directory
+        - "./temp/*"
+        - "skills/*"
+      override_prompt: false
+
 # Resource-level deny rules (block access regardless of tool permissions)
 # Deny rules take precedence over allow rules
 resources:
@@ -92,6 +98,10 @@ skills:
   allowed:
     - "calculator"        # Example skill
     - "permission_check"  # Diagnostic skill to check permission status
+    - "skill_installer"   # Skill for installing new skills
+    - "weather"           # Weather skill for testing
+    - "weather-2"         # Weather-2 skill from ClawHub
+    - "yahoo-finance-clksb"  # Yahoo Finance skill for stock data
     # - "*"               # Uncomment to allow all skills
 
 # Allowed MCPs (Model Context Protocol servers)
