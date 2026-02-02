@@ -114,4 +114,38 @@ describe("MessageRouter", () => {
 
     await rm(dir, { recursive: true, force: true });
   });
+
+  it("handles /new slash command", async () => {
+    const { dir, config } = await createConfig();
+    const postMessage = vi.fn().mockResolvedValue({ ts: "123" });
+    const slackClient = { chat: { postMessage } };
+    const claude = createClaude("Response");
+    const router = new MessageRouter(claude as unknown as { processMessage: (text: string) => Promise<string> }, slackClient, config);
+
+    const ack = vi.fn().mockResolvedValue(undefined);
+    const respond = vi.fn().mockResolvedValue(undefined);
+
+    const command = {
+      command: "/new",
+      text: "",
+      channel_id: "C123",
+      user_id: "U456",
+      trigger_id: "trigger123"
+    };
+
+    await router.handleSlashCommand(command, ack, respond);
+
+    expect(ack).toHaveBeenCalledTimes(1);
+    expect(respond).toHaveBeenCalledWith({
+      text: "🆕 Starting a new conversation! Your next message will begin fresh without previous history.",
+      response_type: "ephemeral"
+    });
+    expect(postMessage).toHaveBeenCalledWith({
+      channel: "C123",
+      text: "👋 <@U456> wants to start a new conversation. Send your message and I'll begin fresh!",
+      mrkdwn: true
+    });
+
+    await rm(dir, { recursive: true, force: true });
+  });
 });

@@ -2,7 +2,7 @@ import chokidar from "chokidar";
 
 export type WatchOptions = {
   debounceMs?: number;
-  awaitWriteFinish?: {
+  awaitWriteFinish?: boolean | {
     stabilityThreshold?: number;
     pollInterval?: number;
   };
@@ -23,7 +23,7 @@ export const watchFile = (
 
   const watcher = chokidar.watch(filePath, {
     ignoreInitial: true,
-    awaitWriteFinish: {
+    awaitWriteFinish: options.awaitWriteFinish === false ? false : {
       stabilityThreshold: options.awaitWriteFinish?.stabilityThreshold ?? 200,
       pollInterval: options.awaitWriteFinish?.pollInterval ?? 50
     }

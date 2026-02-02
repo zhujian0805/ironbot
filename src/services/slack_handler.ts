@@ -7,6 +7,7 @@ export type SlackAppLike = {
 export type MessageRouter = {
   handleAppMention: (event: any, say: (message: string | { text: string; thread_ts?: string }) => Promise<void>) => Promise<void>;
   handleMessage?: (event: any, say: (message: string | { text: string; thread_ts?: string }) => Promise<void>) => Promise<void>;
+  handleSlashCommand?: (command: any, ack: () => Promise<void>, respond: (message: string | { text: string; response_type?: string }) => Promise<void>) => Promise<void>;
 };
 
 export const registerSlackHandlers = (app: SlackAppLike, router: MessageRouter): void => {
@@ -32,6 +33,13 @@ export const registerSlackHandlers = (app: SlackAppLike, router: MessageRouter):
         "Handling Slack direct message event"
       );
       await router.handleMessage?.(event, say);
+    });
+  }
+
+  if (router.handleSlashCommand) {
+    (app as any).command("/new", async ({ command, ack, respond }) => {
+      logger.debug({ command: command.command }, "Handling Slack slash command");
+      await router.handleSlashCommand?.(command, ack, respond);
     });
   }
 };

@@ -1,4 +1,4 @@
-import { logger } from "../utils/logging.jss";
+import { logger } from "../utils/logging.ts";
 
 interface DebouncedOperation<T extends any[]> {
   key: string;

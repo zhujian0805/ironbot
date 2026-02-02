@@ -270,8 +270,8 @@ export class MemoryManager {
     if (!isMainSessionKey(sessionKey) && this.longTermPaths.size) {
       filtered = filtered.filter((chunk) => !this.longTermPaths.has(path.resolve(chunk.path)));
     }
-    // Filter session chunks to only include the current session
-    if (sessionKey) {
+    // Filter session chunks based on cross-session memory setting
+    if (sessionKey && !this.config.memorySearch.crossSessionMemory) {
       filtered = filtered.filter((chunk) => chunk.source !== "sessions" || chunk.sessionKey === sessionKey);
     }
     return filtered;

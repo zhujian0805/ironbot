@@ -38,17 +38,42 @@ export const deriveSlackSessionKey = (params: {
   ts?: string | null;
   isDirectMessage?: boolean;
   mainKey?: string;
+  forceNewSession?: boolean;
 }): SessionKeyResult => {
   const channel = (params.channel ?? "").trim();
   const mainKey = params.mainKey ?? DEFAULT_MAIN_SESSION_KEY;
   const isDm = params.isDirectMessage ?? channel.startsWith("D");
+
+  // If forcing a new session, create a unique session key
+  if (params.forceNewSession) {
+    const timestamp = Date.now();
+    const uniqueId = `new-${timestamp}-${Math.random().toString(36).substr(2, 9)}`;
+    return {
+      sessionKey: `fresh:${uniqueId}`,
+      baseKey: `fresh:${uniqueId}`,
+      isMain: false
+    };
+  }
+
   if (isDm) {
-    return { sessionKey: mainKey, baseKey: mainKey, isMain: true };
+    const channelKey = normalizeToken(channel) || "unknown";
+    const baseKey = `dm:${channelKey}`;
+    const threadId = params.threadTs?.trim();
+    if (!threadId) {
+      return { sessionKey: baseKey, baseKey, isMain: false };
+    }
+    const normalizedThread = normalizeToken(threadId);
+    return {
+      sessionKey: `${baseKey}:thread:${normalizedThread}`,
+      baseKey,
+      threadId: normalizedThread,
+      isMain: false
+    };
   }
 
   const channelKey = normalizeToken(channel) || "unknown";
   const baseKey = `slack:${channelKey}`;
-  const threadId = (params.threadTs ?? params.ts ?? "").trim();
+  const threadId = params.threadTs?.trim();
   if (!threadId) {
     return { sessionKey: baseKey, baseKey, isMain: false };
   }

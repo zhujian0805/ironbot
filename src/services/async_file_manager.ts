@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { logger } from "../utils/logging.jss";
+import { logger } from "../utils/logging.ts";
 
 interface FileOperation {
   id: string;

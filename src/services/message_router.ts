@@ -33,6 +33,7 @@ export class MessageRouter {
   private claude: ClaudeProcessor;
   private slackClient?: SlackClientLike;
   private config: AppConfig;
+  private newConversationChannels: Set<string> = new Set();
 
   constructor(claude: ClaudeProcessor, slackClient?: SlackClientLike, config: AppConfig = resolveConfig()) {
     this.claude = claude;
@@ -91,6 +92,15 @@ export class MessageRouter {
     const threadTs = event.thread_ts ?? messageTs;
     const responsePrefix = "↪️ ";
 
+    // Check if this is a new conversation request
+    const userKey = `${channel}:${event.user}`;
+    const forceNewSession = this.newConversationChannels.has(userKey);
+
+    if (forceNewSession) {
+      this.newConversationChannels.delete(userKey);
+      logger.info({ channel, userId: event.user }, "Starting new conversation without history");
+    }
+
     logger.debug(
       {
         channel,
@@ -99,7 +109,8 @@ export class MessageRouter {
         computedMessageTs: messageTs,
         threadTs,
         isDm: channel.startsWith("D"),
-        tsWasGenerated: !event.ts
+        tsWasGenerated: !event.ts,
+        forceNewSession
       },
       "Message event received"
     );
@@ -108,7 +119,8 @@ export class MessageRouter {
       channel,
       threadTs: event.thread_ts,
       ts: event.ts,
-      mainKey: this.config.sessions.dmSessionKey
+      mainKey: this.config.sessions.dmSessionKey,
+      forceNewSession
     });
 
     let conversationHistory = [] as MessageParam[];
@@ -227,6 +239,41 @@ export class MessageRouter {
       } catch (error) {
         logger.warn({ error }, "Failed to update session metadata");
       }
+    }
+  }
+
+  async handleSlashCommand(
+    command: { command: string; text: string; channel_id: string; user_id: string; trigger_id: string },
+    ack: () => Promise<void>,
+    respond: (message: string | { text: string; response_type?: string }) => Promise<void>
+  ): Promise<void> {
+    await ack();
+
+    if (command.command === "/new") {
+      const channel = command.channel_id;
+      const userId = command.user_id;
+
+      logger.info({ channel, userId, command: command.command }, "Handling /new command");
+
+      // Mark this channel as starting a new conversation
+      this.newConversationChannels.add(`${channel}:${userId}`);
+
+      // Respond with confirmation
+      await respond({
+        text: "🆕 Starting a new conversation! Your next message will begin fresh without previous history.",
+        response_type: "ephemeral" // Only visible to the user who ran the command
+      });
+
+      // Send a public message to acknowledge
+      if (this.slackClient) {
+        await this.slackClient.chat.postMessage({
+          channel,
+          text: `👋 <@${userId}> wants to start a new conversation. Send your message and I'll begin fresh!`,
+          mrkdwn: true
+        });
+      }
+
+      logger.info({ channel, userId }, "New conversation initiated");
     }
   }
 }

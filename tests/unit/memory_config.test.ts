@@ -32,6 +32,7 @@ describe("memory config defaults", () => {
     expect(config.memorySearch.candidateMultiplier).toBe(4);
     expect(config.memorySearch.maxResults).toBe(6);
     expect(config.memorySearch.minScore).toBe(0.35);
+    expect(config.memorySearch.crossSessionMemory).toBe(false);
   });
 
   it("selects local embeddings by default with auto provider", () => {

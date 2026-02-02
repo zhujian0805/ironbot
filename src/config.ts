@@ -76,6 +76,7 @@ export type MemorySearchConfig = {
   maxResults: number;
   minScore: number;
   sources: Array<"memory" | "sessions">;
+  crossSessionMemory: boolean;
   storePath?: string;
 };
 
@@ -156,6 +157,7 @@ const loadBaseConfig = (): AppConfig => {
       maxResults: parseInteger(process.env.IRONBOT_MEMORY_MAX_RESULTS, 6),
       minScore: parseNumber(process.env.IRONBOT_MEMORY_MIN_SCORE, 0.35),
       sources: parseStringArray(process.env.IRONBOT_MEMORY_SOURCES, ["memory"]) as Array<"memory" | "sessions">,
+      crossSessionMemory: parseBoolean(process.env.IRONBOT_MEMORY_CROSS_SESSION, false),
       storePath: memoryStorePath
     },
     embeddings: {

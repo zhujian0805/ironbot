@@ -98,7 +98,8 @@ describe("MemoryManager", () => {
           textWeight: 0.3,
           candidateMultiplier: 2,
           maxResults: 10,
-          minScore: 0.1
+          minScore: 0.1,
+          crossSessionMemory: false
         },
         embeddings: {
           provider: "none",
@@ -117,7 +118,7 @@ describe("MemoryManager", () => {
     it("creates database file in correct location", () => {
       const config = {
         memory: { workspaceDir: "/workspace", sessionIndexing: false },
-        memorySearch: { enabled: true, sources: ["memory"], storePath: undefined, vectorWeight: 0.5, textWeight: 0.5, candidateMultiplier: 2, maxResults: 10, minScore: 0 },
+        memorySearch: { enabled: true, sources: ["memory"], storePath: undefined, vectorWeight: 0.5, textWeight: 0.5, candidateMultiplier: 2, maxResults: 10, minScore: 0, crossSessionMemory: false },
         embeddings: { provider: "none", fallback: "none" }
       } as any;
 
@@ -141,7 +142,8 @@ describe("MemoryManager", () => {
           textWeight: 1,
           candidateMultiplier: 2,
           maxResults: 10,
-          minScore: 0
+          minScore: 0,
+          crossSessionMemory: false
         },
         embeddings: { provider: "none", fallback: "none" }
       } as any;
@@ -154,7 +156,7 @@ describe("MemoryManager", () => {
     it("returns empty array when search is disabled", async () => {
       const config = {
         memory: { workspaceDir: "/workspace", sessionIndexing: false },
-        memorySearch: { enabled: false, sources: [], storePath: undefined, vectorWeight: 0, textWeight: 0, candidateMultiplier: 1, maxResults: 1, minScore: 0 },
+        memorySearch: { enabled: false, sources: [], storePath: undefined, vectorWeight: 0, textWeight: 0, candidateMultiplier: 1, maxResults: 1, minScore: 0, crossSessionMemory: false },
         embeddings: { provider: "none", fallback: "none" }
       } as any;
 
@@ -209,7 +211,8 @@ describe("MemoryManager", () => {
           textWeight: 1,
           candidateMultiplier: 2,
           maxResults: 10,
-          minScore: 0
+          minScore: 0,
+          crossSessionMemory: false
         },
         embeddings: { provider: "none", fallback: "none" }
       } as any;
@@ -237,7 +240,7 @@ describe("MemoryManager", () => {
     it("skips recording when session indexing disabled", async () => {
       const config = {
         memory: { workspaceDir: "/workspace", sessionIndexing: false },
-        memorySearch: { enabled: true, sources: ["sessions"], storePath: undefined, vectorWeight: 0, textWeight: 1, candidateMultiplier: 2, maxResults: 10, minScore: 0 },
+        memorySearch: { enabled: true, sources: ["sessions"], storePath: undefined, vectorWeight: 0, textWeight: 1, candidateMultiplier: 2, maxResults: 10, minScore: 0, crossSessionMemory: false },
         embeddings: { provider: "none", fallback: "none" }
       } as any;
 
@@ -270,7 +273,7 @@ describe("MemoryManager", () => {
     it("logs memory manager status", () => {
       const config = {
         memory: { workspaceDir: "/workspace", sessionIndexing: true },
-        memorySearch: { enabled: true, sources: ["memory"], storePath: undefined, vectorWeight: 0.5, textWeight: 0.5, candidateMultiplier: 2, maxResults: 10, minScore: 0 },
+        memorySearch: { enabled: true, sources: ["memory"], storePath: undefined, vectorWeight: 0.5, textWeight: 0.5, candidateMultiplier: 2, maxResults: 10, minScore: 0, crossSessionMemory: false },
         embeddings: { provider: "none", fallback: "none" }
       } as any;
 
@@ -288,4 +291,4 @@ describe("MemoryManager", () => {
       );
     });
   });
-});</content>
+});
