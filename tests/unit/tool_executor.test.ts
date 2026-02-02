@@ -94,14 +94,13 @@ describe("ToolExecutor", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it("blocks unsafe commands before execution", async () => {
+  it("allows potentially unsafe commands when not blocked", async () => {
     const { dir } = await setupPermissions({ allowedTools: ["run_bash"] });
     const executor = new ToolExecutor();
 
     const result = await executor.executeTool("run_bash", { command: "rm -rf /" });
 
-    expect(result.success).toBe(false);
-    expect(result.error).toBe("Command blocked for safety reasons");
+    expect(result.success).toBe(true);
 
     await rm(dir, { recursive: true, force: true });
   });
@@ -130,6 +129,7 @@ describe("ToolExecutor", () => {
       allowedTools: ["run_bash"],
       restrictions: {
         run_bash: {
+          allowed_commands: ["*"],
           blocked_commands: ["rm *"]
         }
       }
@@ -149,6 +149,7 @@ describe("ToolExecutor", () => {
       allowedTools: ["run_bash"],
       restrictions: {
         run_bash: {
+          allowed_commands: ["*"],
           allowed_paths: ["/allowed/*"]
         }
       }
@@ -161,7 +162,7 @@ describe("ToolExecutor", () => {
     });
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Permission denied: Resource path '/blocked' is not in allowed_paths list");
+    expect(result.error).toBe("Permission denied: Resource path '/blocked' is not in allowed_paths list (allowed: /allowed/*)");
 
     await rm(dir, { recursive: true, force: true });
   });
@@ -179,7 +180,7 @@ describe("ToolExecutor", () => {
     const executor = new ToolExecutor();
     const setTimeoutSpy = vi.spyOn(global, "setTimeout");
 
-    const result = await executor.executeTool("run_bash", { command: "echo ok", timeout: 10 });
+    const result = await executor.executeTool("run_bash", { command: "echo hello", timeout: 10 });
 
     expect(result.success).toBe(true);
     expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 1000);

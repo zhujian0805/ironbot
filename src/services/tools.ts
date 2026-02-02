@@ -293,7 +293,7 @@ export class ToolExecutor {
               error: `Permission denied: No commands allowed for this tool (allowed_commands is empty)`
             };
           }
-          const isAllowed = commandMatchesPattern(command, restrictions.allowedCommands);
+          const isAllowed = findMatchingPattern(command, restrictions.allowedCommands) !== undefined;
           logger.debug({ toolName, command, isAllowed, patterns: restrictions.allowedCommands }, "[TOOL-FLOW] Command pattern match result");
           if (!isAllowed) {
             const allowedList = restrictions.allowedCommands.join(", ");
@@ -303,7 +303,20 @@ export class ToolExecutor {
             );
             return {
               success: false,
-              error: `Permission denied: Command must start with one of: ${allowedList}`
+              error: `Permission denied: Command '${command}' is not in allowed_commands list`
+            };
+          }
+        }
+        if (restrictions.blockedCommands.length > 0) {
+          const blockedPattern = findMatchingPattern(command, restrictions.blockedCommands);
+          if (blockedPattern) {
+            logger.debug(
+              { toolName, command, blockedBy: blockedPattern, blockedCommands: restrictions.blockedCommands },
+              "Tool execution denied: command in blocked list"
+            );
+            return {
+              success: false,
+              error: `Permission denied: Command '${command}' is blocked by rule '${blockedPattern}'`
             };
           }
         }

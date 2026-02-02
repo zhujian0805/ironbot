@@ -62,7 +62,7 @@ describe("Memory Search", () => {
     it("calculates similarity between opposite vectors", () => {
       const a = [1, 2];
       const b = [-1, -2];
-      expect(cosineSimilarity(a, b)).toBe(-1);
+      expect(cosineSimilarity(a, b)).toBeCloseTo(-1);
     });
 
     it("handles zero vectors", () => {
@@ -73,7 +73,7 @@ describe("Memory Search", () => {
     it("handles vectors of different lengths", () => {
       const a = [1, 2, 3];
       const b = [1, 2];
-      expect(cosineSimilarity(a, b)).toBe(1);
+      expect(cosineSimilarity(a, b)).toBeCloseTo(1);
     });
   });
 

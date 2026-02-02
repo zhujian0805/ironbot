@@ -200,6 +200,8 @@ describe("Embedding Clients", () => {
     });
 
     it("falls back to none when no clients available", () => {
+      vi.mocked(fs).existsSync.mockReturnValue(false);
+
       const client = resolveEmbeddingClient({
         provider: "auto",
         openai: { apiKey: undefined },

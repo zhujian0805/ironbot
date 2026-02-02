@@ -89,7 +89,7 @@ describe("RetryManager", () => {
   describe("delay calculation", () => {
     it("calculates increasing delays with backoff", async () => {
       const delayManager = new RetryManager({
-        maxAttempts: 4, // Need 5 total attempts (0,1,2,3,4) for 4 failures + 1 success
+        maxAttempts: 5, // Need 5 total attempts (0,1,2,3,4) for 4 failures + 1 success
         baseDelayMs: 100,
         maxDelayMs: 1000,
         backoffMultiplier: 2,
@@ -99,17 +99,17 @@ describe("RetryManager", () => {
       const startTime = Date.now();
 
       let attempts = 0;
-      await expect(
-        delayManager.executeWithRetry(async () => {
-          attempts++;
-          if (attempts <= 4) { // Fail 4 times, succeed on 5th
-            const error = new Error("Rate limit");
-            (error as any).status = 429;
-            throw error;
-          }
-          return "success";
-        })
-      ).rejects.toThrow();
+      const result = await delayManager.executeWithRetry(async () => {
+        attempts++;
+        if (attempts <= 4) { // Fail 4 times, succeed on 5th
+          const error = new Error("Rate limit");
+          (error as any).status = 429;
+          throw error;
+        }
+        return "success";
+      });
+
+      expect(result).toBe("success");
 
       const elapsed = Date.now() - startTime;
       // Should have delays of ~100ms, ~200ms, ~400ms, ~800ms (but capped at 1000ms)

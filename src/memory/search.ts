@@ -43,7 +43,7 @@ const cosineSimilarity = (a: number[], b: number[]): number => {
   }
   if (!normA || !normB) return 0;
   const score = dot / (Math.sqrt(normA) * Math.sqrt(normB));
-  return Number.isFinite(score) ? Math.max(0, Math.min(1, score)) : 0;
+  return Number.isFinite(score) ? score : 0;
 };
 
 const jaccardSimilarity = (a: string[], b: string[]): number => {
@@ -57,6 +57,8 @@ const jaccardSimilarity = (a: string[], b: string[]): number => {
   const union = setA.size + setB.size - intersection;
   return union ? intersection / union : 0;
 };
+
+export { cosineSimilarity, jaccardSimilarity };
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 

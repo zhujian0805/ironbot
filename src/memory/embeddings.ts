@@ -131,6 +131,8 @@ const buildNoneClient = (): EmbeddingClient => ({
   embed: async () => []
 });
 
+export { buildNoneClient, buildOpenAiClient, buildGeminiClient, buildLocalClient };
+
 const resolveClientForProvider = (
   provider: EmbeddingProvider,
   config: EmbeddingsConfig

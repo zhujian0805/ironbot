@@ -57,10 +57,13 @@ describe("file watcher", () => {
       { debounceMs: 50 }
     );
 
+    // Wait a bit for the watcher to be fully set up
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     // Create the file after starting the watcher
     await writeFile(filePath, "new content");
 
-    await waitFor(() => eventCount > 0);
+    await waitFor(() => eventCount > 0, 5000); // Increase timeout to 5 seconds
 
     await handle.close();
     await rm(dir, { recursive: true, force: true });

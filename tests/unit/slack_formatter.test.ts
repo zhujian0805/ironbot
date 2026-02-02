@@ -23,7 +23,7 @@ describe("Slack Markdown Formatter", () => {
 
     it("converts headers to bold text with emojis", () => {
       const input = "# Main Header\n## Sub Header\n### Details";
-      const expected = "*🔷 Main Header*\n*📌 Sub Header*\n*📋 Details*";
+      const expected = "*🔷 Main Header*\n*📌 Sub Header*\n*📋 Details*\n";
       expect(toSlackMarkdown(input)).toBe(expected);
     });
 

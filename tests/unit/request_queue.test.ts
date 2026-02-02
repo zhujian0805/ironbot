@@ -200,14 +200,19 @@ describe("RequestQueue", () => {
         return "active";
       });
 
-      // Queue several more requests
+      // Queue several more requests - attach catch handlers immediately to prevent unhandled rejections
       const queuedPromises: Promise<any>[] = [];
+      const rejectionReasons: string[] = [];
       for (let i = 0; i < 3; i++) {
-        queuedPromises.push(
-          testQueue.enqueue("postMessage", "high", async () => {
-            return `queued${i}`;
-          })
-        );
+        const promise = testQueue.enqueue("postMessage", "high", async () => {
+          return `queued${i}`;
+        });
+        // Attach catch handler immediately to prevent unhandled rejection warnings
+        promise.catch((error) => {
+          rejectionReasons.push(error.message);
+          return error; // Return something to satisfy the catch
+        });
+        queuedPromises.push(promise);
       }
 
       // Wait for the active request to start
@@ -223,6 +228,10 @@ describe("RequestQueue", () => {
       for (const promise of queuedPromises) {
         await expect(promise).rejects.toThrow("Request queue cleared");
       }
+
+      // Verify we got the expected number of rejections
+      expect(rejectionReasons).toHaveLength(3);
+      expect(rejectionReasons.every(reason => reason === "Request queue cleared")).toBe(true);
     });
   });
 

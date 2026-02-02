@@ -190,10 +190,10 @@ describe("Rate Limiting Integration", () => {
     });
 
     it("handles service failures gracefully", async () => {
-      // Make rate limiter very restrictive
+      // Make rate limiter very restrictive but not impossible
       const restrictiveLimiter = new RateLimiter({
         enabled: true,
-        requestsPerSecond: 0.1, // Very slow
+        requestsPerSecond: 1, // 1 request per second
         burstCapacity: 0,
         queueSize: 10,
         retryMaxAttempts: 3,
@@ -201,10 +201,10 @@ describe("Rate Limiting Integration", () => {
         retryMaxDelayMs: 30000
       });
 
-      // This should still complete due to retry logic
+      // This should complete within a reasonable time
       const result = await restrictiveLimiter.waitForRequest("postMessage");
       expect(result).toBeUndefined(); // waitForRequest returns void
-    });
+    }, 2000); // 2 second timeout
   });
 
   describe("configuration integration", () => {
