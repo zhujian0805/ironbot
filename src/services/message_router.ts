@@ -300,6 +300,8 @@ export class MessageRouter {
       await this.handleClearCommand(command, respond);
     } else if (command.command === "/remember") {
       await this.handleRememberCommand(command, respond);
+    } else if (command.command === "/forget_all") {
+      await this.handleForgetAllCommand(command, respond);
     }
   }
 
@@ -395,5 +397,74 @@ export class MessageRouter {
     await respondOrSay(`🧠 <@${userId}> has enabled global cross-session memory. I will now remember all historical conversations across all channels and threads!`);
 
     logger.info({ channel, userId, threadTs }, "Global cross-session memory enabled");
+  }
+
+  private async handleForgetAllCommand(
+    command: { command: string; text: string; channel_id: string; user_id: string; trigger_id: string },
+    respondOrSay: (message: string | { text: string; response_type?: string; thread_ts?: string }) => Promise<void>
+  ): Promise<void> {
+    const channel = command.channel_id;
+    const userId = command.user_id;
+
+    logger.info({ channel, userId, command: command.command }, "Handling /forget_all command");
+
+    // Delete all transcript files
+    try {
+      const transcriptsDir = this.config.sessions.transcriptsDir;
+      if (transcriptsDir) {
+        const fs = await import("node:fs");
+        const path = await import("node:path");
+
+        // Check if directory exists
+        try {
+          await fs.promises.access(transcriptsDir, fs.constants.F_OK);
+          // Delete all .jsonl files in the transcripts directory
+          const files = await fs.promises.readdir(transcriptsDir);
+          for (const file of files) {
+            if (file.endsWith('.jsonl')) {
+              const filePath = path.join(transcriptsDir, file);
+              await fs.promises.unlink(filePath);
+              logger.debug({ filePath }, "Deleted transcript file");
+            }
+          }
+          logger.info({ transcriptsDir }, "Deleted all transcript files");
+        } catch (error) {
+          logger.debug({ transcriptsDir, error }, "Transcripts directory not found or could not be accessed");
+        }
+      }
+    } catch (error) {
+      logger.warn({ error }, "Failed to delete transcript files");
+    }
+
+    // Clear all memory entries
+    try {
+      await this.claude.clearAllMemory();
+      logger.info("Cleared all memory entries");
+    } catch (error) {
+      logger.warn({ error }, "Failed to clear memory");
+    }
+
+    // Reset all cross-session memory settings
+    this.crossSessionMemoryChannels.clear();
+    this.globalCrossSessionMemory = false;
+
+    // Clear new conversation channels
+    this.newConversationChannels.clear();
+
+    // Check if this is a slash command (has response_type support) or regular message
+    const isSlashCommand = typeof respondOrSay === 'function' && command.trigger_id;
+
+    if (isSlashCommand) {
+      // For slash commands, send ephemeral confirmation
+      await (respondOrSay as any)({
+        text: "🗑️ All conversation history and memory have been permanently deleted!",
+        response_type: "ephemeral"
+      });
+    }
+
+    // Send a public message to acknowledge
+    await respondOrSay(`🗑️ <@${userId}> has deleted ALL conversation history and memory. Starting completely fresh!`);
+
+    logger.info({ channel, userId }, "All conversation history and memory deleted");
   }
 }

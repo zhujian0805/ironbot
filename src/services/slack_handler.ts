@@ -45,6 +45,10 @@ export const registerSlackHandlers = (app: SlackAppLike, router: MessageRouter):
       logger.debug({ command: command.command }, "Handling Slack slash command");
       await router.handleSlashCommand?.(command, ack, respond);
     });
+    (app as any).command("/forget_all", async ({ command, ack, respond }) => {
+      logger.debug({ command: command.command }, "Handling Slack slash command");
+      await router.handleSlashCommand?.(command, ack, respond);
+    });
   }
 };
 

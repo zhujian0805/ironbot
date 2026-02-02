@@ -1,23 +1,35 @@
 // Mock the modules BEFORE imports
 vi.mock("@anthropic-ai/sdk", () => ({
-  default: vi.fn(() => ({
-    messages: {
-      create: vi.fn()
+  default: class MockAnthropic {
+    constructor() {
+      return {
+        messages: {
+          create: vi.fn()
+        }
+      };
     }
-  }))
+  }
 }));
 
 vi.mock("../../src/services/tools.ts", () => ({
-  ToolExecutor: vi.fn().mockImplementation(() => ({
-    executeTool: vi.fn()
-  })),
+  ToolExecutor: class MockToolExecutor {
+    constructor() {
+      return {
+        executeTool: vi.fn()
+      };
+    }
+  },
   getAllowedTools: vi.fn().mockReturnValue([])
 }));
 
 vi.mock("../../src/services/skill_loader.ts", () => ({
-  SkillLoader: vi.fn().mockImplementation(() => ({
-    loadSkills: vi.fn()
-  }))
+  SkillLoader: class MockSkillLoader {
+    constructor() {
+      return {
+        loadSkills: vi.fn()
+      };
+    }
+  }
 }));
 
 vi.mock("../../src/config.ts", () => ({
@@ -60,15 +72,12 @@ describe("ClaudeProcessor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // The mock Anthropic constructor returns a mock client
-    mockAnthropicClient = MockAnthropic.mock.results[MockAnthropic.mock.calls.length - 1]?.value;
-    if (!mockAnthropicClient) {
-      mockAnthropicClient = {
-        messages: {
-          create: vi.fn()
-        }
-      };
-    }
+    // Create a mock Anthropic client
+    mockAnthropicClient = {
+      messages: {
+        create: vi.fn()
+      }
+    };
 
     mockToolExecutorInstance = {
       executeTool: vi.fn()
@@ -370,6 +379,27 @@ describe("ClaudeProcessor", () => {
 
       expect(mockAnthropicClient.messages.create).toHaveBeenCalledTimes(7); // 6 tool calls + 1 final
       expect(result).toBe("Maximum iterations reached");
+    });
+  });
+
+  describe("clearAllMemory", () => {
+    it("calls clearAllMemory on memory manager when available", async () => {
+      const mockMemoryManager = {
+        clearAllMemory: vi.fn().mockResolvedValue(undefined)
+      };
+
+      const processor = new ClaudeProcessor("test-token", "claude-3-sonnet-20240229", false, mockMemoryManager as any);
+
+      await processor.clearAllMemory();
+
+      expect(mockMemoryManager.clearAllMemory).toHaveBeenCalledTimes(1);
+    });
+
+    it("does nothing when memory manager is not available", async () => {
+      const processor = new ClaudeProcessor("test-token", "claude-3-sonnet-20240229", false, undefined);
+
+      // Should not throw an error
+      await expect(processor.clearAllMemory()).resolves.toBeUndefined();
     });
   });
 });

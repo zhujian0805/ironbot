@@ -135,10 +135,10 @@ describe("MessageRouter", () => {
 
     expect(ack).toHaveBeenCalledTimes(1);
     expect(respond).toHaveBeenCalledWith({
-      text: "🧹 Clearing conversation history! Your next message will start fresh without previous context.",
+      text: "🧹 Clearing conversation history and disabling cross-session memory! Memory is now per-thread.",
       response_type: "ephemeral"
     });
-    expect(respond).toHaveBeenCalledWith("🧹 <@U456> has cleared the conversation history. Send your message and I'll start fresh!");
+    expect(respond).toHaveBeenCalledWith("🧹 <@U456> has cleared the conversation history and disabled cross-session memory. Memory is now per-thread!");
 
     await rm(dir, { recursive: true, force: true });
   });
@@ -165,13 +165,44 @@ describe("MessageRouter", () => {
 
     expect(ack).toHaveBeenCalledTimes(1);
     expect(respond).toHaveBeenCalledWith({
-      text: "🧠 Cross-session memory enabled! I will now remember all historical conversations across threads.",
+      text: "🧠 Global cross-session memory enabled! I will now remember all historical conversations across all channels and threads.",
       response_type: "ephemeral"
     });
+    expect(respond).toHaveBeenCalledWith("🧠 <@U456> has enabled global cross-session memory. I will now remember all historical conversations across all channels and threads!");
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("handles /forget_all command", async () => {
+    const { dir, config } = await createConfig();
+    const postMessage = vi.fn().mockResolvedValue({ ts: "123" });
+    const slackClient = { chat: { postMessage } };
+    const claude = {
+      processMessage: vi.fn().mockResolvedValue("Response"),
+      clearAllMemory: vi.fn().mockResolvedValue(undefined)
+    };
+    const router = new MessageRouter(claude as unknown as { processMessage: (text: string) => Promise<string> }, slackClient, config);
+
+    const ack = vi.fn().mockResolvedValue(undefined);
+    const respond = vi.fn().mockResolvedValue(undefined);
+
+    const command = {
+      command: "/forget_all",
+      text: "",
+      channel_id: "C123",
+      user_id: "U456",
+      trigger_id: "trigger123"
+    };
+
+    await router.handleSlashCommand(command, ack, respond);
+
+    expect(ack).toHaveBeenCalledTimes(1);
     expect(respond).toHaveBeenCalledWith({
-      text: "🧠 <@U456> has enabled cross-session memory for this channel. I will now remember all historical conversations!",
-      thread_ts: ""
+      text: "🗑️ All conversation history and memory have been permanently deleted!",
+      response_type: "ephemeral"
     });
+    expect(respond).toHaveBeenCalledWith("🗑️ <@U456> has deleted ALL conversation history and memory. Starting completely fresh!");
+    expect(claude.clearAllMemory).toHaveBeenCalledTimes(1);
 
     await rm(dir, { recursive: true, force: true });
   });

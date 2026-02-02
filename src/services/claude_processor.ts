@@ -133,6 +133,11 @@ export class ClaudeProcessor {
     await this.memoryManager.clearMemoryForSession(sessionKey);
   }
 
+  async clearAllMemory(): Promise<void> {
+    if (!this.memoryManager) return;
+    await this.memoryManager.clearAllMemory();
+  }
+
   async processMessage(
     userMessage: string,
     options: { conversationHistory?: MessageParam[]; sessionKey?: string; crossSessionMemory?: boolean } = {}

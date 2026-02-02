@@ -46,6 +46,7 @@ describe("Slack Handler", () => {
 
       expect(mockApp.command).toHaveBeenCalledWith("/clear", expect.any(Function));
       expect(mockApp.command).toHaveBeenCalledWith("/remember", expect.any(Function));
+      expect(mockApp.command).toHaveBeenCalledWith("/forget_all", expect.any(Function));
     });
 
     it("does not register slash command handler when handleSlashCommand is not provided", () => {
@@ -429,9 +430,10 @@ describe("Slack Handler", () => {
       handler.registerHandlers();
 
       expect(mockApp.event).toHaveBeenCalledTimes(2);
-      expect(mockApp.command).toHaveBeenCalledTimes(2);
+      expect(mockApp.command).toHaveBeenCalledTimes(3);
       expect(mockApp.command).toHaveBeenCalledWith("/clear", expect.any(Function));
       expect(mockApp.command).toHaveBeenCalledWith("/remember", expect.any(Function));
+      expect(mockApp.command).toHaveBeenCalledWith("/forget_all", expect.any(Function));
     });
   });
 
@@ -450,9 +452,10 @@ describe("Slack Handler", () => {
       const handler = new SlackMessageHandler(mockApp as any, mockRouter);
       handler.registerHandlers();
 
-      expect(mockApp.command).toHaveBeenCalledTimes(2);
+      expect(mockApp.command).toHaveBeenCalledTimes(3);
       expect(mockApp.command).toHaveBeenCalledWith("/clear", expect.any(Function));
       expect(mockApp.command).toHaveBeenCalledWith("/remember", expect.any(Function));
+      expect(mockApp.command).toHaveBeenCalledWith("/forget_all", expect.any(Function));
     });
 
     it("handles /clear command correctly", async () => {

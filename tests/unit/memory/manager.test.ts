@@ -272,6 +272,43 @@ describe("MemoryManager", () => {
     });
   });
 
+  describe("clearAllMemory", () => {
+    it("clears all chunks and files from database", async () => {
+      const config = {
+        memory: { workspaceDir: "/workspace", sessionIndexing: true },
+        memorySearch: { enabled: true, sources: ["memory"], storePath: undefined, vectorWeight: 0.5, textWeight: 0.5, candidateMultiplier: 2, maxResults: 10, minScore: 0, crossSessionMemory: false },
+        embeddings: { provider: "none", fallback: "none" }
+      } as any;
+
+      const db = new Database(":memory:");
+      const manager = new MemoryManager(config);
+      (manager as any).db = db;
+
+      // Insert some test data
+      db.prepare("INSERT INTO files (path, source, session_key) VALUES (?, ?, ?)").run("/test1.jsonl", "sessions", "session1");
+      db.prepare("INSERT INTO files (path, source, session_key) VALUES (?, ?, ?)").run("/test2.jsonl", "sessions", "session2");
+      db.prepare("INSERT INTO chunks (file_id, content, embedding) VALUES (?, ?, ?)").run(1, "test content 1", "[1,2,3]");
+      db.prepare("INSERT INTO chunks (file_id, content, embedding) VALUES (?, ?, ?)").run(2, "test content 2", "[4,5,6]");
+
+      // Verify data exists
+      let files = db.prepare("SELECT COUNT(*) as count FROM files").get();
+      let chunks = db.prepare("SELECT COUNT(*) as count FROM chunks").get();
+      expect(files.count).toBe(2);
+      expect(chunks.count).toBe(2);
+
+      // Clear all memory
+      await manager.clearAllMemory();
+
+      // Verify data is cleared
+      files = db.prepare("SELECT COUNT(*) as count FROM files").get();
+      chunks = db.prepare("SELECT COUNT(*) as count FROM chunks").get();
+      expect(files.count).toBe(0);
+      expect(chunks.count).toBe(0);
+
+      db.close();
+    });
+  });
+
   describe("logStatus", () => {
     it("logs memory manager status", () => {
       const config = {

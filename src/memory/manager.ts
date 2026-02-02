@@ -440,4 +440,10 @@ export class MemoryManager {
     this.db.prepare("DELETE FROM files WHERE source = 'sessions' AND session_key = ?").run(sessionKey);
     logger.info({ sessionKey }, "Cleared memory for session");
   }
+
+  async clearAllMemory(): Promise<void> {
+    this.db.prepare("DELETE FROM chunks").run();
+    this.db.prepare("DELETE FROM files").run();
+    logger.info("Cleared all memory entries from database");
+  }
 }
