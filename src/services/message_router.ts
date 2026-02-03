@@ -8,6 +8,7 @@ import { appendTranscriptMessage, loadTranscriptHistory, resolveSessionTranscrip
 import { updateLastRoute } from "../sessions/store.ts";
 import fs from "node:fs";
 import path from "node:path";
+import { SlackConnectionSupervisor } from "./slack_connection_supervisor.ts";
 
 type SlackClientLike = {
   chat: {
@@ -38,11 +39,18 @@ export class MessageRouter {
   private newConversationChannels: Set<string> = new Set();
   private crossSessionMemoryChannels: Set<string> = new Set();
   private globalCrossSessionMemory: boolean = false;
+  private slackSupervisor?: SlackConnectionSupervisor;
 
-  constructor(claude: ClaudeProcessor, slackClient?: SlackClientLike, config: AppConfig = resolveConfig()) {
+  constructor(
+    claude: ClaudeProcessor,
+    slackClient?: SlackClientLike,
+    config: AppConfig = resolveConfig(),
+    slackSupervisor?: SlackConnectionSupervisor
+  ) {
     this.claude = claude;
     this.slackClient = slackClient;
     this.config = config;
+    this.slackSupervisor = slackSupervisor;
   }
 
   private async setThreadStatus(params: { channelId: string; threadTs?: string; status: string }): Promise<void> {
@@ -90,6 +98,7 @@ export class MessageRouter {
 
     const text = event.text ?? "";
     const channel = event.channel ?? "";
+    this.slackSupervisor?.recordActivity();
     
     // Check for commands in messages (e.g., "/remember" typed as a message)
     // Handle these BEFORE storing the message in transcript

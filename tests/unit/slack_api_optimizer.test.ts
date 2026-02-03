@@ -157,6 +157,8 @@ describe("SlackApiOptimizer", () => {
       const stats = optimizer.getStats();
       expect(stats.activeDebouncedOperations).toBe(0);
       expect(stats.activeTypingIndicators).toBe(0);
+      expect(stats.activeCooldowns).toBe(0);
+      expect(stats.cooldownEntries).toEqual([]);
 
       optimizer.setTypingIndicator("C123", undefined, mockSetStatus, 1000);
       optimizer.debounce("test", vi.fn(), 100);

@@ -86,6 +86,13 @@ export type SlackRetryConfig = {
   maxDelayMs: number;
 };
 
+export type SlackRateLimitConfig = {
+  enabled: boolean;
+  requestsPerSecond: number;
+  burstCapacity: number;
+  queueSize: number;
+};
+
 export type EmbeddingsConfig = {
   provider: EmbeddingProvider;
   fallback: EmbeddingProvider;
@@ -132,6 +139,7 @@ export type AppConfig = {
   embeddings: EmbeddingsConfig;
   retry: RetryConfig;
   slackRetry: SlackRetryConfig;
+  slackRateLimit: SlackRateLimitConfig;
 };
 
 const DEFAULT_OPENAI_MODEL = "text-embedding-3-small";
@@ -215,6 +223,12 @@ const loadBaseConfig = (): AppConfig => {
       maxDelayMs: parseInteger(process.env.IRONBOT_RETRY_MAX_DELAY_MS, 30000),
       backoffMultiplier: parseNumber(process.env.IRONBOT_RETRY_BACKOFF_MULTIPLIER, 2),
       jitterMax: parseNumber(process.env.IRONBOT_RETRY_JITTER_MAX, 0.1)
+    },
+    slackRateLimit: {
+      enabled: parseBoolean(process.env.SLACK_RATE_LIMIT_ENABLED, true),
+      requestsPerSecond: parseInteger(process.env.SLACK_RATE_LIMIT_RPS, 5),
+      burstCapacity: parseInteger(process.env.SLACK_RATE_LIMIT_BURST, 10),
+      queueSize: parseInteger(process.env.SLACK_RATE_LIMIT_QUEUE_SIZE, 50)
     },
     slackRetry: {
       maxAttempts: parseInteger(process.env.IRONBOT_SLACK_RETRY_MAX_ATTEMPTS, 3),

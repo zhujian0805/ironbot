@@ -8,6 +8,10 @@ import { ClaudeProcessor } from "./services/claude_processor.ts";
 import { MessageRouter } from "./services/message_router.ts";
 import { MemoryManager } from "./memory/manager.ts";
 import { parseCliArgs } from "./cli/args.ts";
+import { RateLimiter } from "./services/rate_limiter.ts";
+import { RetryManager } from "./services/retry_manager.ts";
+import { SlackApiOptimizer } from "./services/slack_api_optimizer.ts";
+import { SlackConnectionSupervisor } from "./services/slack_connection_supervisor.ts";
 
 const toSlackLogLevel = (level: string): SlackLogLevel => {
   switch (level.toUpperCase()) {
@@ -22,9 +26,18 @@ const toSlackLogLevel = (level: string): SlackLogLevel => {
   }
 };
 
-const checkSlackConnection = async (app: SlackApp): Promise<boolean> => {
+const checkSlackConnection = async (app: SlackApp, supervisor: SlackConnectionSupervisor): Promise<boolean> => {
   try {
-    await app.client.auth.test();
+    const probeResult = await supervisor.runProbe(
+      "general",
+      () => app.client.auth.test(),
+      "Slack health check"
+    );
+
+    if (probeResult.status === "executed") {
+      supervisor.recordActivity();
+    }
+
     return true;
   } catch (error) {
     logger.error({ error }, "Slack connection check failed");
@@ -44,7 +57,8 @@ const checkLlmConnection = async (claude: ClaudeProcessor): Promise<boolean> => 
 const performHealthChecks = async (
   app: SlackApp,
   claude: ClaudeProcessor,
-  skipChecks: boolean
+  skipChecks: boolean,
+  supervisor: SlackConnectionSupervisor
 ): Promise<boolean> => {
   if (skipChecks) {
     logger.info("Skipping health checks as requested");
@@ -52,7 +66,7 @@ const performHealthChecks = async (
   }
 
   logger.info("Performing startup health checks...");
-  const slackOk = await checkSlackConnection(app);
+  const slackOk = await checkSlackConnection(app, supervisor);
   const llmOk = await checkLlmConnection(claude);
   if (!slackOk || !llmOk) {
     logger.error("Health checks failed - application may not function correctly");
@@ -120,11 +134,28 @@ const main = async (): Promise<void> => {
   logger.debug({ skillDirs: config.skillDirs }, "Skill directories being loaded");
   logger.debug({ memoryWorkspace: config.memory.workspaceDir, memorySearchEnabled: config.memorySearch.enabled }, "Memory manager state");
   const claude = new ClaudeProcessor(config.skillDirs, memoryManager);
-  const router = new MessageRouter(claude, app.client as unknown as { chat: { postMessage: any; update: any } }, config);
+  const slackOptimizer = new SlackApiOptimizer();
+  const slackRateLimiter = new RateLimiter({
+    enabled: config.slackRateLimit.enabled,
+    requestsPerSecond: config.slackRateLimit.requestsPerSecond,
+    burstCapacity: config.slackRateLimit.burstCapacity,
+    queueSize: config.slackRateLimit.queueSize,
+    retryMaxAttempts: config.slackRetry.maxAttempts,
+    retryBaseDelayMs: config.slackRetry.baseDelayMs,
+    retryMaxDelayMs: config.slackRetry.maxDelayMs
+  });
+  const slackRetryManager = new RetryManager(config.retry);
+  const slackSupervisor = new SlackConnectionSupervisor(slackOptimizer, slackRateLimiter, slackRetryManager);
+  const router = new MessageRouter(
+    claude,
+    app.client as unknown as { chat: { postMessage: any; update: any } },
+    config,
+    slackSupervisor
+  );
   const handler = new SlackMessageHandler(app, router);
   handler.registerHandlers();
 
-  const healthOk = await performHealthChecks(app, claude, config.skipHealthChecks);
+  const healthOk = await performHealthChecks(app, claude, config.skipHealthChecks, slackSupervisor);
   if (!healthOk) {
     logger.warn("Continuing despite health check failures...");
   }

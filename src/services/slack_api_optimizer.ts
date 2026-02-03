@@ -11,6 +11,7 @@ interface DebouncedOperation<T extends any[]> {
 export class SlackApiOptimizer {
   private debouncedOperations = new Map<string, DebouncedOperation<any[]>>();
   private typingIndicators = new Map<string, { channelId: string; threadTs?: string; timeoutId: NodeJS.Timeout }>();
+  private cooldownEntries = new Map<string, number>();
 
   /**
    * Debounce an operation by key
@@ -163,6 +164,23 @@ export class SlackApiOptimizer {
   }
 
   /**
+   * Register an active cooldown entry so it can be reported via stats.
+   */
+  registerCooldown(key: string, expiresAt: number): void {
+    this.cleanupCooldowns();
+    this.cooldownEntries.set(key, expiresAt);
+  }
+
+  private cleanupCooldowns(): void {
+    const now = Date.now();
+    for (const [key, expiresAt] of this.cooldownEntries.entries()) {
+      if (expiresAt <= now) {
+        this.cooldownEntries.delete(key);
+      }
+    }
+  }
+
+  /**
    * Optimize connection pooling (placeholder for future enhancements)
    */
   optimizeConnectionPool(): void {
@@ -178,9 +196,15 @@ export class SlackApiOptimizer {
     activeDebouncedOperations: number;
     activeTypingIndicators: number;
   } {
+    this.cleanupCooldowns();
     return {
       activeDebouncedOperations: this.debouncedOperations.size,
-      activeTypingIndicators: this.typingIndicators.size
+      activeTypingIndicators: this.typingIndicators.size,
+      activeCooldowns: this.cooldownEntries.size,
+      cooldownEntries: Array.from(this.cooldownEntries.entries()).map(([key, expiresAt]) => ({
+        key,
+        expiresAt
+      }))
     };
   }
 
