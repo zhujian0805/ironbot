@@ -375,22 +375,33 @@ export class ToolExecutor {
 
     logger.debug({ toolName, effectiveInput: JSON.stringify(effectiveInput, null, 2) }, "[TOOL-FLOW] Dispatching to tool implementation");
     
+    const toolStart = Date.now();
+    let result: ToolResult;
     switch (toolName) {
       case "run_powershell":
-        return this.runPowerShell(effectiveInput);
+        result = await this.runPowerShell(effectiveInput);
+        break;
       case "run_bash":
-        return this.runBash(effectiveInput);
+        result = await this.runBash(effectiveInput);
+        break;
       case "read_file":
-        return this.readFile(effectiveInput);
+        result = await this.readFile(effectiveInput);
+        break;
       case "write_file":
-        return this.writeFile(effectiveInput);
+        result = await this.writeFile(effectiveInput);
+        break;
       case "list_directory":
-        return this.listDirectory(effectiveInput);
+        result = await this.listDirectory(effectiveInput);
+        break;
       case "download_file":
-        return this.downloadFile(effectiveInput);
+        result = await this.downloadFile(effectiveInput);
+        break;
       default:
-        return { success: false, error: `Unknown tool: ${toolName}` };
+        result = { success: false, error: `Unknown tool: ${toolName}` };
     }
+    const durationMs = Date.now() - toolStart;
+    logger.info({ toolName, success: result.success, durationMs }, "[TOOL-FLOW] Tool execution completed");
+    return result;
   }
 
   private async runPowerShell(toolInput: Record<string, unknown>): Promise<ToolResult> {

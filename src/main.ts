@@ -1,4 +1,4 @@
-import bolt from "@slack/bolt";
+import { App, LogLevel } from "@slack/bolt";
 import type { App as SlackApp, LogLevel as SlackLogLevel } from "@slack/bolt";
 import { resolveConfig } from "./config.ts";
 import { setupLogging, logger } from "./utils/logging.ts";
@@ -8,8 +8,6 @@ import { ClaudeProcessor } from "./services/claude_processor.ts";
 import { MessageRouter } from "./services/message_router.ts";
 import { MemoryManager } from "./memory/manager.ts";
 import { parseCliArgs } from "./cli/args.ts";
-
-const { App, LogLevel } = bolt as typeof import("@slack/bolt");
 
 const toSlackLogLevel = (level: string): SlackLogLevel => {
   switch (level.toUpperCase()) {
@@ -69,15 +67,24 @@ const main = async (): Promise<void> => {
   const config = resolveConfig(args);
 
   setupLogging({ debug: config.debug, logLevel: config.logLevel, logFile: config.logFile });
+  logger.debug({ cliArgs: args, configPath: config.permissionsFile, skillsDir: config.skillsDir }, "CLI arguments parsed and configuration resolved");
 
   if (!config.slackBotToken || !config.slackAppToken) {
     logger.error("Slack tokens not configured");
   }
 
-  logger.info("Starting Slack AI Agent");
+  logger.info(
+    {
+      slackBotTokenConfigured: Boolean(config.slackBotToken),
+      slackAppTokenConfigured: Boolean(config.slackAppToken)
+    },
+    "Starting Slack AI Agent"
+  );
+  logger.debug({ skipHealthChecks: config.skipHealthChecks }, "Health check configuration");
 
   const permissionManager = initPermissionManager(config.permissionsFile);
   const capabilities = permissionManager.listAllowedCapabilities();
+  logger.debug({ capabilities }, "Allowed capabilities loaded from permissions config");
   logger.info(
     {
       tools: capabilities.tools,
@@ -91,6 +98,7 @@ const main = async (): Promise<void> => {
   if (permissionManager.startFileWatcher()) {
     logger.info("Permission config hot-reload enabled");
   }
+  logger.debug({ permissionsFile: config.permissionsFile, permissionsWatcher: true }, "Permission manager ready");
 
   const app = new App({
     token: config.slackBotToken,
@@ -109,6 +117,7 @@ const main = async (): Promise<void> => {
   memoryManager.logStatus();
 
   logger.info({ skillsDir: config.skillsDir }, "[INIT] Creating ClaudeProcessor");
+  logger.debug({ memoryWorkspace: config.memory.workspaceDir, memorySearchEnabled: config.memorySearch.enabled }, "Memory manager state");
   const claude = new ClaudeProcessor(config.skillsDir, memoryManager);
   const router = new MessageRouter(claude, app.client as unknown as { chat: { postMessage: any; update: any } }, config);
   const handler = new SlackMessageHandler(app, router);
@@ -119,8 +128,10 @@ const main = async (): Promise<void> => {
     logger.warn("Continuing despite health check failures...");
   }
 
+  const launchTimestamp = Date.now();
+  logger.info("Launching Slack Bolt app (Socket Mode)...");
   await app.start();
-  logger.info("Slack Bolt app started with Socket Mode");
+  logger.info({ durationMs: Date.now() - launchTimestamp }, "Slack Bolt app started with Socket Mode");
 };
 
 main().catch((error) => {
