@@ -104,178 +104,8 @@ export class ClaudeProcessor {
   }
 
   private async checkAutoRouteSkills(userMessage: string): Promise<string | null> {
-    const trimmedMessage = userMessage.trim().toLowerCase();
-
-    logger.debug({ userMessage: userMessage.substring(0, 100) }, "[SKILL-EXEC] Checking for auto-routing opportunities");
-
-    // Smart auto-routing for install commands - look for install keywords and URLs
-    const installKeywords = ['install', 'add', 'download', 'get'];
-    const hasInstallKeyword = installKeywords.some(keyword => trimmedMessage.includes(keyword));
-    
-    // Check if message contains a URL
-    const urlRegex = /https?:\/\/[^\s<>"']+/gi;
-    const hasUrl = urlRegex.test(userMessage);
-
-    if (hasInstallKeyword && hasUrl) {
-      logger.debug({ userMessage: userMessage.substring(0, 100) }, "[SKILL-EXEC] Detected install command with URL, auto-routing to skill_installer");
-      const skillInstaller = this.skills['skill_installer'];
-      if (skillInstaller) {
-        try {
-          logger.info({ skillName: 'skill_installer' }, "[SKILL-EXEC] Executing auto-routed skill_installer");
-          const result = await Promise.resolve(skillInstaller.handler(userMessage));
-          logger.info({ skillName: 'skill_installer', resultLength: result.length }, "[SKILL-EXEC] Auto-routed skill_installer completed successfully");
-          return this.appendOperationSummary(result, [
-            { kind: "skill", name: "skill_installer", status: "success" }
-          ]);
-        } catch (error) {
-          logger.error({ error, skillName: 'skill_installer' }, "[SKILL-EXEC] Auto-routed skill execution failed");
-          return this.appendOperationSummary(`Sorry, error executing skill skill_installer.`, [
-            { kind: "skill", name: "skill_installer", status: "error", reason: String(error) }
-          ]);
-        }
-      } else {
-        logger.warn("[SKILL-EXEC] skill_installer not available for auto-routing");
-      }
-    }
-
-    // Intelligent content-based auto-routing based on skill triggers
-    logger.debug({ userMessage: userMessage.substring(0, 100) }, "[SKILL-EXEC] Checking for content-based skill triggers");
-    
-    const messageWords = trimmedMessage.split(/\s+/);
-    let bestMatch: { skill: SkillInfo; score: number } | null = null;
-    
-    for (const skillInfo of Object.values(this.skills)) {
-      if (!skillInfo.triggers) continue;
-      
-      let score = 0;
-      const matchedTriggers: string[] = [];
-      
-      for (const trigger of skillInfo.triggers) {
-        const triggerWords = trigger.toLowerCase().split(/\s+/);
-        
-        // Exact phrase match gets highest score
-        if (trimmedMessage.includes(trigger.toLowerCase())) {
-          score += 10;
-          matchedTriggers.push(trigger);
-        }
-        
-        // Individual word matches
-        for (const word of triggerWords) {
-          if (messageWords.includes(word)) {
-            score += 1;
-            matchedTriggers.push(word);
-          }
-        }
-      }
-      
-      // Boost score for skills with explicit intent words
-      const intentWords = ['get', 'show', 'find', 'check', 'tell', 'give', 'send', 'create', 'make'];
-      if (intentWords.some(word => messageWords.includes(word))) {
-        score += 2;
-      }
-      
-      // Prefer skills with higher scores
-      if (score > 0 && (!bestMatch || score > bestMatch.score)) {
-        bestMatch = { skill: skillInfo, score };
-        logger.debug({ 
-          skillName: skillInfo.name, 
-          score, 
-          matchedTriggers: matchedTriggers.slice(0, 5) 
-        }, "[SKILL-EXEC] Found potential skill match");
-      }
-    }
-    
-    // Auto-route if we have a strong match (score >= 5) or a perfect match (score >= 10)
-    if (bestMatch && (bestMatch.score >= 10 || (bestMatch.score >= 5 && Object.keys(this.skills).length <= 10))) {
-      const skillInfo = bestMatch.skill;
-      
-      // For SKILL.md-based skills, don't auto-execute - let Claude use them as context with tools
-      if (skillInfo.isDocumentationSkill) {
-        logger.info({ 
-          skillName: skillInfo.name, 
-          score: bestMatch.score, 
-          triggerType: 'content-match-documentation'
-        }, "[SKILL-EXEC] Detected SKILL.md-based skill, will pass to Claude as context");
-        // Return null to continue to normal LLM processing where skill docs will be injected
-        return null;
-      }
-      
-      logger.info({ 
-        skillName: skillInfo.name, 
-        score: bestMatch.score, 
-        triggerType: 'content-match' 
-      }, "[SKILL-EXEC] Auto-routing based on content analysis");
-      
-      try {
-        const result = await Promise.resolve(skillInfo.handler(userMessage));
-        logger.info({ skillName: skillInfo.name, resultLength: result.length }, "[SKILL-EXEC] Content-based skill execution completed successfully");
-        return this.appendOperationSummary(result, [
-          { kind: "skill", name: skillInfo.name, status: "success" }
-        ]);
-      } catch (error) {
-        logger.error({ error, skillName: skillInfo.name, triggerType: 'content-match' }, "[SKILL-EXEC] Content-based skill execution failed");
-        return this.appendOperationSummary(`Sorry, error executing skill ${skillInfo.name}.`, [
-          { kind: "skill", name: skillInfo.name, status: "error", reason: String(error) }
-        ]);
-      }
-    }
-
-    // Auto-route direct skill execution requests like "use permission_check" or "run calculator"
-    const executionKeywords = ['use', 'run', 'execute', 'call'];
-    const hasExecutionKeyword = executionKeywords.some(keyword => trimmedMessage.includes(keyword));
-    
-    if (hasExecutionKeyword) {
-      logger.debug({ userMessage: userMessage.substring(0, 100), executionKeywords }, "[SKILL-EXEC] Detected execution keyword, checking for direct skill execution");
-
-      // Extract skill name from message (look for known skill names)
-      for (const skillInfo of Object.values(this.skills)) {
-        if (trimmedMessage.includes(skillInfo.name)) {
-          logger.debug({ userMessage: userMessage.substring(0, 100), detectedSkill: skillInfo.name }, "[SKILL-EXEC] Found matching skill name in execution request");
-          
-          // For SKILL.md-based skills, don't execute directly - let Claude use them as context
-          if (skillInfo.isDocumentationSkill) {
-            logger.info({ skillName: skillInfo.name }, "[SKILL-EXEC] Detected SKILL.md-based skill in execution request, will pass to Claude as context");
-            // Return null to continue to normal LLM processing
-            return null;
-          }
-          
-          try {
-            logger.info({ skillName: skillInfo.name }, "[SKILL-EXEC] Executing direct skill execution request");
-            const result = await Promise.resolve(skillInfo.handler(userMessage));
-            logger.info({ skillName: skillInfo.name, resultLength: result.length }, "[SKILL-EXEC] Direct skill execution completed successfully");
-            return this.appendOperationSummary(result, [
-              { kind: "skill", name: skillInfo.name, status: "success" }
-            ]);
-          } catch (error) {
-            logger.error({ error, skillName: skillInfo.name }, "[SKILL-EXEC] Direct skill execution failed");
-            return this.appendOperationSummary(`Sorry, error executing skill ${skillInfo.name}.`, [
-              { kind: "skill", name: skillInfo.name, status: "error", reason: String(error) }
-            ]);
-          }
-        }
-      }
-      logger.debug({ userMessage: userMessage.substring(0, 100) }, "[SKILL-EXEC] No matching skill found for execution request");
-
-      // Check if this is a request to use an unknown skill - route to skill_installer
-      if (trimmedMessage.includes('use skill') && this.skills['skill_installer']) {
-        logger.info({ routeTo: 'skill_installer', reason: 'unknown skill request' }, "[SKILL-EXEC] Routing unknown skill usage request to skill_installer");
-        try {
-          const result = await Promise.resolve(this.skills['skill_installer'].handler(userMessage));
-          logger.info({ resultLength: result.length }, "[SKILL-EXEC] Skill installer execution completed successfully");
-          return this.appendOperationSummary(result, [
-            { kind: "skill", name: "skill_installer", status: "success" }
-          ]);
-        } catch (error) {
-          logger.error({ error }, "[SKILL-EXEC] Skill installer execution failed");
-          return this.appendOperationSummary(`Sorry, error installing skill.`, [
-            { kind: "skill", name: "skill_installer", status: "error", reason: String(error) }
-          ]);
-        }
-      }
-    }
-
-    logger.debug({ userMessage: userMessage.substring(0, 100) }, "[SKILL-EXEC] No auto-routing applied, continuing with normal processing");
-    return null; // No auto-routing applied
+    logger.debug({ userMessage: userMessage.substring(0, 100) }, "[SKILL-EXEC] Delegating routing decisions to Claude");
+    return null;
   }
 
   private async ensureSkillsLoaded(): Promise<void> {
@@ -297,49 +127,39 @@ export class ClaudeProcessor {
 
     // Find SKILL.md-based skills that match the message
     for (const skillInfo of Object.values(this.skills)) {
-      if (!skillInfo.isDocumentationSkill) continue;
-      if (this.isSkillMentionedInMessage(skillInfo, lowerMessage)) {
-        relevantSkills.push(skillInfo);
-        logger.debug({ skillName: skillInfo.name }, "[SKILL-CONTEXT] Found relevant SKILL.md documentation");
-      }
+      if (!skillInfo.isDocumentationSkill || !skillInfo.documentation) continue;
+      if (!this.skillMatchesMessage(skillInfo, lowerMessage)) continue;
+      relevantSkills.push(skillInfo);
+      logger.debug({ skillName: skillInfo.name }, "[SKILL-CONTEXT] Including SKILL.md documentation for context");
     }
 
     if (relevantSkills.length === 0) {
       return null;
     }
 
-    // Format skill documentation for Claude
-    const skillDocs = await Promise.all(
-      relevantSkills.map(async (skill) => {
-        try {
-          // Execute the handler to get the SKILL.md content
-          const content = await Promise.resolve(skill.handler(userMessage));
-          logger.info({ skillName: skill.name }, "[SKILL-CONTEXT] Injected SKILL.md documentation into context");
-          return content;
-        } catch (error) {
-          logger.error({ error, skillName: skill.name }, "[SKILL-CONTEXT] Failed to load skill documentation");
-          return null;
-        }
-      })
-    );
-
-    const validDocs = skillDocs.filter((doc): doc is string => doc !== null);
-    if (validDocs.length === 0) {
+    const docs = relevantSkills.map((skill) => skill.documentation!).filter(Boolean);
+    if (docs.length === 0) {
       return null;
     }
 
-    return `\n\n## Available Skills\n\nYou have access to the following skills. Use the appropriate system tools (run_bash, run_powershell, etc.) to execute the scripts described in these skills:\n\n${validDocs.join("\n\n---\n\n")}`;
+    return `\n\n## Available Skills\n\nYou have access to the following skills. Use run_bash, run_powershell, or other tools as described in each SKILL.md to perform system actions.\n\n${docs.join("\n\n---\n\n")}`;
   }
 
-  private isSkillMentionedInMessage(skillInfo: SkillInfo, lowerMessage: string): boolean {
+  private skillMatchesMessage(skillInfo: SkillInfo, lowerMessage: string): boolean {
     if (skillInfo.name && lowerMessage.includes(skillInfo.name.toLowerCase())) {
       return true;
     }
-    if (skillInfo.triggers) {
-      for (const trigger of skillInfo.triggers) {
-        if (lowerMessage.includes(trigger.toLowerCase())) {
-          return true;
-        }
+    if (!skillInfo.triggers) {
+      return false;
+    }
+    return skillInfo.triggers.some((trigger) => lowerMessage.includes(trigger.toLowerCase()));
+  }
+
+  private messageMentionsSkill(message: string): boolean {
+    const lowerMessage = message.toLowerCase();
+    for (const skillInfo of Object.values(this.skills)) {
+      if (this.skillMatchesMessage(skillInfo, lowerMessage)) {
+        return true;
       }
     }
     return false;
