@@ -117,8 +117,9 @@ const main = async (): Promise<void> => {
   memoryManager.logStatus();
 
   logger.info({ skillsDir: config.skillsDir }, "[INIT] Creating ClaudeProcessor");
+  logger.debug({ skillDirs: config.skillDirs }, "Skill directories being loaded");
   logger.debug({ memoryWorkspace: config.memory.workspaceDir, memorySearchEnabled: config.memorySearch.enabled }, "Memory manager state");
-  const claude = new ClaudeProcessor(config.skillsDir, memoryManager);
+  const claude = new ClaudeProcessor(config.skillDirs, memoryManager);
   const router = new MessageRouter(claude, app.client as unknown as { chat: { postMessage: any; update: any } }, config);
   const handler = new SlackMessageHandler(app, router);
   handler.registerHandlers();
@@ -135,6 +136,10 @@ const main = async (): Promise<void> => {
 };
 
 main().catch((error) => {
-  logger.error({ error }, "Fatal error during startup");
+  const errorDetails =
+    error instanceof Error
+      ? { message: error.message, stack: error.stack }
+      : { message: JSON.stringify(error) };
+  logger.error({ error: errorDetails }, "Fatal error during startup");
   process.exitCode = 1;
 });

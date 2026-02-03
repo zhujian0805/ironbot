@@ -87,7 +87,7 @@ export class ClaudeProcessor {
   private skillLoader: SkillLoader;
   private memoryManager?: MemoryManager;
 
-  constructor(skillsDir: string, memoryManager?: MemoryManager) {
+  constructor(skillDirs: string[], memoryManager?: MemoryManager) {
     const config = resolveConfig();
     this.client = new Anthropic({
       apiKey: config.anthropicAuthToken,
@@ -98,9 +98,9 @@ export class ClaudeProcessor {
     this.model = config.anthropicModel;
     this.devMode = config.devMode;
     this.toolExecutor = new ToolExecutor();
-    this.skillLoader = new SkillLoader(skillsDir);
+    this.skillLoader = new SkillLoader(skillDirs);
     this.memoryManager = memoryManager;
-    logger.info({ model: this.model, skillsDir, hasMemoryManager: !!memoryManager }, "[INIT] ClaudeProcessor initialized");
+    logger.info({ model: this.model, skillDirs, hasMemoryManager: !!memoryManager }, "[INIT] ClaudeProcessor initialized");
   }
 
   private async checkAutoRouteSkills(userMessage: string): Promise<string | null> {
