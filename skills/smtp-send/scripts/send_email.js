@@ -154,10 +154,10 @@ function formatAsTable(body) {
   const seenKeys = new Set();
   
   for (const line of lines) {
-    if (line.includes(' : ')) {
-      const [key, ...valueParts] = line.split(' : ');
-      const cleanKey = key.trim();
-      const value = valueParts.join(' : ').trim();
+    const colonIndex = line.indexOf(':');
+    if (colonIndex > 0) {
+      const cleanKey = line.slice(0, colonIndex).trim();
+      const value = line.slice(colonIndex + 1).trim();
       
       // If we've seen this key before, start a new table
       if (seenKeys.has(cleanKey)) {
@@ -204,6 +204,47 @@ function formatAsTable(body) {
   
   console.log(`[SMTP-SKILL] Table formatting complete, HTML length: ${html.length} characters`);
   return html;
+}
+
+function normalizeLineBreaks(input) {
+  if (typeof input !== 'string') {
+    return input;
+  }
+
+  return input
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\r/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n');
+}
+
+function containsHtmlTags(text) {
+  return /<([a-z][^>\s]*)[^>]*>/i.test(text);
+}
+
+function detectTabularData(text) {
+  const lines = text
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
+
+  if (lines.length === 0) {
+    return false;
+  }
+
+  let keyValueLines = 0;
+  for (const line of lines) {
+    if (/^[^:\n]+:\s*.+$/u.test(line)) {
+      keyValueLines += 1;
+    }
+  }
+
+  if (keyValueLines < 2) {
+    return false;
+  }
+
+  return keyValueLines / lines.length >= 0.6;
 }
 
 function parseArgs() {
@@ -351,21 +392,30 @@ async function main() {
       process.exit(1);
     }
   }
-  
-  // Format as table only if explicitly requested with --format-table flag
-  // Do NOT auto-format just because content contains ' : ' pattern
-  const isAlreadyHtml = body.includes('<') && body.includes('>');
-  const shouldFormatTable = args['format-table'] && !isAlreadyHtml;
-  
-  console.log(`[SMTP-SKILL] Table formatting: shouldFormat=${shouldFormatTable}, isAlreadyHtml=${isAlreadyHtml}, formatTableFlag=${!!args['format-table']}`);
-  
+  body = normalizeLineBreaks(body);
+  console.log(`[SMTP-SKILL] Normalized body length: ${body.length} characters`);
+
+  const formatTableFlag = !!args['format-table'];
+  const htmlFlag = !!args.html;
+  const alreadyHtmlContent = htmlFlag || containsHtmlTags(body);
+  const autoFormatDetected = !alreadyHtmlContent && detectTabularData(body);
+  const shouldFormatTable = (formatTableFlag || autoFormatDetected) && !alreadyHtmlContent;
+
+  console.log(`[SMTP-SKILL] Table formatting: shouldFormat=${shouldFormatTable}, formatTableFlag=${formatTableFlag}, autoDetected=${autoFormatDetected}, alreadyHtml=${alreadyHtmlContent}`);
+
   if (shouldFormatTable) {
-    console.log('[SMTP-SKILL] Applying table formatting to body content');
+    if (autoFormatDetected && !formatTableFlag) {
+      console.log('[SMTP-SKILL] Auto-detected tabular data, converting to HTML table');
+    } else if (formatTableFlag) {
+      console.log('[SMTP-SKILL] Applying forced table formatting to body content');
+    }
     body = formatAsTable(body);
     args.html = true; // Force HTML for table formatting
     console.log(`[SMTP-SKILL] Table formatting complete, body length: ${body.length} characters`);
-  } else {
-    console.log('[SMTP-SKILL] Skipping table formatting (only format with explicit --format-table flag)');
+  } else if (formatTableFlag && alreadyHtmlContent) {
+    console.log('[SMTP-SKILL] Skipping table formatting because content already contains HTML');
+  } else if (!autoFormatDetected) {
+    console.log('[SMTP-SKILL] Skipping table formatting (no tabular data detected)');
   }
   
   const config = loadConfig();
