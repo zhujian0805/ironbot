@@ -79,7 +79,7 @@ describe("SMTP Skill Execution", () => {
     initPermissionManager('./permissions.yaml');
 
     // Create processor with real skills directory
-    processor = new ClaudeProcessor('./skills');
+    processor = new ClaudeProcessor(['./skills']);
 
     // Ensure skills are loaded
     await processor["ensureSkillsLoaded"]();

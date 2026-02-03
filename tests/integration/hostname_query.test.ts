@@ -38,6 +38,8 @@ describe("hostname query validation", () => {
       anthropicAuthToken: process.env.ANTHROPIC_AUTH_TOKEN || "",
       anthropicModel: process.env.ANTHROPIC_MODEL || "grok-code-fast-1",
       skillsDir: "./skills",
+      stateSkillsDir: join(tempDir, "state-skills"),
+      skillDirs: ["./skills", join(tempDir, "state-skills")],
       permissionsFile,
       debug: false,
       logLevel: "ERROR",
@@ -57,7 +59,7 @@ describe("hostname query validation", () => {
   });
 
   it("should execute hostname command and return CN-JZHU-WD", async () => {
-    const processor = new ClaudeProcessor(config.skillsDir);
+    const processor = new ClaudeProcessor(config.skillDirs);
     
     const response = await processor.processMessage("告诉我主机名", {
       sessionKey: "test-session"
@@ -74,7 +76,7 @@ describe("hostname query validation", () => {
   }, 30000);
 
   it("should execute Get-Printer and return actual printers", async () => {
-    const processor = new ClaudeProcessor(config.skillsDir);
+    const processor = new ClaudeProcessor(config.skillDirs);
     
     const response = await processor.processMessage("有多少打印机", {
       sessionKey: "test-session"

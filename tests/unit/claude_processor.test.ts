@@ -169,7 +169,7 @@ describe("ClaudeProcessor", () => {
     };
 
     // Create processor with mocked dependencies
-    processor = new ClaudeProcessor("./skills", mockMemoryManager);
+    processor = new ClaudeProcessor(["./skills"], mockMemoryManager);
   });
 
   describe("checkConnection", () => {
@@ -331,7 +331,7 @@ describe("ClaudeProcessor", () => {
         skillsDir: "./skills"
       });
 
-      const devProcessor = new ClaudeProcessor("./skills", mockMemoryManager as any);
+      const devProcessor = new ClaudeProcessor(["./skills"], mockMemoryManager as any);
       const result = await devProcessor.processMessage("Test message");
 
       expect(result).toBe("[DEV MODE] I would respond to: Test message");
@@ -552,7 +552,7 @@ describe("ClaudeProcessor", () => {
         clearMemoryForSession: vi.fn()
       };
 
-      const processor = new ClaudeProcessor("./skills", testMemoryManager);
+      const processor = new ClaudeProcessor(["./skills"], testMemoryManager);
 
       await processor.clearAllMemory();
 
@@ -560,7 +560,7 @@ describe("ClaudeProcessor", () => {
     });
 
     it("does nothing when memory manager is not available", async () => {
-      const processor = new ClaudeProcessor("./skills");
+      const processor = new ClaudeProcessor(["./skills"]);
 
       // Should not throw an error
       await expect(processor.clearAllMemory()).resolves.toBeUndefined();

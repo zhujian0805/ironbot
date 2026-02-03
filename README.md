@@ -75,6 +75,8 @@ A sophisticated TypeScript-based AI agent that integrates with Slack to provide 
    IRONBOT_STATE_DIR=~/.ironbot
    ```
 
+IronBot scans the workspace-defined `SKILLS_DIR` (default `./skills`), the user-level `~/.ironbot/skills`, and any folders listed in `IRONBOT_SKILL_PATHS`. Place skills in any of those directories and enable them via `permissions.yaml`.
+
 3. Configure permissions in `permissions.yaml`:
    ```yaml
    version: "1.0"
@@ -292,7 +294,9 @@ The following types of commands are automatically blocked:
 
 ## Skills System
 
-IronBot supports extensible skills for specialized functionality:
+IronBot supports extensible skills for specialized functionality. It loads skills from the workspace-defined `SKILLS_DIR` (default `./skills`) and the user-private `~/.ironbot/skills`. Drop skill directories or modules with `SKILL.md` in either location, enable them in `permissions.yaml`, and the loader will pick them up automatically. The built-in `skill_installer` now always installs skills into `~/.ironbot/skills`, so custom installers are kept separate from the workspace tree.
+
+IronBot follows the OpenCode pattern of scanning multiple skill folders so you can share reusable skills across workspaces or keep personal helpers in your home directory.
 
 ### Creating Skills
 

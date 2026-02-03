@@ -1,8 +1,9 @@
 import { promises as fs } from "node:fs";
+import type { Dirent } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { logger } from "../utils/logging.ts";
-import { getPermissionManager } from "./permission_manager.ts";
+import { getPermissionManager, type PermissionManager } from "./permission_manager.ts";
 
 export type SkillHandler = (input: string) => string | Promise<string>;
 
@@ -28,86 +29,45 @@ export interface SkillInfo {
   triggers?: string[];
   isDocumentationSkill?: boolean; // True for SKILL.md-based skills that provide instructions
   skillDirectory?: string; // Path to skill directory for SKILL.md-based skills
+  documentation?: string; // Pre-formatted documentation extracted from SKILL.md
 }
 
 export class SkillLoader {
-  private skillsDir: string;
+  private readonly skillDirs: string[];
   private skills: Record<string, SkillInfo> = {};
 
-  constructor(skillsDir: string) {
-    this.skillsDir = skillsDir;
+  constructor(skillDirs: string[]) {
+    this.skillDirs = Array.from(
+      new Set(skillDirs.filter(Boolean).map((dir) => path.resolve(dir)))
+    );
   }
 
   async loadSkills(): Promise<Record<string, SkillHandler>> {
-    logger.debug({ directory: this.skillsDir, absolutePath: path.resolve(this.skillsDir) }, "[SKILL-FLOW] Starting skill loading process");
-
-    try {
-      const entries = await fs.readdir(this.skillsDir, { withFileTypes: true });
-      logger.debug({ skillCount: entries.length, entries: entries.map(e => ({ name: e.name, type: e.isFile() ? 'file' : 'directory' })) }, "[SKILL-FLOW] Found entries in skills directory");
-
-      const permissionManager = getPermissionManager();
-      logger.debug({ hasPermissionManager: Boolean(permissionManager) }, "[SKILL-FLOW] Permission manager status");
-      // Continue loading even if permission manager is not initialized - individual checks will handle it
-
-      for (const entry of entries) {
-        logger.debug({ entryName: entry.name, entryType: entry.isFile() ? 'file' : 'directory' }, "[SKILL-FLOW] Processing entry");
-        if (entry.name.startsWith("_")) {
-          logger.debug({ entryName: entry.name }, "[SKILL-FLOW] Skipping entry starting with underscore");
-          continue;
-        }
-
-        if (entry.isDirectory()) {
-          // Check if it's a skill directory with SKILL.md
-          logger.debug({ directoryName: entry.name }, "[SKILL-FLOW] Processing directory entry");
-          await this.loadSkillFromDirectory(path.join(this.skillsDir, entry.name), permissionManager);
-        } else if (entry.isFile()) {
-          // Load traditional .ts/.js skill files
-          const ext = path.extname(entry.name);
-          if (!['.js', '.ts', '.mjs', '.cjs'].includes(ext)) {
-            logger.debug({ fileName: entry.name, extension: ext }, "[SKILL-FLOW] Skipping file with unsupported extension");
-            continue;
-          }
-
-          const skillName = path.basename(entry.name, ext);
-          logger.debug({ skillName, fileName: entry.name }, "[SKILL-FLOW] Checking if skill is allowed by permissions");
-          if (permissionManager && !permissionManager.isSkillAllowed(skillName)) {
-            logger.info({ skillName, fileName: entry.name }, "[SKILL-FLOW] Skill blocked by permission config - not loading");
-            continue;
-          }
-
-          logger.debug({ skillName, fileName: entry.name }, "[SKILL-FLOW] Skill is allowed, attempting to load");
-
-          const skillPath = path.join(this.skillsDir, entry.name);
-          try {
-            logger.debug({ skillName, skillPath }, "[SKILL-FLOW] Importing skill module");
-            const skillUrl = pathToFileURL(skillPath);
-            const module = await import(skillUrl.href);
-            const handler = module.executeSkill as SkillHandler | undefined;
-
-            if (typeof handler === "function") {
-              this.skills[skillName] = {
-                name: skillName,
-                handler,
-                triggers: this.extractTriggersFromName(skillName),
-                isDocumentationSkill: false
-              };
-              logger.info({ skillName, skillPath }, "[SKILL-FLOW] Successfully loaded skill from file");
-            } else {
-              logger.warn({ skillName, skillPath, hasExecuteSkill: 'executeSkill' in module }, "[SKILL-FLOW] Skill file missing executeSkill function");
-            }
-          } catch (error) {
-            const errorObj = error as Error;
-            logger.error({ error, errorType: typeof error, errorMessage: errorObj?.message, errorStack: errorObj?.stack, skillName, skillPath }, "[SKILL-FLOW] Error loading skill from file");
-          }
-        }
-      }
-
-      logger.info({ loadedSkills: Object.keys(this.skills), totalCount: Object.keys(this.skills).length }, "[SKILL-FLOW] Skill loading process completed");
-      return Object.fromEntries(Object.entries(this.skills).map(([name, info]) => [name, info.handler]));
-    } catch (error) {
-      logger.warn({ error, directory: this.skillsDir }, "[SKILL-FLOW] Skills directory not available or accessible");
+    if (!this.skillDirs.length) {
+      logger.warn("[SKILL-FLOW] No skill directories configured; skipping skill loading");
       return {};
     }
+
+    logger.debug({ skillDirs: this.skillDirs }, "[SKILL-FLOW] Starting skill loading process");
+
+    const permissionManager = getPermissionManager();
+    logger.debug({ hasPermissionManager: Boolean(permissionManager) }, "[SKILL-FLOW] Permission manager status");
+
+    for (const skillsDir of this.skillDirs) {
+      await this.scanSkillsDirectory(skillsDir, permissionManager);
+    }
+
+    logger.info(
+      {
+        loadedSkills: Object.keys(this.skills),
+        totalCount: Object.keys(this.skills).length
+      },
+      "[SKILL-FLOW] Skill loading process completed"
+    );
+
+    return Object.fromEntries(
+      Object.entries(this.skills).map(([name, info]) => [name, info.handler])
+    );
   }
 
   getSkillInfo(): Record<string, SkillInfo> {
@@ -200,57 +160,135 @@ export class SkillLoader {
     return [...new Set(triggers)]; // Remove duplicates
   }
 
-  private async loadSkillFromDirectory(skillDir: string, permissionManager: any): Promise<void> {
+  private async scanSkillsDirectory(skillsDir: string, permissionManager: PermissionManager | null): Promise<void> {
+    try {
+      await fs.mkdir(skillsDir, { recursive: true });
+    } catch (error) {
+      logger.warn({ error, skillsDir }, "[SKILL-FLOW] Failed to ensure skills directory exists");
+    }
+
+    let entries: Dirent[];
+    try {
+      entries = await fs.readdir(skillsDir, { withFileTypes: true });
+      logger.debug({ directory: skillsDir, entryCount: entries.length }, "[SKILL-FLOW] Scanning directory for skills");
+    } catch (error) {
+      logger.warn({ error, skillsDir }, "[SKILL-FLOW] Skills directory not available or accessible");
+      return;
+    }
+
+    for (const entry of entries) {
+      if (entry.name.startsWith("_")) continue;
+      const entryPath = path.join(skillsDir, entry.name);
+      if (entry.isDirectory()) {
+        await this.loadSkillDirectory(entryPath, permissionManager);
+      } else if (entry.isFile()) {
+        await this.loadSkillFile(entryPath, permissionManager);
+      }
+    }
+  }
+
+  private async loadSkillDirectory(skillDir: string, permissionManager: PermissionManager | null): Promise<void> {
     const skillName = path.basename(skillDir);
     const skillMdPath = path.join(skillDir, 'SKILL.md');
 
     logger.debug({ skillName, skillDir }, "[SKILL-FLOW] Checking skill directory");
 
-    try {
-      // Check if SKILL.md exists
-      await fs.access(skillMdPath);
-      logger.debug({ skillName, skillMdPath }, "[SKILL-FLOW] SKILL.md file found, checking permissions");
+    if (permissionManager && !permissionManager.isSkillAllowed(skillName)) {
+      logger.info({ skillName, skillDir }, "[SKILL-FLOW] Skill directory blocked by permission config - not loading");
+      return;
+    }
 
-      if (!permissionManager.isSkillAllowed(skillName)) {
-        logger.info({ skillName, skillDir }, "[SKILL-FLOW] Skill directory blocked by permission config - not loading");
+    try {
+      await fs.access(skillMdPath);
+    } catch {
+      logger.debug({ skillName, skillDir }, "[SKILL-FLOW] Directory does not contain accessible SKILL.md, skipping");
+      return;
+    }
+
+    const skillMdContent = await fs.readFile(skillMdPath, "utf-8");
+    const metadata = this.parseFrontmatter(skillMdContent) || undefined;
+    const triggers = metadata ? this.extractTriggersFromMetadata(metadata) : this.extractTriggersFromName(skillName);
+    logger.debug({ skillName, hasMetadata: !!metadata, triggerCount: triggers.length }, "[SKILL-FLOW] Parsed skill metadata and triggers");
+    const relativePath = path.relative(process.cwd(), skillDir) || skillDir;
+    const description = metadata?.description?.trim() || "No description provided.";
+    const formattedDocumentation = `**Skill:** ${skillName}\n**Description:** ${description}\n**Location:** ${relativePath}\n\n${skillMdContent}`;
+
+    if (this.skills[skillName]) {
+      logger.warn({ skillName, existing: this.skills[skillName].skillDirectory, candidate: skillDir }, "[SKILL-FLOW] Duplicate skill name detected; skipping directory");
+      return;
+    }
+
+    const handler: SkillHandler = async (input: string) => {
+      try {
+        logger.debug({ skillName }, "[SKILL-FLOW] Executing skill directory handler");
+        logger.debug({ skillName, contentLength: skillMdContent.length }, "[SKILL-FLOW] Successfully read SKILL.md content");
+        return `${formattedDocumentation}\n\n*Input:* ${input}`;
+      } catch (error) {
+        logger.error({ error, skillName, skillMdPath }, "[SKILL-FLOW] Error reading SKILL.md content");
+        return `Error loading skill ${skillName}: ${error instanceof Error ? error.message : String(error)}`;
+      }
+    };
+
+    this.skills[skillName] = {
+      name: skillName,
+      handler,
+      metadata,
+      triggers,
+      isDocumentationSkill: true,
+      skillDirectory: skillDir,
+      documentation: formattedDocumentation
+    };
+
+    logger.info({ skillName, skillDir, triggerCount: triggers.length }, "[SKILL-FLOW] Successfully loaded SKILL.md-based documentation skill from directory");
+  }
+
+  private async loadSkillFile(filePath: string, permissionManager: PermissionManager | null): Promise<void> {
+    const ext = path.extname(filePath).toLowerCase();
+    if (![".js", ".ts", ".mjs", ".cjs"].includes(ext)) {
+      logger.debug({ filePath, extension: ext }, "[SKILL-FLOW] Skipping file with unsupported extension");
+      return;
+    }
+
+    const skillName = path.basename(filePath, ext);
+    if (skillName.startsWith("_")) {
+      logger.debug({ skillName }, "[SKILL-FLOW] Skipping underscore-prefixed skill file");
+      return;
+    }
+
+    if (permissionManager && !permissionManager.isSkillAllowed(skillName)) {
+      logger.info({ skillName, filePath }, "[SKILL-FLOW] Skill file blocked by permission config - not loading");
+      return;
+    }
+
+    if (this.skills[skillName]) {
+      logger.warn({ skillName, existing: this.skills[skillName].skillDirectory, filePath }, "[SKILL-FLOW] Duplicate skill name detected; skipping file");
+      return;
+    }
+
+    try {
+      logger.debug({ skillName, filePath }, "[SKILL-FLOW] Importing skill module");
+      const skillUrl = pathToFileURL(filePath);
+      const module = await import(skillUrl.href);
+      const handler = module.executeSkill as SkillHandler | undefined;
+      if (typeof handler !== "function") {
+        logger.warn({ skillName, filePath, hasExecuteSkill: "executeSkill" in module }, "[SKILL-FLOW] Skill file missing executeSkill function");
         return;
       }
-
-      logger.debug({ skillName }, "[SKILL-FLOW] Skill directory is allowed, parsing metadata");
-
-      // Read and parse SKILL.md content
-      const skillMdContent = await fs.readFile(skillMdPath, 'utf-8');
-      const metadata = this.parseFrontmatter(skillMdContent) || undefined;
-      const triggers = metadata ? this.extractTriggersFromMetadata(metadata) : this.extractTriggersFromName(skillName);
-
-      logger.debug({ skillName, hasMetadata: !!metadata, triggerCount: triggers.length }, "[SKILL-FLOW] Parsed skill metadata and triggers");
-
-      // Create a handler that provides the skill instructions
-      const handler: SkillHandler = async (input: string) => {
-        try {
-          logger.debug({ skillName }, "[SKILL-FLOW] Executing skill directory handler");
-          logger.debug({ skillName, contentLength: skillMdContent.length }, "[SKILL-FLOW] Successfully read SKILL.md content");
-          return `**Skill: ${skillName}**\n\n${skillMdContent}\n\n*Input:* ${input}`;
-        } catch (error) {
-          logger.error({ error, skillName, skillMdPath }, "[SKILL-FLOW] Error reading SKILL.md content");
-          return `Error loading skill ${skillName}: ${error instanceof Error ? error.message : String(error)}`;
-        }
-      };
 
       this.skills[skillName] = {
         name: skillName,
         handler,
-        metadata,
-        triggers,
-        isDocumentationSkill: true,
-        skillDirectory: skillDir
+        triggers: this.extractTriggersFromName(skillName),
+        isDocumentationSkill: false
       };
 
-      logger.info({ skillName, skillDir, triggerCount: triggers.length }, "[SKILL-FLOW] Successfully loaded SKILL.md-based documentation skill from directory");
-
+      logger.info({ skillName, filePath }, "[SKILL-FLOW] Successfully loaded skill from file");
     } catch (error) {
-      // SKILL.md doesn't exist, skip this directory
-      logger.debug({ skillName, skillDir }, "[SKILL-FLOW] Directory does not contain accessible SKILL.md, skipping");
+      const errorObj = error as Error;
+      logger.error(
+        { error, errorType: typeof error, errorMessage: errorObj?.message, errorStack: errorObj?.stack, skillName, filePath },
+        "[SKILL-FLOW] Error loading skill from file"
+      );
     }
   }
 }

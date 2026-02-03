@@ -118,6 +118,8 @@ export type AppConfig = {
   anthropicAuthToken: string | undefined;
   anthropicModel: string;
   skillsDir: string;
+  stateSkillsDir: string;
+  skillDirs: string[];
   permissionsFile: string;
   debug: boolean;
   logLevel: string;
@@ -149,13 +151,19 @@ const loadBaseConfig = (): AppConfig => {
     process.env.IRONBOT_MEMORY_INDEX_PATH ?? path.join(stateDir, "memory", `${DEFAULT_AGENT_ID}.sqlite`)
   );
 
+  const baseSkillsDir = resolveUserPath(process.env.SKILLS_DIR ?? path.join(process.cwd(), "skills"));
+  const stateSkillsDir = resolveUserPath(path.join(stateDir, "skills"));
+  const dedupedSkillDirs = [baseSkillsDir, stateSkillsDir];
+
   return {
     slackBotToken: process.env.SLACK_BOT_TOKEN,
     slackAppToken: process.env.SLACK_APP_TOKEN,
     anthropicBaseUrl: process.env.ANTHROPIC_BASE_URL,
     anthropicAuthToken: process.env.ANTHROPIC_AUTH_TOKEN,
     anthropicModel: process.env.ANTHROPIC_MODEL ?? "gpt-5-mini",
-    skillsDir: process.env.SKILLS_DIR ?? path.join(process.cwd(), "skills"),
+    skillsDir: baseSkillsDir,
+    stateSkillsDir,
+    skillDirs: dedupedSkillDirs,
     permissionsFile: process.env.PERMISSIONS_FILE ?? "./permissions.yaml",
     debug: parseBoolean(process.env.DEBUG),
     logLevel: process.env.LOG_LEVEL ?? "INFO",

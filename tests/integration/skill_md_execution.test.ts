@@ -76,7 +76,7 @@ describe("SKILL.md-based skill execution through Claude", () => {
   });
 
   it("detects SKILL.md-based skills and injects documentation into Claude context", async () => {
-    const processor = new ClaudeProcessor(skillsDir);
+    const processor = new ClaudeProcessor([skillsDir]);
 
     // Just verify that findRelevantSkillDocumentation can detect and load the skill
     const testMessage = "run skill smtp-send to send a test email";
@@ -99,7 +99,7 @@ describe("SKILL.md-based skill execution through Claude", () => {
   });
 
   it("marks SKILL.md-based skills with isDocumentationSkill flag", async () => {
-    const processor = new ClaudeProcessor(skillsDir);
+    const processor = new ClaudeProcessor([skillsDir]);
     await processor["ensureSkillsLoaded"]();
 
     const skills = processor["skills"];
@@ -118,7 +118,7 @@ describe("SKILL.md-based skill execution through Claude", () => {
   });
 
   it("does NOT return raw SKILL.md content to user", async () => {
-    const processor = new ClaudeProcessor(skillsDir);
+    const processor = new ClaudeProcessor([skillsDir]);
 
     // Load skills
     await processor["ensureSkillsLoaded"]();

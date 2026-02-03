@@ -32,7 +32,7 @@ describe("skill execution", () => {
     );
 
     initPermissionManager(permissionsFile);
-    const loader = new SkillLoader(dir);
+    const loader = new SkillLoader([dir]);
     const skills = await loader.loadSkills();
 
     expect(skills.hello).toBeDefined();
@@ -51,7 +51,7 @@ describe("skill execution", () => {
     await writeFile(skillPath, "export const executeSkill = () => 'nope';");
 
     initPermissionManager(permissionsFile);
-    const loader = new SkillLoader(dir);
+    const loader = new SkillLoader([dir]);
     const skills = await loader.loadSkills();
 
     expect(skills.blocked).toBeUndefined();
@@ -68,7 +68,7 @@ describe("skill execution", () => {
     await writeFile(skillPath, "export const executeSkill = () => 'hidden';");
 
     initPermissionManager(permissionsFile);
-    const loader = new SkillLoader(dir);
+    const loader = new SkillLoader([dir]);
     const skills = await loader.loadSkills();
 
     expect(skills._hidden).toBeUndefined();

@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { createReadStream } from "node:fs";
 import { createWriteStream } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -31,8 +32,10 @@ export function sanitizeSkillName(name: string): string {
 
 async function installFromGitHub(skillUrl: string, skillName: string): Promise<string> {
   try {
-    const skillsDir = path.join(process.cwd(), 'skills');
+    const skillsDir = path.join(process.env.IRONBOT_STATE_DIR || path.join(os.homedir(), '.ironbot'), 'skills');
     const skillDir = path.join(skillsDir, skillName);
+
+    await fs.mkdir(skillsDir, { recursive: true });
 
     // Clone the repository using spawn to avoid command injection
     const gitProcess = spawn('git', ['clone', skillUrl, skillDir], {
@@ -61,8 +64,10 @@ async function installFromGitHub(skillUrl: string, skillName: string): Promise<s
 async function installSkillFromZip(zipPath: string, skillName: string): Promise<string> {
   try {
     // Extract the skill (assuming it's a zip file)
-    const skillsDir = path.join(process.cwd(), 'skills');
+    const skillsDir = path.join(process.env.IRONBOT_STATE_DIR || path.join(os.homedir(), '.ironbot'), 'skills');
     const skillDir = path.join(skillsDir, skillName);
+
+    await fs.mkdir(skillsDir, { recursive: true });
 
     // Create skill directory
     await fs.mkdir(skillDir, { recursive: true });
@@ -171,7 +176,7 @@ export const executeSkill = async (input: string): Promise<string> => {
     }
 
     // Create temp directory for download
-    const tempDir = path.join(process.cwd(), 'temp');
+    const tempDir = path.join(process.env.IRONBOT_STATE_DIR || path.join(os.homedir(), '.ironbot'), 'temp');
     await fs.mkdir(tempDir, { recursive: true });
 
     // Check if it's a ClawHub skill URL and try the auth download endpoint

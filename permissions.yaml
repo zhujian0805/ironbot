@@ -104,6 +104,7 @@ skills:
     - "weather-2"         # Weather-2 skill from ClawHub
     - "yahoo-finance-clksb"  # Yahoo Finance skill for stock data
     - "smtp-send"         # Skill for sending emails via SMTP
+    - "ms-outlook-teams-assistant"  # MS Outlook Teams Assistant skill
     # - "*"               # Uncomment to allow all skills
 
 # Allowed MCPs (Model Context Protocol servers)
