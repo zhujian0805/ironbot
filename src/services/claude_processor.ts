@@ -138,36 +138,6 @@ export class ClaudeProcessor {
       }
     }
 
-    // Auto-route skill/capability queries to permission_check
-    const skillQueryKeywords = ['skill', 'skills', 'available', 'installed', 'permission', 'capabilities', 'what can you do', 'what do you have'];
-    const hasSkillQuery = skillQueryKeywords.some(keyword => trimmedMessage.includes(keyword));
-    
-    // Look for question patterns
-    const questionPatterns = ['what', 'which', 'show me', 'list', 'tell me', 'can you'];
-    const isQuestion = questionPatterns.some(pattern => trimmedMessage.includes(pattern));
-
-    if (hasSkillQuery && isQuestion) {
-      logger.debug({ userMessage: userMessage.substring(0, 100) }, "[SKILL-EXEC] Detected skill query question, auto-routing to permission_check");
-      const skillInfo = this.skills['permission_check'];
-      if (skillInfo) {
-        try {
-          logger.info({ skillName: 'permission_check' }, "[SKILL-EXEC] Executing auto-routed permission_check");
-          const result = await Promise.resolve(skillInfo.handler(userMessage));
-          logger.info({ skillName: 'permission_check', resultLength: result.length }, "[SKILL-EXEC] Auto-routed permission_check completed successfully");
-          return this.appendOperationSummary(result, [
-            { kind: "skill", name: "permission_check", status: "success" }
-          ]);
-        } catch (error) {
-          logger.error({ error, skillName: 'permission_check' }, "[SKILL-EXEC] Auto-routed permission check failed");
-          return this.appendOperationSummary(`Sorry, error checking permissions.`, [
-            { kind: "skill", name: "permission_check", status: "error", reason: String(error) }
-          ]);
-        }
-      } else {
-        logger.warn("[SKILL-EXEC] permission_check not available for auto-routing");
-      }
-    }
-
     // Intelligent content-based auto-routing based on skill triggers
     logger.debug({ userMessage: userMessage.substring(0, 100) }, "[SKILL-EXEC] Checking for content-based skill triggers");
     
