@@ -45,6 +45,7 @@ tools:
     run_powershell:
       allowed_commands:                 # Explicitly allow disk inventory cmdlet
         - "*"                    # Allow listing disks
+        - "node skills/smtp-send/scripts/send_email.js *"
       blocked_commands: []              # Not needed: blocked_commands is checked globally only
       timeout_max: 30                   # Maximum timeout in seconds
       override_prompt: false            # Allow prompting to override denial

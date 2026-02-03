@@ -20,7 +20,8 @@ export class RetryManager {
    */
   async executeWithRetry<T>(
     operation: () => Promise<T>,
-    context?: string
+    context?: string,
+    options?: { shouldRetry?: (error: unknown) => boolean }
   ): Promise<T> {
     let lastError: Error;
 
@@ -34,16 +35,16 @@ export class RetryManager {
       } catch (error) {
         lastError = error as Error;
 
-        // Check if this is a rate limit error (429)
-        const isRateLimit = this.isRateLimitError(error);
+        // Check if we should retry
+        const shouldRetry = options?.shouldRetry?.(error) ?? this.isRateLimitError(error);
         const isLastAttempt = attempt === this.config.maxAttempts;
 
-        if (isLastAttempt || !isRateLimit) {
+        if (isLastAttempt || !shouldRetry) {
           logger.error({
             error: lastError.message,
             attempt,
             maxAttempts: this.config.maxAttempts,
-            isRateLimit,
+            shouldRetry,
             context
           }, "Operation failed, giving up");
           throw lastError;

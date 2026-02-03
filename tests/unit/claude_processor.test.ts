@@ -89,7 +89,14 @@ vi.mock("../../src/config.ts", () => ({
     anthropicBaseUrl: undefined,
     anthropicModel: "claude-3-sonnet-20240229",
     devMode: false,
-    skillsDir: "./skills"
+    skillsDir: "./skills",
+    retry: {
+      maxAttempts: 2,
+      baseDelayMs: 10,
+      maxDelayMs: 100,
+      backoffMultiplier: 2,
+      jitterMax: 0.1
+    }
   })
 }));
 
@@ -160,14 +167,6 @@ describe("ClaudeProcessor", () => {
 
     mockMemoryManager.search.mockResolvedValue([]);
 
-    const mockConfig = {
-      anthropicAuthToken: "test-token",
-      anthropicBaseUrl: undefined,
-      anthropicModel: "claude-3-sonnet-20240229",
-      devMode: false,
-      skillsDir: "./skills"
-    };
-
     // Create processor with mocked dependencies
     processor = new ClaudeProcessor(["./skills"], mockMemoryManager);
   });
@@ -206,7 +205,7 @@ describe("ClaudeProcessor", () => {
     });
 
     it("handles skill execution errors gracefully", async () => {
-      mockSkillInfos['permission_check'].handler.mockRejectedValueOnce(new Error("Skill failed"));
+      mockSkillInfos['permission_check'].handler.mockRejectedValue(new Error("Skill failed"));
 
       const result = await processor.processMessage("Run @permission_check");
 
@@ -225,6 +224,16 @@ describe("ClaudeProcessor", () => {
 
       expect(mockSkillInfos['permission_check'].handler).toHaveBeenCalledWith("what skills do you have?");
       expect(result).toContain("🤖 **IronBot System Status**");
+    });
+
+    it("does not fall back to skill_installer when asking about available skills", async () => {
+      mockSkillInfos['permission_check'].handler.mockClear();
+      mockSkillInfos['skill_installer'].handler.mockClear();
+
+      await processor.processMessage("what skills do you have?");
+
+      expect(mockSkillInfos['permission_check'].handler).toHaveBeenCalledWith("what skills do you have?");
+      expect(mockSkillInfos['skill_installer'].handler).not.toHaveBeenCalled();
     });
 
     it("auto-routes direct skill execution requests", async () => {
@@ -429,6 +438,37 @@ describe("ClaudeProcessor", () => {
       expect(result).toBe("Here are the files: file1.txt, file2.txt");
     });
 
+    it("summarizes tool executions when Claude never returns final text", async () => {
+      mockMemoryManager.search.mockResolvedValue([]);
+      mockToolExecutorInstance.executeTool.mockResolvedValue({
+        success: true,
+        result: "file1.txt\nfile2.txt"
+      });
+
+      mockAnthropicClient.messages.create
+        .mockResolvedValueOnce({
+          stop_reason: "tool_use",
+          content: [
+            {
+              type: "tool_use",
+              id: "tool_123",
+              name: "run_bash",
+              input: { command: "ls" }
+            }
+          ]
+        })
+        .mockResolvedValueOnce({
+          stop_reason: "end_turn",
+          content: [{ type: "text", text: "Final summary" }]
+        });
+
+      processor["maxToolIterations"] = 1;
+      const result = await processor.processMessage("List files silently");
+
+      expect(mockToolExecutorInstance.executeTool).toHaveBeenCalledWith("run_bash", { command: "ls" });
+      expect(result).toBe("Final summary");
+    });
+
     it("handles tool execution failures", async () => {
       mockMemoryManager.search.mockResolvedValue([]);
 
@@ -539,8 +579,8 @@ describe("ClaudeProcessor", () => {
 
       const result = await processor.processMessage("Loop test");
 
-      expect(callCount).toBe(6); // maxToolIterations
-      expect(result).toBe("Sorry, I could not complete the request.");
+      expect(callCount).toBe(7); // maxToolIterations + retry
+      expect(result).toBe("Done");
     });
   });
 

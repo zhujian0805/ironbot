@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { promises as fs } from "node:fs";
 import { logger } from "../utils/logging.ts";
 import { getPermissionManager } from "./permission_manager.ts";
+import { RetryManager } from "./retry_manager.ts";
 
 export type ToolDefinition = {
   name: string;
@@ -219,10 +220,13 @@ const runProcess = (
 const escapeRegex = (input: string): string =>
   input.replace(/[.+^${}()|[\]\\]/g, "\\$&");
 
+const wildcardToRegex = (pattern: string) =>
+  escapeRegex(pattern).replace(/\*/g, "[\\s\\S]*").replace(/\?/g, ".");
+
 const matchPattern = (value: string, patterns: string[]): boolean => {
   if (!patterns.length) return false;
   return patterns.some((pattern) => {
-    const regex = new RegExp(`^${escapeRegex(pattern).replace(/\*/g, ".*").replace(/\?/g, ".")}$`);
+    const regex = new RegExp(`^${wildcardToRegex(pattern)}$`);
     return regex.test(value);
   });
 };
@@ -230,7 +234,7 @@ const matchPattern = (value: string, patterns: string[]): boolean => {
 const findMatchingPattern = (value: string, patterns: string[]): string | undefined => {
   if (!patterns.length) return undefined;
   for (const pattern of patterns) {
-    const regex = new RegExp(`^${escapeRegex(pattern).replace(/\*/g, ".*").replace(/\?/g, ".")}$`);
+    const regex = new RegExp(`^${wildcardToRegex(pattern)}$`);
     if (regex.test(value)) return pattern;
   }
   return undefined;
@@ -238,27 +242,30 @@ const findMatchingPattern = (value: string, patterns: string[]): string | undefi
 
 export class ToolExecutor {
   private allowedTools?: string[];
+  private retryManager?: RetryManager;
   private permissionManager = getPermissionManager();
 
-  constructor(allowedTools?: string[]) {
+  constructor(allowedTools?: string[], retryManager?: RetryManager) {
     this.allowedTools = allowedTools;
+    this.retryManager = retryManager;
   }
 
   async executeTool(toolName: string, toolInput: Record<string, unknown>): Promise<ToolResult> {
-    logger.info({ toolName, input: toolInput }, "[TOOL-FLOW] Executing tool");
-    logger.debug({ 
-      toolName, 
-      toolInput: JSON.stringify(toolInput, null, 2),
-      hasPermissionManager: Boolean(this.permissionManager) 
-    }, "[TOOL-FLOW] Tool execution started with full input");
+    const runAttempt = async (): Promise<ToolResult> => {
+      logger.info({ toolName, input: toolInput }, "[TOOL-FLOW] Executing tool");
+      logger.debug({ 
+        toolName, 
+        toolInput: JSON.stringify(toolInput, null, 2),
+        hasPermissionManager: Boolean(this.permissionManager) 
+      }, "[TOOL-FLOW] Tool execution started with full input");
 
-    let effectiveInput = { ...toolInput };
-    const resourcePath =
-      typeof toolInput.path === "string"
-        ? toolInput.path
-        : typeof toolInput.working_directory === "string"
-          ? toolInput.working_directory
-          : undefined;
+      let effectiveInput = { ...toolInput };
+      const resourcePath =
+        typeof toolInput.path === "string"
+          ? toolInput.path
+          : typeof toolInput.working_directory === "string"
+            ? toolInput.working_directory
+            : undefined;
 
     if (this.permissionManager) {
       logger.debug({ toolName }, "[TOOL-FLOW] Checking tool permission");
@@ -373,35 +380,62 @@ export class ToolExecutor {
       return { success: false, error: reason };
     }
 
-    logger.debug({ toolName, effectiveInput: JSON.stringify(effectiveInput, null, 2) }, "[TOOL-FLOW] Dispatching to tool implementation");
-    
-    const toolStart = Date.now();
-    let result: ToolResult;
-    switch (toolName) {
-      case "run_powershell":
-        result = await this.runPowerShell(effectiveInput);
-        break;
-      case "run_bash":
-        result = await this.runBash(effectiveInput);
-        break;
-      case "read_file":
-        result = await this.readFile(effectiveInput);
-        break;
-      case "write_file":
-        result = await this.writeFile(effectiveInput);
-        break;
-      case "list_directory":
-        result = await this.listDirectory(effectiveInput);
-        break;
-      case "download_file":
-        result = await this.downloadFile(effectiveInput);
-        break;
-      default:
-        result = { success: false, error: `Unknown tool: ${toolName}` };
+      logger.debug({ toolName, effectiveInput: JSON.stringify(effectiveInput, null, 2) }, "[TOOL-FLOW] Dispatching to tool implementation");
+      
+      const toolStart = Date.now();
+      let result: ToolResult;
+      switch (toolName) {
+        case "run_powershell":
+          result = await this.runPowerShell(effectiveInput);
+          break;
+        case "run_bash":
+          result = await this.runBash(effectiveInput);
+          break;
+        case "read_file":
+          result = await this.readFile(effectiveInput);
+          break;
+        case "write_file":
+          result = await this.writeFile(effectiveInput);
+          break;
+        case "list_directory":
+          result = await this.listDirectory(effectiveInput);
+          break;
+        case "download_file":
+          result = await this.downloadFile(effectiveInput);
+          break;
+        default:
+          result = { success: false, error: `Unknown tool: ${toolName}` };
+      }
+      const durationMs = Date.now() - toolStart;
+      logger.info({ toolName, success: result.success, durationMs }, "[TOOL-FLOW] Tool execution completed");
+      return result;
+    };
+
+    if (!this.retryManager) {
+      return runAttempt();
     }
-    const durationMs = Date.now() - toolStart;
-    logger.info({ toolName, success: result.success, durationMs }, "[TOOL-FLOW] Tool execution completed");
-    return result;
+
+    let lastResult: ToolResult | null = null;
+    try {
+      const result = await this.retryManager.executeWithRetry(async () => {
+        const attemptResult = await runAttempt();
+        if (!attemptResult.success) {
+          lastResult = attemptResult;
+          throw new Error(attemptResult.error ?? `Tool ${toolName} failed`);
+        }
+        lastResult = null;
+        return attemptResult;
+      }, `tool:${toolName}`, { shouldRetry: () => true });
+      return result;
+    } catch (error) {
+      return (
+        lastResult ??
+        {
+          success: false,
+          error: error instanceof Error ? error.message : String(error)
+        }
+      );
+    }
   }
 
   private async runPowerShell(toolInput: Record<string, unknown>): Promise<ToolResult> {

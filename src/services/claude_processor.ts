@@ -6,6 +6,7 @@ import { resolveConfig } from "../config.ts";
 import { logger } from "../utils/logging.ts";
 import { SkillLoader, type SkillHandler, type SkillInfo } from "./skill_loader.ts";
 import { ToolExecutor, getAllowedTools } from "./tools.ts";
+import { RetryManager } from "./retry_manager.ts";
 import type { MemoryManager } from "../memory/manager.ts";
 
 const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant with access to system tools. You can execute PowerShell commands, Bash commands, read and write files, and list directory contents.
@@ -83,6 +84,7 @@ export class ClaudeProcessor {
   private toolExecutor: ToolExecutor;
   private skills: Record<string, SkillInfo> = {};
   private skillsLoaded = false;
+  private retryManager: RetryManager;
   private readonly maxToolIterations = 6;
   private skillLoader: SkillLoader;
   private memoryManager?: MemoryManager;
@@ -97,14 +99,39 @@ export class ClaudeProcessor {
     });
     this.model = config.anthropicModel;
     this.devMode = config.devMode;
-    this.toolExecutor = new ToolExecutor();
+    this.retryManager = new RetryManager(config.retry);
+    this.toolExecutor = new ToolExecutor(undefined, this.retryManager);
     this.skillLoader = new SkillLoader(skillDirs);
     this.memoryManager = memoryManager;
     logger.info({ model: this.model, skillDirs, hasMemoryManager: !!memoryManager }, "[INIT] ClaudeProcessor initialized");
   }
 
   private async checkAutoRouteSkills(userMessage: string): Promise<string | null> {
-    logger.debug({ userMessage: userMessage.substring(0, 100) }, "[SKILL-EXEC] Delegating routing decisions to Claude");
+    const lowerMessage = userMessage.toLowerCase();
+    logger.debug({ userMessage: lowerMessage.substring(0, 100) }, "[SKILL-EXEC] Delegating routing decisions to Claude");
+
+    const matchedSkill = this.findAutoRouteSkill(lowerMessage);
+    if (matchedSkill) {
+      return this.executeSkillHandler(matchedSkill, userMessage, "auto-route");
+    }
+
+    const installerSkill = this.skills["skill_installer"];
+    const documentationSkillMatch = this.findDocumentationSkill(lowerMessage);
+    if (documentationSkillMatch) {
+      logger.debug({ skillName: documentationSkillMatch.name }, "[SKILL-EXEC] Message matches documentation skill; allowing Claude to handle it");
+      return null;
+    }
+
+    const useSkillPattern = /\buse skill\b/;
+    const installSkillPattern = /\binstall (this )?skill\b|\badd skill\b/;
+    if (
+      installerSkill &&
+      (useSkillPattern.test(lowerMessage) || installSkillPattern.test(lowerMessage))
+    ) {
+      logger.debug({ lowerMessage }, "[SKILL-EXEC] Falling back to skill_installer auto-route");
+      return this.executeSkillHandler(installerSkill, userMessage, "auto-route");
+    }
+
     return null;
   }
 
@@ -123,21 +150,29 @@ export class ClaudeProcessor {
 
   private async findRelevantSkillDocumentation(userMessage: string): Promise<string | null> {
     const lowerMessage = userMessage.toLowerCase();
-    const relevantSkills: SkillInfo[] = [];
+    const docs: string[] = [];
 
     // Find SKILL.md-based skills that match the message
     for (const skillInfo of Object.values(this.skills)) {
-      if (!skillInfo.isDocumentationSkill || !skillInfo.documentation) continue;
+      if (!skillInfo.isDocumentationSkill) continue;
       if (!this.skillMatchesMessage(skillInfo, lowerMessage)) continue;
-      relevantSkills.push(skillInfo);
+
+      let documentation = skillInfo.documentation;
+      if (!documentation && skillInfo.handler) {
+        try {
+          documentation = await Promise.resolve(skillInfo.handler(userMessage));
+        } catch (error) {
+          logger.error({ error, skillName: skillInfo.name }, "[SKILL-CONTEXT] Failed to render documentation from handler");
+          documentation = undefined;
+        }
+      }
+
+      if (!documentation) continue;
+
+      docs.push(documentation);
       logger.debug({ skillName: skillInfo.name }, "[SKILL-CONTEXT] Including SKILL.md documentation for context");
     }
 
-    if (relevantSkills.length === 0) {
-      return null;
-    }
-
-    const docs = relevantSkills.map((skill) => skill.documentation!).filter(Boolean);
     if (docs.length === 0) {
       return null;
     }
@@ -163,6 +198,53 @@ export class ClaudeProcessor {
       }
     }
     return false;
+  }
+
+  private findAutoRouteSkill(lowerMessage: string): SkillInfo | null {
+    for (const skillInfo of Object.values(this.skills)) {
+      if (skillInfo.isDocumentationSkill) continue;
+      if (this.skillMatchesMessage(skillInfo, lowerMessage)) {
+        return skillInfo;
+      }
+    }
+    return null;
+  }
+
+  private findDocumentationSkill(lowerMessage: string): SkillInfo | null {
+    for (const skillInfo of Object.values(this.skills)) {
+      if (!skillInfo.isDocumentationSkill) continue;
+      if (this.skillMatchesMessage(skillInfo, lowerMessage)) {
+        return skillInfo;
+      }
+    }
+    return null;
+  }
+
+  private async executeSkillHandler(skillInfo: SkillInfo, userMessage: string, triggerType: string): Promise<string> {
+    logger.info({ skillName: skillInfo.name, triggerType }, "[SKILL-EXEC] Executing skill via auto-routing");
+    try {
+      const result = await this.invokeSkillHandler(skillInfo, userMessage);
+      logger.info({ skillName: skillInfo.name, triggerType, resultLength: result.length }, "[SKILL-EXEC] Auto-routed skill execution completed successfully");
+      return this.appendOperationSummary(result, [
+        { kind: "skill", name: skillInfo.name, status: "success" }
+      ]);
+    } catch (error) {
+      logger.error({ error, skillName: skillInfo.name, triggerType }, "[SKILL-EXEC] Auto-routed skill execution failed");
+      return this.appendOperationSummary(`Sorry, error executing skill ${skillInfo.name}.`, [
+        { kind: "skill", name: skillInfo.name, status: "error", reason: String(error) }
+      ]);
+    }
+  }
+
+  private async invokeSkillHandler(skillInfo: SkillInfo, userMessage: string): Promise<string> {
+    if (!this.retryManager) {
+      return Promise.resolve(skillInfo.handler(userMessage));
+    }
+    return this.retryManager.executeWithRetry(
+      () => Promise.resolve(skillInfo.handler(userMessage)),
+      `skill:${skillInfo.name}`,
+      { shouldRetry: () => true }
+    );
   }
 
   private async buildMemoryContext(userMessage: string, sessionKey?: string, crossSessionMemory?: boolean): Promise<string> {
@@ -212,19 +294,7 @@ export class ClaudeProcessor {
     logger.debug({ availableSkills: Object.keys(this.skills) }, "[MSG-PROCESS] Checking for @skill references");
     for (const skillInfo of Object.values(this.skills)) {
       if (userMessage.includes(`@${skillInfo.name}`)) {
-        logger.info({ skillName: skillInfo.name, triggerType: '@reference' }, "[SKILL-EXEC] Executing skill via @reference");
-        try {
-          const result = await Promise.resolve(skillInfo.handler(userMessage));
-          logger.info({ skillName: skillInfo.name, resultLength: result.length }, "[SKILL-EXEC] @reference skill execution completed successfully");
-          return this.appendOperationSummary(result, [
-            { kind: "skill", name: skillInfo.name, status: "success" }
-          ]);
-        } catch (error) {
-          logger.error({ error, skillName: skillInfo.name, triggerType: '@reference' }, "[SKILL-EXEC] @reference skill execution failed");
-          return this.appendOperationSummary(`Sorry, error executing skill ${skillInfo.name}.`, [
-            { kind: "skill", name: skillInfo.name, status: "error", reason: String(error) }
-          ]);
-        }
+        return this.executeSkillHandler(skillInfo, userMessage, "@reference");
       }
     }
 
@@ -343,7 +413,10 @@ export class ClaudeProcessor {
     }
 
     if (!finalResponse) {
-      finalResponse = "Sorry, I could not complete the request.";
+      finalResponse =
+        (await this.retryForFinalResponse(userMessage, messages, systemPrompt, operations)) ??
+        this.summarizeOperations(operations) ??
+        "Sorry, I could not complete the request.";
     }
 
     finalResponse = this.sanitizeResponse(finalResponse);
@@ -370,6 +443,67 @@ export class ClaudeProcessor {
       .filter((block) => block.type === "text")
       .map((block) => block.text ?? "");
     return parts.join("\n");
+  }
+
+  private summarizeOperations(operations: OperationRecord[]): string | null {
+    if (!operations.length) return null;
+    const successOps = operations.filter((op) => op.status === "success");
+    const failedOps = operations.filter((op) => op.status && op.status !== "success");
+
+    if (successOps.length && !failedOps.length) {
+      const toolNames = Array.from(new Set(successOps.map((op) => op.name)));
+      return `✅ Executed ${toolNames.join(", ")} successfully.`;
+    }
+
+    const parts: string[] = [];
+    if (successOps.length) {
+      const toolNames = Array.from(new Set(successOps.map((op) => op.name)));
+      parts.push(`✅ Success: ${toolNames.join(", ")}`);
+    }
+    if (failedOps.length) {
+      const toolNames = Array.from(new Set(failedOps.map((op) => op.name)));
+      parts.push(`⚠️ Failed: ${toolNames.join(", ")}`);
+    }
+
+    if (parts.length) {
+      return parts.join(" • ");
+    }
+
+    return null;
+  }
+
+  private async retryForFinalResponse(
+    userMessage: string,
+    messages: MessageParam[],
+    systemPrompt: string,
+    operations: OperationRecord[]
+  ): Promise<string | null> {
+    if (!operations.length) return null;
+    const summary = this.summarizeOperations(operations);
+    if (!summary) return null;
+
+    const retryPrompt = `${summary} Please provide a concise confirmation that the work is done for "${userMessage}" and highlight any key outputs or next steps.`;
+    const retryMessages = [...messages, { role: "user", content: retryPrompt }];
+
+    try {
+      logger.info({ userMessage }, "[LLM-FLOW] Retrying for final response");
+      const response = await this.client.messages.create({
+        model: this.model,
+        max_tokens: 512,
+        system: systemPrompt,
+        tools: getAllowedTools() as Tool[],
+        messages: retryMessages
+      });
+      const text = this.extractText(response.content);
+      if (text) {
+        return text;
+      }
+      logger.warn("[LLM-FLOW] Retry returned no textual content");
+    } catch (error) {
+      logger.warn({ error }, "[LLM-FLOW] Retry for final response failed");
+    }
+
+    return null;
   }
 
   private sanitizeResponse(response: string): string {
