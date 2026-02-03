@@ -106,6 +106,12 @@ export class ClaudeProcessor {
   private async checkAutoRouteSkills(userMessage: string): Promise<string | null> {
     const trimmedMessage = userMessage.trim().toLowerCase();
 
+    const docResponse = await this.respondWithSkillDocumentation(userMessage);
+    if (docResponse) {
+      logger.debug({ userMessage: userMessage.substring(0, 100) }, "[SKILL-EXEC] Returning SKILL.md instructions for documentation request");
+      return this.appendOperationSummary(docResponse, []);
+    }
+
     logger.debug({ userMessage: userMessage.substring(0, 100) }, "[SKILL-EXEC] Checking for auto-routing opportunities");
 
     // Smart auto-routing for install commands - look for install keywords and URLs
@@ -297,24 +303,10 @@ export class ClaudeProcessor {
 
     // Find SKILL.md-based skills that match the message
     for (const skillInfo of Object.values(this.skills)) {
-      if (skillInfo.isDocumentationSkill) {
-        // Check if skill name is mentioned
-        if (lowerMessage.includes(skillInfo.name.toLowerCase())) {
-          relevantSkills.push(skillInfo);
-          logger.debug({ skillName: skillInfo.name }, "[SKILL-CONTEXT] Found relevant SKILL.md documentation");
-          continue;
-        }
-        
-        // Check if any triggers match
-        if (skillInfo.triggers) {
-          for (const trigger of skillInfo.triggers) {
-            if (lowerMessage.includes(trigger.toLowerCase())) {
-              relevantSkills.push(skillInfo);
-              logger.debug({ skillName: skillInfo.name, trigger }, "[SKILL-CONTEXT] Found relevant SKILL.md documentation via trigger");
-              break;
-            }
-          }
-        }
+      if (!skillInfo.isDocumentationSkill) continue;
+      if (this.isSkillMentionedInMessage(skillInfo, lowerMessage)) {
+        relevantSkills.push(skillInfo);
+        logger.debug({ skillName: skillInfo.name }, "[SKILL-CONTEXT] Found relevant SKILL.md documentation");
       }
     }
 
@@ -343,6 +335,56 @@ export class ClaudeProcessor {
     }
 
     return `\n\n## Available Skills\n\nYou have access to the following skills. Use the appropriate system tools (run_bash, run_powershell, etc.) to execute the scripts described in these skills:\n\n${validDocs.join("\n\n---\n\n")}`;
+  }
+
+  private async respondWithSkillDocumentation(userMessage: string): Promise<string | null> {
+    const lowerMessage = userMessage.toLowerCase();
+    if (!this.isInstructionRequest(lowerMessage)) {
+      return null;
+    }
+
+    for (const skillInfo of Object.values(this.skills)) {
+      if (!skillInfo.isDocumentationSkill) continue;
+      if (!this.isSkillMentionedInMessage(skillInfo, lowerMessage)) continue;
+
+      try {
+        logger.debug({ skillName: skillInfo.name }, "[SKILL-EXEC] Providing documentation for instruction request");
+        const doc = await Promise.resolve(skillInfo.handler(userMessage));
+        return doc;
+      } catch (error) {
+        logger.error({ error, skillName: skillInfo.name }, "[SKILL-EXEC] Failed to load skill documentation for instruction request");
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  private isInstructionRequest(message: string): boolean {
+    const triggers = [
+      "how do i use",
+      "how to use",
+      "usage instructions",
+      "show me how to use",
+      "help me use",
+      "skill usage",
+      "usage of skill"
+    ];
+    return triggers.some((trigger) => message.includes(trigger));
+  }
+
+  private isSkillMentionedInMessage(skillInfo: SkillInfo, lowerMessage: string): boolean {
+    if (skillInfo.name && lowerMessage.includes(skillInfo.name.toLowerCase())) {
+      return true;
+    }
+    if (skillInfo.triggers) {
+      for (const trigger of skillInfo.triggers) {
+        if (lowerMessage.includes(trigger.toLowerCase())) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   private async buildMemoryContext(userMessage: string, sessionKey?: string, crossSessionMemory?: boolean): Promise<string> {
