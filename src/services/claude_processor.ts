@@ -154,7 +154,7 @@ export class ClaudeProcessor {
 
     // Find SKILL.md-based skills that match the message
     for (const skillInfo of Object.values(this.skills)) {
-      if (!skillInfo.isDocumentationSkill) continue;
+      if (!skillInfo.documentation && !skillInfo.isDocumentationSkill) continue;
       if (!this.skillMatchesMessage(skillInfo, lowerMessage)) continue;
 
       let documentation = skillInfo.documentation;

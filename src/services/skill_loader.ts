@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { logger } from "../utils/logging.ts";
 import { getPermissionManager, type PermissionManager } from "./permission_manager.ts";
+import yaml from "yaml";
 
 export type SkillHandler = (input: string) => string | Promise<string>;
 
@@ -79,30 +80,17 @@ export class SkillLoader {
     if (!frontmatterMatch) return null;
 
     try {
-      // Simple YAML-like parsing (basic implementation)
       const frontmatter = frontmatterMatch[1];
+      const parsed = yaml.parse(frontmatter) as Record<string, unknown>;
+      if (!parsed) return null;
+
       const metadata: SkillMetadata = {};
 
-      // Parse basic key-value pairs
-      const lines = frontmatter.split('\n').map(line => line.trim()).filter(line => line);
-      for (const line of lines) {
-        const colonIndex = line.indexOf(':');
-        if (colonIndex > 0) {
-          const key = line.substring(0, colonIndex).trim();
-          const value = line.substring(colonIndex + 1).trim();
-
-          if (key === 'name') metadata.name = value;
-          else if (key === 'description') metadata.description = value;
-          else if (key === 'homepage') metadata.homepage = value;
-          else if (key === 'metadata') {
-            try {
-              // Try to parse JSON metadata
-              metadata.metadata = JSON.parse(value);
-            } catch {
-              // Ignore invalid JSON
-            }
-          }
-        }
+      if (typeof parsed.name === "string") metadata.name = parsed.name;
+      if (typeof parsed.description === "string") metadata.description = parsed.description;
+      if (typeof parsed.homepage === "string") metadata.homepage = parsed.homepage;
+      if (parsed.metadata && typeof parsed.metadata === "object") {
+        metadata.metadata = parsed.metadata as SkillMetadata["metadata"];
       }
 
       return metadata;
@@ -198,20 +186,49 @@ export class SkillLoader {
       return;
     }
 
+    let skillMdContent: string | undefined;
     try {
-      await fs.access(skillMdPath);
+      skillMdContent = await fs.readFile(skillMdPath, "utf-8");
     } catch {
-      logger.debug({ skillName, skillDir }, "[SKILL-FLOW] Directory does not contain accessible SKILL.md, skipping");
+      logger.debug({ skillName, skillDir }, "[SKILL-FLOW] SKILL.md not present or unreadable in directory");
+    }
+
+    const metadata = skillMdContent ? this.parseFrontmatter(skillMdContent) : undefined;
+    const triggers = metadata ? this.extractTriggersFromMetadata(metadata) : this.extractTriggersFromName(skillName);
+
+    const relativePath = path.relative(process.cwd(), skillDir) || skillDir;
+    const description = metadata?.description?.trim() || "No description provided.";
+    const formattedDocumentation = skillMdContent
+      ? `**Skill:** ${skillName}\n**Description:** ${description}\n**Location:** ${relativePath}\n\n${skillMdContent}`
+      : undefined;
+
+    const directoryHandler = await this.loadHandlerFromDirectory(skillDir, skillName);
+    if (directoryHandler) {
+      if (this.skills[skillName]) {
+        logger.warn({ skillName, existing: this.skills[skillName].skillDirectory, candidate: skillDir }, "[SKILL-FLOW] Duplicate skill name detected; skipping directory");
+        return;
+      }
+
+      this.skills[skillName] = {
+        name: skillName,
+        handler: directoryHandler,
+        metadata,
+        triggers,
+        documentation: formattedDocumentation,
+        skillDirectory: skillDir
+      };
+
+      logger.info(
+        { skillName, skillDir, hasDocumentation: !!formattedDocumentation, triggerCount: triggers.length },
+        "[SKILL-FLOW] Successfully loaded executable skill from directory"
+      );
       return;
     }
 
-    const skillMdContent = await fs.readFile(skillMdPath, "utf-8");
-    const metadata = this.parseFrontmatter(skillMdContent) || undefined;
-    const triggers = metadata ? this.extractTriggersFromMetadata(metadata) : this.extractTriggersFromName(skillName);
-    logger.debug({ skillName, hasMetadata: !!metadata, triggerCount: triggers.length }, "[SKILL-FLOW] Parsed skill metadata and triggers");
-    const relativePath = path.relative(process.cwd(), skillDir) || skillDir;
-    const description = metadata?.description?.trim() || "No description provided.";
-    const formattedDocumentation = `**Skill:** ${skillName}\n**Description:** ${description}\n**Location:** ${relativePath}\n\n${skillMdContent}`;
+    if (!skillMdContent) {
+      logger.debug({ skillName, skillDir }, "[SKILL-FLOW] Directory contains no SKILL.md and no executable handler; skipping");
+      return;
+    }
 
     if (this.skills[skillName]) {
       logger.warn({ skillName, existing: this.skills[skillName].skillDirectory, candidate: skillDir }, "[SKILL-FLOW] Duplicate skill name detected; skipping directory");
@@ -220,8 +237,8 @@ export class SkillLoader {
 
     const handler: SkillHandler = async (input: string) => {
       try {
-        logger.debug({ skillName }, "[SKILL-FLOW] Executing skill directory handler");
-        logger.debug({ skillName, contentLength: skillMdContent.length }, "[SKILL-FLOW] Successfully read SKILL.md content");
+        logger.debug({ skillName }, "[SKILL-FLOW] Executing documentation skill handler");
+        logger.debug({ skillName, contentLength: skillMdContent?.length ?? 0 }, "[SKILL-FLOW] Successfully read SKILL.md content");
         return `${formattedDocumentation}\n\n*Input:* ${input}`;
       } catch (error) {
         logger.error({ error, skillName, skillMdPath }, "[SKILL-FLOW] Error reading SKILL.md content");
@@ -240,6 +257,33 @@ export class SkillLoader {
     };
 
     logger.info({ skillName, skillDir, triggerCount: triggers.length }, "[SKILL-FLOW] Successfully loaded SKILL.md-based documentation skill from directory");
+  }
+
+  private async loadHandlerFromDirectory(skillDir: string, skillName: string): Promise<SkillHandler | null> {
+    const extensions = [".ts", ".js", ".mjs", ".cjs"];
+    for (const ext of extensions) {
+      const candidatePath = path.join(skillDir, `${skillName}${ext}`);
+      try {
+        await fs.access(candidatePath);
+      } catch {
+        continue;
+      }
+
+      try {
+        const module = await import(pathToFileURL(candidatePath).href);
+        const handler = module.executeSkill as SkillHandler | undefined;
+        if (typeof handler !== "function") {
+          logger.warn({ skillName, filePath: candidatePath }, "[SKILL-FLOW] Directory skill file missing executeSkill export");
+          return null;
+        }
+        return handler;
+      } catch (error) {
+        logger.error({ error, skillName, filePath: candidatePath }, "[SKILL-FLOW] Failed to import skill file from directory");
+        return null;
+      }
+    }
+
+    return null;
   }
 
   private async loadSkillFile(filePath: string, permissionManager: PermissionManager | null): Promise<void> {
