@@ -187,17 +187,21 @@ export async function gatherSkillDirectories(): Promise<Array<{ name: string; la
 }
 
 export async function listInstalledSkills(): Promise<string> {
+  console.log("[skill_installer] listInstalledSkills scanning ~/.ironbot/skills and workspace ./skills");
   const entries = await gatherSkillDirectories();
   if (!entries.length) {
+    console.log("[skill_installer] listInstalledSkills found no entries");
     return "No skills found in ~/.ironbot/skills or workspace ./skills.";
   }
 
   const lines = entries.map((entry) => `• ${entry.name} (from ${entry.label})`);
+  console.log(`[skill_installer] listInstalledSkills found ${lines.length} entries`);
   return `Installed skills:\n${lines.join("\n")}`;
 }
 
 export async function removeInstalledSkill(skillName: string): Promise<string> {
   const sanitized = sanitizeSkillName(skillName);
+  console.log(`[skill_installer] removeInstalledSkill requested for "${skillName}" (sanitized: "${sanitized}")`);
   const candidates = [
     { path: path.join(getStateSkillsDir(), sanitized), label: "~/.ironbot/skills" },
     { path: path.join(getWorkspaceSkillsDir(), sanitized), label: "workspace ./skills" }
@@ -209,6 +213,7 @@ export async function removeInstalledSkill(skillName: string): Promise<string> {
       if (stats.isDirectory()) {
         console.log(`[skill_installer] Removing skill ${sanitized} from ${candidate.path} (${candidate.label})`);
         await fs.rm(candidate.path, { recursive: true, force: true });
+        console.log(`[skill_installer] Removed skill "${sanitized}" from ${candidate.label}`);
         return `✅ Removed skill "${sanitized}" from ${candidate.label}`;
       }
     } catch {
@@ -216,6 +221,7 @@ export async function removeInstalledSkill(skillName: string): Promise<string> {
     }
   }
 
+  console.log(`[skill_installer] removeInstalledSkill could not find "${sanitized}"`);
   return `❌ Skill "${sanitized}" not found in ~/.ironbot/skills or workspace ./skills.`;
 }
 

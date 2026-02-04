@@ -32,6 +32,11 @@ export const executeSkill = async (input: string): Promise<string> => {
   const loadedSkills: string[] = [];
   for (const { label, directory } of skillLocations) {
     try {
+      const stats = await fs.stat(directory);
+      if (!stats.isDirectory()) {
+        continue;
+      }
+
       const entries = await fs.readdir(directory, { withFileTypes: true });
       for (const entry of entries) {
         if (entry.name.startsWith("_")) continue;
@@ -59,7 +64,11 @@ export const executeSkill = async (input: string): Promise<string> => {
         }
       }
     } catch (error) {
-      loadedSkills.push(`Error reading ${label}: ${error}`);
+      const err = error as NodeJS.ErrnoException;
+      if (err?.code === "ENOENT") {
+        continue;
+      }
+      loadedSkills.push(`Error reading ${label}: ${err?.message ?? String(error)}`);
     }
   }
 

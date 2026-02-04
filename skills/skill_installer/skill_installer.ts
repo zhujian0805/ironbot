@@ -9,7 +9,8 @@ import path from "node:path";
 
 const listPattern = /\b(?:list|show) (?:installed )?skills\b/i;
 const removePattern = /\b(?:remove|uninstall)(?: skill)?\s+(.+)$/i;
-const helpPattern = /\b(?:how to use|usage|instructions|help)\b/i;
+const helpPattern = /\b(?:how(?:\s+do\s+i)?\s+use|usage|instructions|help|guide)\b/i;
+const skillNamePattern = /\bskill_installer\b/i;
 
 const SKILL_DOC_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), "SKILL.md");
 const SKILL_DOC_PROMISE = readFile(SKILL_DOC_PATH, "utf-8");
@@ -23,8 +24,9 @@ export const executeSkill = async (input: string): Promise<string> => {
 
   const lower = trimmed.toLowerCase();
   const hasUrl = /https?:\/\//i.test(input);
-  if (helpPattern.test(lower) && !hasUrl) {
+  if (helpPattern.test(lower) && skillNamePattern.test(lower) && !hasUrl) {
     try {
+      console.log("[skill_installer] Providing SKILL.md documentation via help request");
       const doc = await SKILL_DOC_PROMISE;
       return doc;
     } catch {
