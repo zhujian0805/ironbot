@@ -11,6 +11,8 @@ import {
 } from "../../skills/skill_installer/scripts/install_skill.ts";
 import { executeSkill } from "../../skills/skill_installer/skill_installer.ts";
 import * as installerHelper from "../../skills/skill_installer/scripts/install_skill.ts";
+import { executeSkill } from "../../skills/skill_installer/skill_installer.ts";
+import * as installerHelper from "../../skills/skill_installer/scripts/install_skill.ts";
 
 describe("skill_installer helpers", () => {
   const originalCwd = process.cwd();
@@ -105,6 +107,12 @@ describe("skill_installer helpers", () => {
       const response = await executeSkill("uninstall skill memory");
       expect(removeSpy).toHaveBeenCalledWith("memory");
       expect(response).toBe("removed");
+    });
+
+    it("provides help documentation when asked", async () => {
+      const response = await executeSkill("how to use skill_installer");
+      expect(response).toContain("# Skill Installer");
+      expect(response).toContain("Use `--install`");
     });
   });
 });

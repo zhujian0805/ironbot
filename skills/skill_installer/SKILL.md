@@ -23,6 +23,9 @@ metadata:
 ### Listing skills
 - Say “list skills” or “show installed skills” to get a current inventory of everything this installer manages. The skill uses the same helpers as the CLI and returns a bullet list of directories under IronBot’s private `skills` folder.
 
+### Skill help hints
+- When you ask Claude for guidance words like **how**, **guide**, “help me use”, or “usage” alongside a skill name, Claude will automatically include the SKILL.md text for that skill in its response. Try “how do I use skill_installer?” or “show me the SKILL.md for permission_check” and Claude will read the document and tell you exactly what commands or triggers are available without running the installer itself.
+
 ## CLI helpers
 ### `install_skill.ts`
 ```
