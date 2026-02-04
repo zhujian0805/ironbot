@@ -125,6 +125,24 @@ describe("ToolExecutor", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  it("allows commands when wildcard '*' is configured", async () => {
+    const { dir } = await setupPermissions({
+      allowedTools: ["run_bash"],
+      restrictions: {
+        run_bash: {
+          allowed_commands: ["*"]
+        }
+      }
+    });
+    const executor = new ToolExecutor();
+
+    const result = await executor.executeTool("run_bash", { command: "ls -la /tmp" });
+
+    expect(result.success).toBe(true);
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
   it("enforces blocked_commands restrictions", async () => {
     const { dir } = await setupPermissions({
       allowedTools: ["run_bash"],

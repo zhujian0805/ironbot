@@ -220,8 +220,21 @@ const runProcess = (
 const escapeRegex = (input: string): string =>
   input.replace(/[.+^${}()|[\]\\]/g, "\\$&");
 
-const wildcardToRegex = (pattern: string) =>
-  escapeRegex(pattern).replace(/\*/g, "[\\s\\S]*").replace(/\?/g, ".");
+const wildcardToRegex = (pattern: string) => {
+  let regex = "";
+  for (const char of pattern) {
+    if (char === "*") {
+      regex += "[\\s\\S]*";
+      continue;
+    }
+    if (char === "?") {
+      regex += ".";
+      continue;
+    }
+    regex += escapeRegex(char);
+  }
+  return regex;
+};
 
 const matchPattern = (value: string, patterns: string[]): boolean => {
   if (!patterns.length) return false;
