@@ -79,28 +79,26 @@ IronBot scans the workspace-defined `SKILLS_DIR` (default `./skills`), the user-
 
 3. Configure permissions in `permissions.yaml`:
    ```yaml
-   version: "1.0"
-   settings:
-     default_deny: true
-     log_denials: true
-
    tools:
-     allowed:
-       - "list_directory"
-       - "read_file"
-       - "run_powershell"
-       - "run_bash"
-
-   resources:
-     denied_paths:
-       - "/etc/*"
-       - "C:\\Windows\\*"
-
-   skills:
-     allowed: []
-
+     - priority: 100
+       name: ".*"
+       desc: "Allow everything while building the policy"
    mcps:
-     allowed: []
+     - priority: 100
+       name: ".*"
+       desc: "Permit every MCP for now"
+   commands:
+     - priority: 100
+       name: ".*"
+       desc: "Allow all commands initially"
+   skills:
+     - priority: 100
+       name: ".*"
+       desc: "Enable every skill by default"
+   resurces:
+     - priority: 100
+       name: ".*"
+       desc: "Allow all resource paths"
    ```
 
 ### Slack App Setup
@@ -218,58 +216,57 @@ IronBot uses a comprehensive permission system to control what operations the bo
 
 The `permissions.yaml` file controls all bot capabilities:
 
+IronBot now enforces permissions with a single, priority-driven allow list. The `permissions.yaml` file exposes just five sections (`tools`, `mcps`, `commands`, `skills`, and `resurces`), and each section contains policy entries that look like this:
+
 ```yaml
-version: "1.0"
-settings:
-  default_deny: true          # Enforce deny-by-default security
-  log_denials: true           # Log all permission denials
-  enable_override_prompt: false # Allow user prompts for overrides
-
-# Global blocked commands (applied to all tools)
-blocked_commands:
-  - "rm -rf /"
-  - "format "
-  - "shutdown"
-
-# Allow specific tools
-tools:
-  allowed:
-    - "list_directory"
-    - "read_file"
-    - "run_powershell"
-
-  # Per-tool restrictions
-  restrictions:
-    run_powershell:
-      allowed_commands: ["Get-Disk", "Get-Volume"]
-      blocked_commands: ["format"]
-      timeout_max: 30
-      override_prompt: false
-
-# Block specific resource paths
-resources:
-  denied_paths:
-    - "/etc/*"
-    - "C:\\Windows\\*"
-    - "*/.env"
-
-# Allow specific skills
-skills:
-  allowed: []
-
-# Allow specific MCPs
-mcps:
-  allowed: []
+- priority: 10
+  name: ".*"
+  desc: "Allow everything for now"
 ```
 
-### Permission Features
+- `priority` controls the evaluation order (lower numbers run first, higher numbers can act as catch-all denies or logging helpers).
+- `name` is treated as a regular expression that must match tool names, skill names, MCP identifiers, command strings, or resource paths.
+- `desc` documents why the entry exists.
 
-- **Default Deny**: Only explicitly allowed operations are permitted
-- **Wildcard Support**: Use `*` for flexible pattern matching
-- **Resource Protection**: Block specific paths regardless of tool permissions
-- **Per-Tool Restrictions**: Fine-grained control over individual tools
-- **Audit Logging**: All permission decisions are logged
-- **Hot Reload**: Permission changes take effect immediately
+The system is deny-by-default: if a requested capability does not match any entry, it is blocked. The current default policy in `permissions.yaml` temporarily allows everything so that you can start IronBot without additional work; just add tighter entries when you are ready to lock down the bot.
+
+### Example configuration
+
+```yaml
+tools:
+  - priority: 50
+    name: "read_file"
+    desc: "Allow read operations"
+  - priority: 100
+    name: ".*"
+    desc: "Allow remaining tools during onboarding"
+
+commands:
+  - priority: 20
+    name: "^read-"
+    desc: "Permit read-style commands only"
+
+skills:
+  - priority: 10
+    name: ".*"
+    desc: "Enable every skill for now"
+
+mcps:
+  - priority: 10
+    name: ".*"
+    desc: "Allow all MCP listeners"
+
+resurces:
+  - priority: 5
+    name: "/home/user/.*"
+    desc: "Permit home directory paths"
+```
+
+Each section uses the same rule schema. To tighten access, add specific entries with precise regexes and keep catch-all rules at higher priority numbers. The `commands` section controls what strings are allowed to reach `run_powershell`/`run_bash`, and `resurces` governs the filesystem paths the bot can read or write.
+
+### Inspecting behavior
+
+Ask the bot “what tools can you use?” to see the currently allowed tools, skills, and MCPs. Logs report how many entries are loaded for each section at startup, so you know when the new policy is active.
 
 ## Tool Use
 
@@ -285,12 +282,7 @@ IronBot can execute system operations when requested by users:
 
 ### Safety Features
 
-The following types of commands are automatically blocked:
-- Destructive operations (`rm -rf /`, `format`, etc.)
-- System shutdown/reboot commands
-- Fork bombs and similar attacks
-- Access to protected system directories
-- Operations on blocked file paths
+Commands are only permitted if they match a `commands` policy entry. To prevent destructive mutations and system shutdowns, keep the command list tight and only allow specific prefixes (for example `^Get-` or `^read-`). Resource access also obeys the `resurces` list, so any file path outside the allowed patterns is rejected regardless of the tool being used.
 
 ## Skills System
 
@@ -415,9 +407,9 @@ The memory system uses:
    - Ensure Socket Mode is enabled
 
 3. **Permission denied errors**
-   - Check `permissions.yaml` configuration
+   - Check `permissions.yaml` configuration (tools, skills, MCPs, commands, and resurces)
    - Verify the tool/skill is in the allowed list
-   - Check for blocked paths or commands
+   - Ensure the command or resource path matches the corresponding entries so it is not rejected by policy
 
 4. **Memory not working**
    - Ensure `IRONBOT_MEMORY_SESSION_INDEXING=true`

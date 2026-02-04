@@ -4,27 +4,27 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runReleaseCheck } from "../../src/cli/check_release.ts";
 
-const validConfig = `version: "1.0"
-settings:
-  default_deny: true
-  log_denials: false
-tools:
-  allowed:
-    - "read_file"
-skills:
-  allowed: []
-mcps:
-  allowed: []
-resources:
-  denied_paths: []
+const validConfig = `tools:
+  - priority: 0
+    name: "read_file"
+    desc: "Allow read operations"
+mcps: []
+commands:
+  - priority: 0
+    name: ".*"
+    desc: "Allow commands for release check"
+skills: []
+resurces:
+  - priority: 0
+    name: ".*"
+    desc: "Allow resources for release check"
 `;
 
-const invalidConfig = `version: 1
-settings:
-  default_deny: true
-  log_denials: false
-tools:
-  allowed: "read_file"
+const invalidConfig = `tools: []
+mcps: []
+commands: []
+skills: []
+resurces: []
 `;
 
 describe("release check", () => {

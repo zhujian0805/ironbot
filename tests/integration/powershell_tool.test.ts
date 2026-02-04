@@ -5,18 +5,19 @@ import { join } from "node:path";
 import { initPermissionManager } from "../../src/services/permission_manager.ts";
 import { ToolExecutor } from "../../src/services/tools.ts";
 
-const buildConfig = (allowedTools: string[]) => `version: "1.0"
-settings:
-  default_deny: true
-  log_denials: false
-tools:
-  allowed: ${JSON.stringify(allowedTools)}
-skills:
-  allowed: []
-mcps:
-  allowed: []
-resources:
-  denied_paths: []
+const buildConfig = (allowedTools: string[]) => `tools: ${JSON.stringify(
+  allowedTools.map((name, index) => ({
+    priority: index,
+    name,
+    desc: `Allow ${name}`
+  })),
+  null,
+  2
+)}
+mcps: []
+commands: ${JSON.stringify([{ priority: 0, name: ".*", desc: "Allow all commands" }], null, 2)}
+skills: []
+resurces: ${JSON.stringify([{ priority: 0, name: ".*", desc: "Allow all resources" }], null, 2)}
 `;
 
 describe("powershell tool execution on host", () => {

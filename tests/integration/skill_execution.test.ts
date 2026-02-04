@@ -5,18 +5,19 @@ import { join } from "node:path";
 import { initPermissionManager } from "../../src/services/permission_manager.ts";
 import { SkillLoader } from "../../src/services/skill_loader.ts";
 
-const buildConfig = (allowedSkills: string[]) => `version: "1.0"
-settings:
-  default_deny: true
-  log_denials: false
-tools:
-  allowed: []
-skills:
-  allowed: ${JSON.stringify(allowedSkills)}
-mcps:
-  allowed: []
-resources:
-  denied_paths: []
+const buildConfig = (allowedSkills: string[]) => `tools: []
+mcps: []
+commands: ${JSON.stringify([{ priority: 0, name: ".*", desc: "Allow all commands" }], null, 2)}
+skills: ${JSON.stringify(
+  allowedSkills.map((name, index) => ({
+    priority: index,
+    name,
+    desc: `Allow skill ${name}`
+  })),
+  null,
+  2
+)}
+resurces: ${JSON.stringify([{ priority: 0, name: ".*", desc: "Allow all resources" }], null, 2)}
 `;
 
 describe("skill execution", () => {

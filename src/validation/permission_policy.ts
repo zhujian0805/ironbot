@@ -1,57 +1,23 @@
 import { z } from "zod";
 
-const ToolRestrictionSchema = z
+const PolicyEntrySchema = z
   .object({
-    allowed_commands: z.array(z.string()).optional(),
-    blocked_commands: z.array(z.string()).optional(),
-    allowed_paths: z.array(z.string()).optional(),
-    timeout_max: z.number().int().positive().optional(),
-    override_prompt: z.boolean().optional()
-  })
-  .strict();
-
-const McpSettingsSchema = z
-  .object({
-    allowed_paths: z.array(z.string()).optional(),
-    allowed_repos: z.array(z.string()).optional()
+    priority: z.number().int(),
+    name: z.string(),
+    desc: z.string()
   })
   .strict();
 
 export const PermissionPolicySchema = z
   .object({
-    version: z.string().optional(),
-    blocked_commands: z.array(z.string()).optional(),
-    settings: z
-      .object({
-        default_deny: z.boolean().optional(),
-        log_denials: z.boolean().optional(),
-        enable_override_prompt: z.boolean().optional()
-      })
-      .optional(),
-    tools: z
-      .object({
-        allowed: z.array(z.string()).optional(),
-        restrictions: z.record(ToolRestrictionSchema).optional()
-      })
-      .optional(),
-    skills: z
-      .object({
-        allowed: z.array(z.string()).optional()
-      })
-      .optional(),
-    mcps: z
-      .object({
-        allowed: z.array(z.string()).optional(),
-        settings: z.record(McpSettingsSchema).optional()
-      })
-      .optional(),
-    resources: z
-      .object({
-        denied_paths: z.array(z.string()).optional(),
-        denied_patterns: z.array(z.string()).optional()
-      })
-      .optional()
+    tools: z.array(PolicyEntrySchema).optional(),
+    mcps: z.array(PolicyEntrySchema).optional(),
+    commands: z.array(PolicyEntrySchema).optional(),
+    skills: z.array(PolicyEntrySchema).optional(),
+    resurces: z.array(PolicyEntrySchema).optional(),
+    resources: z.array(PolicyEntrySchema).optional()
   })
   .strict();
 
-export const validatePermissionPolicy = (input: unknown) => PermissionPolicySchema.parse(input);
+export const validatePermissionPolicy = (input: unknown) =>
+  PermissionPolicySchema.parse(input);

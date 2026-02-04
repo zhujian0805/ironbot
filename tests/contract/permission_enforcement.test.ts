@@ -5,35 +5,34 @@ import { join } from "node:path";
 import { initPermissionManager } from "../../src/services/permission_manager.ts";
 import { ToolExecutor } from "../../src/services/tools.ts";
 
+const formatSection = (entries: Array<Record<string, unknown>>) => JSON.stringify(entries ?? [], null, 2);
+
 const buildConfig = (options: {
-  allowedTools: string[];
-  deniedPaths?: string[];
-  restrictions?: Record<string, unknown>;
-}) => `version: "1.0"
-settings:
-  default_deny: true
-  log_denials: false
-tools:
-  allowed: ${JSON.stringify(options.allowedTools)}
-  restrictions: ${JSON.stringify(options.restrictions ?? {})}
-skills:
-  allowed: []
-mcps:
-  allowed: []
-resources:
-  denied_paths: ${JSON.stringify(options.deniedPaths ?? [])}
+  toolRules?: Array<{ priority: number; name: string; desc: string }>;
+  resourceRules?: Array<{ priority: number; name: string; desc: string }>;
+  commandRules?: Array<{ priority: number; name: string; desc: string }>;
+}) => `tools: ${formatSection(options.toolRules ?? [])}
+mcps: []
+commands: ${formatSection(options.commandRules ?? [{ priority: 0, name: ".*", desc: "Allow all commands" }])}
+skills: []
+resurces: ${formatSection(options.resourceRules ?? [])}
 `;
 
 describe("permission enforcement", () => {
   it("denies tools outside the allowed list", async () => {
     const dir = await mkdtemp(join(tmpdir(), "ironbot-perm-contract-"));
     const filePath = join(dir, "permissions.yaml");
-    await writeFile(filePath, buildConfig({ allowedTools: ["read_file"] }));
+    await writeFile(
+      filePath,
+      buildConfig({
+        toolRules: [{ priority: 0, name: "read_file", desc: "Allow read only" }]
+      })
+    );
 
     initPermissionManager(filePath);
     const executor = new ToolExecutor();
 
-    const result = await executor.executeTool("write_file", { path: "/tmp/file", content: "no" });
+    const result = await executor.executeTool("write_file", { path: "/tmp/file", content: "deny" });
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("Permission denied: Tool 'write_file'");
@@ -41,44 +40,46 @@ describe("permission enforcement", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it("denies resource paths that match deny rules", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "ironbot-perm-contract-"));
-    const filePath = join(dir, "permissions.yaml");
-    await writeFile(filePath, buildConfig({ allowedTools: ["read_file"], deniedPaths: ["/blocked/*"] }));
-
-    initPermissionManager(filePath);
-    const executor = new ToolExecutor();
-
-    const result = await executor.executeTool("read_file", { path: "/blocked/file.txt" });
-
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("Permission denied: Resource path '/blocked/file.txt'");
-
-    await rm(dir, { recursive: true, force: true });
-  });
-
-  it("enforces tool restriction rules", async () => {
+  it("denies resource paths that are not listed", async () => {
     const dir = await mkdtemp(join(tmpdir(), "ironbot-perm-contract-"));
     const filePath = join(dir, "permissions.yaml");
     await writeFile(
       filePath,
       buildConfig({
-        allowedTools: ["run_bash"],
-        restrictions: {
-          run_bash: {
-            allowed_commands: ["echo *"]
-          }
-        }
+        toolRules: [{ priority: 0, name: "read_file", desc: "Allow read file" }],
+        resourceRules: [{ priority: 0, name: "/allowed/.*", desc: "Only allow /allowed" }]
       })
     );
 
     initPermissionManager(filePath);
     const executor = new ToolExecutor();
 
-    const result = await executor.executeTool("run_bash", { command: "ls" });
+    const result = await executor.executeTool("read_file", { path: "/blocked/secret.txt" });
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Permission denied: Command 'ls' is not in allowed_commands list");
+    expect(result.error).toContain("Permission denied: Resource path '/blocked/secret.txt'");
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("denies commands that do not match command policy", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "ironbot-perm-contract-"));
+    const filePath = join(dir, "permissions.yaml");
+    await writeFile(
+      filePath,
+      buildConfig({
+        toolRules: [{ priority: 0, name: "run_bash", desc: "Allow bash" }],
+        commandRules: [{ priority: 0, name: "^safe", desc: "Allow only safe commands" }]
+      })
+    );
+
+    initPermissionManager(filePath);
+    const executor = new ToolExecutor();
+
+    const result = await executor.executeTool("run_bash", { command: "rm -rf /" });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("Command blocked: This operation is not permitted by policy");
 
     await rm(dir, { recursive: true, force: true });
   });

@@ -12,18 +12,26 @@ import { initPermissionManager } from "../../src/services/permission_manager.ts"
 import Anthropic from "@anthropic-ai/sdk";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
-const buildConfig = (allowedSkills: string[]) => `version: "1.0"
-settings:
-  default_deny: true
-  log_denials: false
-tools:
-  allowed: [run_bash, run_powershell]
-skills:
-  allowed: ${JSON.stringify(allowedSkills)}
-mcps:
-  allowed: []
-resources:
-  denied_paths: []
+const buildConfig = (allowedSkills: string[]) => `tools: ${JSON.stringify(
+  [
+    { priority: 0, name: "run_bash", desc: "Allow bash for SKILL.md tests" },
+    { priority: 1, name: "run_powershell", desc: "Allow PowerShell for SKILL.md tests" }
+  ],
+  null,
+  2
+)}
+mcps: []
+commands: ${JSON.stringify([{ priority: 0, name: ".*", desc: "Allow every command" }], null, 2)}
+skills: ${JSON.stringify(
+  allowedSkills.map((name, index) => ({
+    priority: index,
+    name,
+    desc: `Allow skill ${name}`
+  })),
+  null,
+  2
+)}
+resurces: ${JSON.stringify([{ priority: 0, name: ".*", desc: "Allow all resources" }], null, 2)}
 `;
 
 const SKILL_MD_CONTENT = `---

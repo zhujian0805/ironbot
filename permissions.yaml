@@ -1,123 +1,20 @@
-# Bot Permissions Configuration
-# Strategy: Deny-all by default. Only explicitly allowed actions are permitted.
-# Note: default_deny is enforced; setting it to false is ignored.
-# Add actions to allow lists or enable override prompts for additional operations.
-
-version: "1.0"
-
-# Global settings
-settings:
-  default_deny: true                    # Enforced deny-by-default (false is ignored)
-  log_denials: true                     # Log all permission denial events for audit
-  enable_override_prompt: false         # Enable user prompts for permission overrides (global setting)
-
-# Global blocked commands - applied to all command-based tools
-# These represent destructive, dangerous, or system-critical operations
-# Note: On Windows, matching is case-sensitive to distinguish Format-Table (safe) from format (dangerous)
-#       On Unix/Linux, matching is case-insensitive for compatibility
-blocked_commands:
-  - "rm -rf /"                          # Recursive delete entire filesystem (Linux)
-  - "del /f /s /q c:\\\\"               # Recursive delete entire drive (Windows)
-  - "format "                           # Format disk command (lowercase, with space)
-  - "format.com"                        # Windows format executable
-  - "FORMAT "                           # Format disk command (uppercase variant)
-  - "Format "                           # Format disk command (title case variant)
-  - "diskpart"                          # Disk partitioning utility (lowercase)
-  - "DISKPART"                          # Disk partitioning utility (uppercase)
-  - ":(){:|:&};:"                       # Bash fork bomb
-  - "mkfs"                              # Make filesystem
-  - "dd if=/dev/zero"                   # Destructive disk write
-  - "shutdown"                          # System shutdown
-  - "Shutdown"                          # System shutdown (title case)
-  - "SHUTDOWN"                          # System shutdown (uppercase)
-  - "reboot"                            # System reboot
-  - "Reboot"                            # System reboot (title case)
-  - "halt"                              # System halt
-  - "init 0"                            # Runlevel 0 (shutdown)
-  - "init 6"                            # Runlevel 6 (reboot)
-
-# Allowed tools (allow-list only)
 tools:
-  allowed: ["run_powershell", "run_bash", "read_file", "write_file", "list_directory", "download_file"]  # Temporarily allow all tools
-
-  # Per-tool restrictions and configurations
-  restrictions:
-    run_powershell:
-      allowed_commands:                 # Explicitly allow disk inventory cmdlet
-        - "*"                    # Allow listing disks
-        - "node skills/smtp-send/scripts/send_email.js *"
-      blocked_commands: []              # Not needed: blocked_commands is checked globally only
-      timeout_max: 30                   # Maximum timeout in seconds
-      override_prompt: false            # Allow prompting to override denial
-
-    run_bash:
-      allowed_commands:                 # Temporarily allow all commands
-        - "*"                           # Allow all commands
-      blocked_commands: []              # Not needed: blocked_commands is checked globally only
-      timeout_max: 30
-      override_prompt: false
-
-    read_file:
-      allowed_paths:                    # Temporarily allow all paths
-        - "*"                           # Allow all paths
-      override_prompt: false
-
-    write_file:
-      allowed_paths:                    # Temporarily allow all paths
-        - "*"                           # Allow all paths
-      override_prompt: false
-
-    list_directory:
-      allowed_paths:                    # Temporarily allow all paths
-        - "*"                           # Allow all paths
-      override_prompt: false
-
-    download_file:
-      allowed_paths:                    # Allow downloading to temp directory
-        - "./temp/*"
-        - "skills/*"
-      override_prompt: false
-
-# Resource-level deny rules (block access regardless of tool permissions)
-# Deny rules take precedence over allow rules
-resources:
-  denied_paths:
-    - "/etc/*"                          # System configuration (Linux)
-    - "/var/log/*"                      # System logs (Linux)
-    - "C:\\Windows\\*"                  # Windows system directory
-    - "C:\\Program Files\\*"            # Program files
-    - "*/.env"                          # Environment files with secrets
-    - "*/.git/*"                        # Git internals
-    - "*/secrets/*"                     # Secrets directories
-  denied_patterns:                      # Additional deny patterns
-    - ".*password.*"                    # Files containing "password"
-    - ".*token.*"                       # Files containing "token"
-    - ".*credential.*"                  # Files containing "credential"
-
-# Allowed skills (legacy skill system)
-skills:
-  allowed:
-    - "calculator"        # Example skill
-    - "permission_check"  # Diagnostic skill to check permission status
-    - "skill_installer"   # Skill for installing new skills
-    - "skill_update"      # Skill for updating existing skills
-    - "weather"           # Weather skill for testing
-    - "weather-2"         # Weather-2 skill from ClawHub
-    - "yahoo-finance-clksb"  # Yahoo Finance skill for stock data
-    - "smtp-send"         # Skill for sending emails via SMTP
-    - "ms-outlook-teams-assistant"  # MS Outlook Teams Assistant skill
-    # - "*"               # Uncomment to allow all skills
-
-# Allowed MCPs (Model Context Protocol servers)
+  - priority: 100
+    name: ".*"
+    desc: "Allow all tools while permissions are being simplified"
 mcps:
-  allowed: []             # No MCPs allowed by default
-  # allowed:
-  #   - "filesystem"
-  #   - "github"
-
-  # MCP-specific settings
-  settings:
-    filesystem:
-      allowed_paths:
-        - "/home/user/projects"
-        - "C:\\Projects"
+  - priority: 100
+    name: ".*"
+    desc: "Allow all MCPs until scoped rules are introduced"
+commands:
+  - priority: 100
+    name: ".*"
+    desc: "Allow every command while we stabilize policy guarding"
+skills:
+  - priority: 100
+    name: ".*"
+    desc: "Enable every skill by default for the simplified policy"
+resurces:
+  - priority: 100
+    name: ".*"
+    desc: "Permit all resource paths until we define more specific rules"

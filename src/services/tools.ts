@@ -151,29 +151,6 @@ export const TOOLS: ToolDefinition[] = [
   }
 ];
 
-const normalize = (command: string): string => command.toLowerCase().trim();
-
-const commandMatchesPattern = (command: string, patterns: string[]): boolean => {
-  logger.debug({ command, patterns }, "Checking command against patterns");
-  if (!patterns.length || !command) return false;
-  const normalizedCmd = normalize(command);
-  logger.debug({ normalizedCmd }, "Normalized command");
-  return patterns.some((pattern) => {
-    const normalized = normalize(pattern);
-    logger.debug({ pattern, normalized }, "Checking pattern");
-    if (normalized === "*") {
-      logger.debug("Wildcard pattern '*' detected - allowing all commands");
-      return true; // Wildcard allows all commands
-    }
-    const matches = normalizedCmd.startsWith(normalized) ||
-           normalizedCmd.startsWith(`${normalized} `) ||
-           normalizedCmd.startsWith(`${normalized}(`) ||
-           normalizedCmd.startsWith(`${normalized}\n`);
-    logger.debug({ pattern: normalized, command: normalizedCmd, matches }, "Pattern match result");
-    return matches;
-  });
-};
-
 const runProcess = (
   command: string,
   args: string[],
@@ -217,42 +194,6 @@ const runProcess = (
     });
   });
 
-const escapeRegex = (input: string): string =>
-  input.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-
-const wildcardToRegex = (pattern: string) => {
-  let regex = "";
-  for (const char of pattern) {
-    if (char === "*") {
-      regex += "[\\s\\S]*";
-      continue;
-    }
-    if (char === "?") {
-      regex += ".";
-      continue;
-    }
-    regex += escapeRegex(char);
-  }
-  return regex;
-};
-
-const matchPattern = (value: string, patterns: string[]): boolean => {
-  if (!patterns.length) return false;
-  return patterns.some((pattern) => {
-    const regex = new RegExp(`^${wildcardToRegex(pattern)}$`);
-    return regex.test(value);
-  });
-};
-
-const findMatchingPattern = (value: string, patterns: string[]): string | undefined => {
-  if (!patterns.length) return undefined;
-  for (const pattern of patterns) {
-    const regex = new RegExp(`^${wildcardToRegex(pattern)}$`);
-    if (regex.test(value)) return pattern;
-  }
-  return undefined;
-};
-
 export class ToolExecutor {
   private allowedTools?: string[];
   private retryManager?: RetryManager;
@@ -280,118 +221,48 @@ export class ToolExecutor {
             ? toolInput.working_directory
             : undefined;
 
-    if (this.permissionManager) {
-      logger.debug({ toolName }, "[TOOL-FLOW] Checking tool permission");
-      if (!this.permissionManager.isToolAllowed(toolName)) {
-        const allowedTools = this.permissionManager.listAllowedCapabilities().tools;
-        const reason = allowedTools.length
-          ? `Tool '${toolName}' is not in the allowed list (allowed: ${allowedTools.join(", ")})`
-          : `Tool '${toolName}' is not in the allowed list (no tools are enabled)`;
-        logger.debug({ toolName, allowedTools, reason }, "[TOOL-FLOW] Tool execution denied - not in allowed list");
-        return {
-          success: false,
-          error: this.permissionManager.formatDenialMessage("tool", toolName, reason)
-        };
-      }
-
-      const deniedPattern = resourcePath ? this.permissionManager.getDeniedResourcePattern(resourcePath) : undefined;
-      if (resourcePath && deniedPattern) {
-        logger.debug({ toolName, resourcePath, rule: deniedPattern }, "Tool execution denied by resource rule");
-        this.permissionManager.checkResourceDenied(resourcePath);
-        return {
-          success: false,
-          error: `Permission denied: Resource path '${resourcePath}' is blocked by deny rule '${deniedPattern}'`
-        };
-      }
-
-      const { validateToolRequest } = await import("../validation/tool_request.ts");
-      try {
-        validateToolRequest({ toolName, arguments: toolInput, requestedResource: resourcePath });
-      } catch (error) {
-        const reason = `Tool request validation failed: ${String(error)}`;
-        logger.debug({ toolName, reason }, "Tool execution denied by validation");
-        return { success: false, error: reason };
-      }
-
-      const restrictions = this.permissionManager.getToolRestrictions(toolName);
-      logger.debug({ toolName, hasRestrictions: Boolean(restrictions) }, "[TOOL-FLOW] Checked for tool restrictions");
-      if (restrictions) {
-        logger.debug({ toolName, restrictions }, "[TOOL-FLOW] Tool has restrictions");
-        const command = typeof toolInput.command === "string" ? toolInput.command : "";
-        if (command) {
-          logger.debug({ toolName, command, allowedCommands: restrictions.allowedCommands }, "[TOOL-FLOW] Checking command against allowed patterns");
-          // Deny-all-by-default for commands: only allow if explicitly listed
-          if (restrictions.allowedCommands.length === 0) {
-            logger.debug(
-              { toolName, command },
-              "Tool execution denied: no allowed commands configured"
-            );
-            return {
-              success: false,
-              error: `Permission denied: No commands allowed for this tool (allowed_commands is empty)`
-            };
-          }
-          const isAllowed = findMatchingPattern(command, restrictions.allowedCommands) !== undefined;
-          logger.debug({ toolName, command, isAllowed, patterns: restrictions.allowedCommands }, "[TOOL-FLOW] Command pattern match result");
-          if (!isAllowed) {
-            const allowedList = restrictions.allowedCommands.join(", ");
-            logger.debug(
-              { toolName, command, allowed: restrictions.allowedCommands },
-              "Tool execution denied: command not in allowed list"
-            );
-            return {
-              success: false,
-              error: `Permission denied: Command '${command}' is not in allowed_commands list`
-            };
-          }
-        }
-        if (restrictions.blockedCommands.length > 0) {
-          const blockedPattern = findMatchingPattern(command, restrictions.blockedCommands);
-          if (blockedPattern) {
-            logger.debug(
-              { toolName, command, blockedBy: blockedPattern, blockedCommands: restrictions.blockedCommands },
-              "Tool execution denied: command in blocked list"
-            );
-            return {
-              success: false,
-              error: `Permission denied: Command '${command}' is blocked by rule '${blockedPattern}'`
-            };
-          }
-        }
-        if (restrictions.allowedPaths.length > 0 && resourcePath) {
-          const allowedPathMatch = findMatchingPattern(resourcePath, restrictions.allowedPaths);
-          if (!allowedPathMatch) {
-            const allowedList = restrictions.allowedPaths.join(", ");
-            logger.debug(
-              { toolName, resourcePath, allowed: restrictions.allowedPaths },
-              "Tool execution denied by allowed path rules"
-            );
-            return {
-              success: false,
-              error: `Permission denied: Resource path '${resourcePath}' is not in allowed_paths list (allowed: ${allowedList})`
-            };
-          }
-        }
-        if (typeof restrictions.timeoutMax === "number") {
-          const requestedTimeout = typeof toolInput.timeout === "number" ? toolInput.timeout : restrictions.timeoutMax;
-          effectiveInput = {
-            ...effectiveInput,
-            timeout: Math.min(requestedTimeout, restrictions.timeoutMax)
+      if (this.permissionManager) {
+        logger.debug({ toolName }, "[TOOL-FLOW] Checking tool permission");
+        if (!this.permissionManager.isToolAllowed(toolName)) {
+          const allowedTools = this.permissionManager.listAllowedCapabilities().tools;
+          const reason = allowedTools.length
+            ? `Tool '${toolName}' is not in the allowed list (allowed: ${allowedTools.join(", ")})`
+            : `Tool '${toolName}' is not in the allowed list (no tools are enabled)`;
+          logger.debug({ toolName, allowedTools, reason }, "[TOOL-FLOW] Tool execution denied - not in allowed list");
+          return {
+            success: false,
+            error: this.permissionManager.formatDenialMessage("tool", toolName, reason)
           };
         }
-      }
-    } else if (this.allowedTools) {
-      if (!this.allowedTools.includes(toolName)) {
-        const allowedList = this.allowedTools.join(", ");
-        const reason = `Tool '${toolName}' is not allowed in current configuration (allowed: ${allowedList})`;
-        logger.debug({ toolName, allowedTools: this.allowedTools, reason }, "Tool execution denied");
+
+        if (resourcePath && !this.permissionManager.isResourceAllowed(resourcePath)) {
+          logger.debug({ toolName, resourcePath }, "Tool execution denied by resource policy");
+          return {
+            success: false,
+            error: `Permission denied: Resource path '${resourcePath}' is not allowed by policy`
+          };
+        }
+
+        const { validateToolRequest } = await import("../validation/tool_request.ts");
+        try {
+          validateToolRequest({ toolName, arguments: toolInput, requestedResource: resourcePath });
+        } catch (error) {
+          const reason = `Tool request validation failed: ${String(error)}`;
+          logger.debug({ toolName, reason }, "Tool execution denied by validation");
+          return { success: false, error: reason };
+        }
+      } else if (this.allowedTools) {
+        if (!this.allowedTools.includes(toolName)) {
+          const allowedList = this.allowedTools.join(", ");
+          const reason = `Tool '${toolName}' is not allowed in current configuration (allowed: ${allowedList})`;
+          logger.debug({ toolName, allowedTools: this.allowedTools, reason }, "Tool execution denied");
+          return { success: false, error: reason };
+        }
+      } else {
+        const reason = `Tool '${toolName}' is not allowed (permission manager not initialized)`;
+        logger.debug({ toolName, reason }, "Tool execution denied");
         return { success: false, error: reason };
       }
-    } else {
-      const reason = `Tool '${toolName}' is not allowed (permission manager not initialized)`;
-      logger.debug({ toolName, reason }, "Tool execution denied");
-      return { success: false, error: reason };
-    }
 
       logger.debug({ toolName, effectiveInput: JSON.stringify(effectiveInput, null, 2) }, "[TOOL-FLOW] Dispatching to tool implementation");
       
@@ -467,9 +338,9 @@ export class ToolExecutor {
     if (!command) return { success: false, error: "No command provided" };
 
     const permissionManager = getPermissionManager();
-    logger.debug({ command, hasPermissionManager: Boolean(permissionManager) }, "[TOOL-FLOW] Checking global blocked commands for PowerShell");
-    if (permissionManager?.isCommandBlocked(command)) {
-      logger.warn({ command }, "[TOOL-FLOW] PowerShell command blocked by global policy");
+    logger.debug({ command, hasPermissionManager: Boolean(permissionManager) }, "[TOOL-FLOW] Checking command permission for PowerShell");
+    if (permissionManager && !permissionManager.isCommandAllowed(command)) {
+      logger.warn({ command }, "[TOOL-FLOW] PowerShell command denied by policy");
       return { success: false, error: "Command blocked: This operation is not permitted by policy" };
     }
 
@@ -502,9 +373,9 @@ export class ToolExecutor {
     if (!command) return { success: false, error: "No command provided" };
 
     const permissionManager = getPermissionManager();
-    logger.debug({ command, hasPermissionManager: Boolean(permissionManager) }, "[TOOL-FLOW] Checking global blocked commands for Bash");
-    if (permissionManager?.isCommandBlocked(command)) {
-      logger.warn({ command }, "[TOOL-FLOW] Bash command blocked by global policy");
+    logger.debug({ command, hasPermissionManager: Boolean(permissionManager) }, "[TOOL-FLOW] Checking command permission for Bash");
+    if (permissionManager && !permissionManager.isCommandAllowed(command)) {
+      logger.warn({ command }, "[TOOL-FLOW] Bash command denied by policy");
       return { success: false, error: "Command blocked: This operation is not permitted by policy" };
     }
 

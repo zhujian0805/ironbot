@@ -11,27 +11,29 @@ This feature adds a permission system that controls which tools, skills, and MCP
 
 ### 1. Create Permission Configuration File
 
-Create `permissions.yaml` in your project root:
+Create `permissions.yaml` in your project root. Each of the five top-level sections (`tools`, `mcps`, `commands`, `skills`, `resurces`) lists policy entries. Every entry must include `priority`, `name` (regex), and `desc`, and only matching entries are allowed. Here is the environment that mirrors the simplified default:
 
 ```yaml
-version: "1.0"
-
-settings:
-  default_deny: true
-  log_denials: true
-
 tools:
-  allowed:
-    - "list_directory"
-    - "read_file"
-    - "write_file"
-
-skills:
-  allowed:
-    - "*"  # Allow all skills
-
+  - priority: 100
+    name: ".*"
+    desc: "Allow every tool during the quickstart phase"
 mcps:
-  allowed: []  # No MCPs allowed
+  - priority: 100
+    name: ".*"
+    desc: "Permit all MCP adapters"
+commands:
+  - priority: 100
+    name: ".*"
+    desc: "Approve every command temporarily"
+skills:
+  - priority: 100
+    name: ".*"
+    desc: "Enable every skill by default"
+resurces:
+  - priority: 100
+    name: ".*"
+    desc: "Permit all resource paths while building the policy"
 ```
 
 ### 2. Start the Bot with Permissions
@@ -73,42 +75,57 @@ mcps:
 ### Production (Minimal)
 
 ```yaml
-version: "1.0"
-settings:
-  default_deny: true
-  log_denials: true
-
 tools:
-  allowed:
-    - "list_directory"
-    - "read_file"
-  # No write or execute permissions
+  - priority: 10
+    name: "list_directory"
+    desc: "Allow directory listing"
+  - priority: 20
+    name: "read_file"
+    desc: "Allow file reads"
+
+commands:
+  - priority: 10
+    name: "^read"
+    desc: "Only allow commands that begin with 'read'"
 
 skills:
-  allowed: []
+  - priority: 10
+    name: ".*"
+    desc: "Disable skills by default (adjust individually)"
 
 mcps:
-  allowed: []
+  - priority: 10
+    name: ".*"
+    desc: "Allow MCP listeners used by the workspace"
+
+resurces:
+  - priority: 10
+    name: "/home/worker/.*"
+    desc: "Allow only workspace files under /home/worker/"
 ```
 
 ### Read-Only Operations
 
 ```yaml
-version: "1.0"
 tools:
-  allowed:
-    - "list_directory"
-    - "read_file"
-    - "run_powershell"
-  restrictions:
-    run_powershell:
-      allowed_commands:
-        - "Get-*"
-        - "Test-*"
-      blocked_commands:
-        - "*-Item"
-        - "Remove-*"
-        - "Set-*"
+  - priority: 10
+    name: "list_directory"
+    desc: "Allow directory enumeration"
+  - priority: 20
+    name: "read_file"
+    desc: "Allow reading files"
+  - priority: 30
+    name: "run_powershell"
+    desc: "Allow PowerShell for safe inspection"
+
+commands:
+  - priority: 10
+    name: "^Get-"
+    desc: "Permit read-only PowerShell cmdlets"
+resurces:
+  - priority: 10
+    name: "/readonly/.*"
+    desc: "Restrict file access to read-only directories"
 ```
 
 ## Hot Reload

@@ -4,68 +4,50 @@ import { parse as parseYaml } from "yaml";
 import { logger } from "../utils/logging.ts";
 import { watchFile, type WatchHandle } from "../utils/file_watcher.ts";
 import { validatePermissionPolicy } from "../validation/permission_policy.ts";
-import {
-  type PermissionPolicy,
-  type GlobalSettings,
-  type ToolPermissions,
-  type ToolRestriction,
-  type SkillPermissions,
-  type McpPermissions,
-  type McpSettings,
-  type ResourceDenyRules
-} from "../models/permission_policy.ts";
+import type { PermissionPolicy, PolicyEntry } from "../models/permission_policy.ts";
 
 export type PermissionCheckResult = {
   allowed: boolean;
   reason: string;
 };
 
-const toStringArray = (value: unknown): string[] => {
-  if (!Array.isArray(value)) return [];
-  return value.map((item) => String(item));
+const SECTION_KEYS = ["tools", "mcps", "commands", "skills", "resurces"] as const;
+
+type PolicySectionKey = (typeof SECTION_KEYS)[number];
+
+type CompiledPolicyEntry = PolicyEntry & {
+  regex: RegExp;
 };
-
-const defaultSettings = (): GlobalSettings => ({
-  defaultDeny: true,
-  logDenials: true,
-  enableOverridePrompt: false
-});
-
-const defaultPolicy = (): PermissionPolicy => ({
-  version: "1.0",
-  settings: defaultSettings(),
-  blockedCommands: [],
-  tools: { allowed: [], restrictions: {} },
-  skills: { allowed: [] },
-  mcps: { allowed: [], settings: {} },
-  resources: { deniedPaths: [], deniedPatterns: [] }
-});
 
 const escapeRegex = (input: string): string =>
   input.replace(/[.+^${}()|[\]\\]/g, "\\$&");
 
-const patternToRegex = (pattern: string): RegExp => {
-  const escaped = escapeRegex(pattern)
-    .replace(/\*/g, ".*")
-    .replace(/\?/g, ".");
-  return new RegExp(`^${escaped}$`);
-};
+const defaultPolicy = (): PermissionPolicy => ({
+  tools: [],
+  mcps: [],
+  commands: [],
+  skills: [],
+  resurces: []
+});
 
 export class PermissionManager {
   private configPath: string;
   private config: PermissionPolicy;
+  private compiledSections: Record<PolicySectionKey, CompiledPolicyEntry[]>;
   private loaded = false;
   private watcher?: WatchHandle;
 
   constructor(configPath: string) {
     this.configPath = configPath;
     this.config = defaultPolicy();
+    this.compiledSections = this.buildCompiledSections(this.config);
   }
 
   loadConfig(): boolean {
     if (!fs.existsSync(this.configPath)) {
       logger.warn({ path: this.configPath }, "Permission config not found; using default deny");
       this.config = defaultPolicy();
+      this.compiledSections = this.buildCompiledSections(this.config);
       this.loaded = true;
       return false;
     }
@@ -77,19 +59,22 @@ export class PermissionManager {
       if (!raw) {
         logger.warn({ path: this.configPath }, "Permission config empty; using default deny");
         this.config = defaultPolicy();
+        this.compiledSections = this.buildCompiledSections(this.config);
         this.loaded = true;
         return false;
       }
 
-      validatePermissionPolicy(raw);
-
-      this.config = this.parseConfig(raw as Record<string, unknown>);
+      const normalized = this.normalizePolicy(raw as Record<string, unknown>);
+      this.config = normalized;
+      this.compiledSections = this.buildCompiledSections(normalized);
       this.loaded = true;
       logger.info(
         {
-          tools: this.config.tools.allowed.length,
-          skills: this.config.skills.allowed.length,
-          mcps: this.config.mcps.allowed.length
+          tools: this.config.tools.length,
+          skills: this.config.skills.length,
+          mcps: this.config.mcps.length,
+          commands: this.config.commands.length,
+          resurces: this.config.resurces.length
         },
         "Loaded permission config"
       );
@@ -97,109 +82,65 @@ export class PermissionManager {
     } catch (error) {
       logger.error({ error }, "Error loading permission config; using default deny");
       this.config = defaultPolicy();
+      this.compiledSections = this.buildCompiledSections(this.config);
       this.loaded = true;
       return false;
     }
   }
 
-  private parseConfig(raw: Record<string, unknown>): PermissionPolicy {
-    const rawSettings = (raw.settings ?? {}) as Record<string, unknown>;
-    let defaultDeny = Boolean(rawSettings.default_deny ?? true);
-    if (defaultDeny === false) {
-      logger.warn(
-        { value: rawSettings.default_deny },
-        "default_deny=false is not supported; enforcing deny-by-default"
-      );
-      defaultDeny = true;
-    }
-    const settings: GlobalSettings = {
-      defaultDeny,
-      logDenials: Boolean(rawSettings.log_denials ?? true),
-      enableOverridePrompt: Boolean(rawSettings.enable_override_prompt ?? false)
+  private normalizePolicy(raw: Record<string, unknown>): PermissionPolicy {
+    const parsed = validatePermissionPolicy(raw);
+    const policy: PermissionPolicy = {
+      tools: parsed.tools ?? [],
+      mcps: parsed.mcps ?? [],
+      commands: parsed.commands ?? [],
+      skills: parsed.skills ?? [],
+      resurces: parsed.resurces ?? parsed.resources ?? []
     };
-
-    const blockedCommands = toStringArray(raw.blocked_commands);
-
-    const rawTools = (raw.tools ?? {}) as Record<string, unknown>;
-    const restrictions: Record<string, ToolRestriction> = {};
-    const rawRestrictions = (rawTools.restrictions ?? {}) as Record<string, unknown>;
-    for (const [toolName, restrictionValue] of Object.entries(rawRestrictions)) {
-      const restriction = restrictionValue as Record<string, unknown>;
-      restrictions[toolName] = {
-        allowedCommands: toStringArray(restriction.allowed_commands),
-        blockedCommands: toStringArray(restriction.blocked_commands),
-        allowedPaths: toStringArray(restriction.allowed_paths),
-        timeoutMax:
-          typeof restriction.timeout_max === "number"
-            ? restriction.timeout_max
-            : undefined,
-        overridePrompt: Boolean(restriction.override_prompt ?? false)
-      };
-      logger.debug({ toolName, restrictions: restrictions[toolName] }, "Parsed tool restrictions");
-    }
-
-    const tools: ToolPermissions = {
-      allowed: toStringArray(rawTools.allowed),
-      restrictions
-    };
-
-    const rawSkills = (raw.skills ?? {}) as Record<string, unknown>;
-    const skills: SkillPermissions = {
-      allowed: toStringArray(rawSkills.allowed)
-    };
-
-    const rawMcps = (raw.mcps ?? {}) as Record<string, unknown>;
-    const mcpSettings: Record<string, McpSettings> = {};
-    const rawMcpSettings = (rawMcps.settings ?? {}) as Record<string, unknown>;
-    for (const [mcpName, settingsValue] of Object.entries(rawMcpSettings)) {
-      const settingsRaw = settingsValue as Record<string, unknown>;
-      mcpSettings[mcpName] = {
-        allowedPaths: toStringArray(settingsRaw.allowed_paths),
-        allowedRepos: toStringArray(settingsRaw.allowed_repos)
-      };
-    }
-
-    const mcps: McpPermissions = {
-      allowed: toStringArray(rawMcps.allowed),
-      settings: mcpSettings
-    };
-
-    const rawResources = (raw.resources ?? {}) as Record<string, unknown>;
-    const resources: ResourceDenyRules = {
-      deniedPaths: toStringArray(rawResources.denied_paths),
-      deniedPatterns: toStringArray(rawResources.denied_patterns)
-    };
-
-    return {
-      version: typeof raw.version === "string" ? raw.version : "1.0",
-      settings,
-      blockedCommands,
-      tools,
-      skills,
-      mcps,
-      resources
-    };
+    return policy;
   }
 
-  private matchesPattern(name: string, patterns: string[]): boolean {
-    if (!name) return false;
-    return patterns.some((pattern) => patternToRegex(pattern).test(name));
+  private buildCompiledSections(policy: PermissionPolicy): Record<PolicySectionKey, CompiledPolicyEntry[]> {
+    const compiled = {} as Record<PolicySectionKey, CompiledPolicyEntry[]>;
+    for (const section of SECTION_KEYS) {
+      compiled[section] = this.compileSection(policy[section]);
+    }
+    return compiled;
   }
 
-  private findMatchingPattern(name: string, patterns: string[]): string | undefined {
-    if (!name) return undefined;
-    for (const pattern of patterns) {
-      if (patternToRegex(pattern).test(name)) return pattern;
+  private compileSection(entries: PolicyEntry[]): CompiledPolicyEntry[] {
+    return [...entries]
+      .sort((a, b) => a.priority - b.priority)
+      .map((entry) => this.compileEntry(entry));
+  }
+
+  private compileEntry(entry: PolicyEntry): CompiledPolicyEntry {
+    let regex: RegExp;
+    try {
+      regex = new RegExp(entry.name);
+    } catch (error) {
+      logger.warn({ entry: entry.name, error }, "Invalid regex for permission entry, treating as literal");
+      regex = new RegExp(`^${escapeRegex(entry.name)}$`);
+    }
+    return { ...entry, regex };
+  }
+
+  private findMatchingEntry(section: PolicySectionKey, value: string): CompiledPolicyEntry | undefined {
+    if (!value) return undefined;
+    for (const entry of this.compiledSections[section]) {
+      if (entry.regex.test(value)) return entry;
     }
     return undefined;
   }
 
+  private normalizeResourcePath(resourcePath: string): string {
+    return resourcePath.replace(/\\/g, "/");
+  }
+
   isToolAllowed(toolName: string): boolean {
     if (!toolName) return false;
-    logger.debug({ toolName, allowedPatterns: this.config.tools.allowed }, "Checking if tool is allowed");
-    const allowed = this.matchesPattern(toolName, this.config.tools.allowed);
-    logger.debug({ toolName, allowed }, "Tool permission check result");
-    if (!allowed && this.config.settings.logDenials) {
+    const allowed = Boolean(this.findMatchingEntry("tools", toolName));
+    if (!allowed) {
       logger.warn({ toolName }, "Permission denied for tool");
     }
     return allowed;
@@ -207,8 +148,8 @@ export class PermissionManager {
 
   isSkillAllowed(skillName: string): boolean {
     if (!skillName) return false;
-    const allowed = this.matchesPattern(skillName, this.config.skills.allowed);
-    if (!allowed && this.config.settings.logDenials) {
+    const allowed = Boolean(this.findMatchingEntry("skills", skillName));
+    if (!allowed) {
       logger.warn({ skillName }, "Permission denied for skill");
     }
     return allowed;
@@ -216,73 +157,32 @@ export class PermissionManager {
 
   isMcpAllowed(mcpName: string): boolean {
     if (!mcpName) return false;
-    const allowed = this.matchesPattern(mcpName, this.config.mcps.allowed);
-    if (!allowed && this.config.settings.logDenials) {
-      logger.warn({ mcpName }, "Permission denied for mcp");
+    const allowed = Boolean(this.findMatchingEntry("mcps", mcpName));
+    if (!allowed) {
+      logger.warn({ mcpName }, "Permission denied for MCP");
     }
     return allowed;
   }
 
-  getDeniedResourcePattern(resourcePath: string): string | undefined {
-    if (!resourcePath) return undefined;
-    const normalized = resourcePath.replace(/\\/g, "/");
-    return (
-      this.findMatchingPattern(normalized, this.config.resources.deniedPaths) ??
-      this.findMatchingPattern(resourcePath, this.config.resources.deniedPaths)
-    );
-  }
-
-  checkResourceDenied(resourcePath: string): boolean {
-    if (!resourcePath) return false;
-    const match = this.getDeniedResourcePattern(resourcePath);
-    if (match && this.config.settings.logDenials) {
-      logger.warn({ resourcePath, rule: match }, "Permission denied for resource path");
-    }
-    return Boolean(match);
-  }
-
-  getToolRestrictions(toolName: string): ToolRestriction | undefined {
-    const restrictions = this.config.tools.restrictions[toolName];
-    logger.debug({ 
-      toolName, 
-      restrictions,
-      hasRestrictions: Boolean(restrictions),
-      allowedCommands: restrictions?.allowedCommands || []
-    }, "Getting tool restrictions");
-    return restrictions;
-  }
-
-  getGlobalBlockedCommands(): string[] {
-    return this.config.blockedCommands ?? [];
-  }
-
-  shouldPromptForOverride(toolName: string): boolean {
-    const restrictions = this.config.tools.restrictions[toolName];
-    return Boolean(restrictions?.overridePrompt ?? this.config.settings.enableOverridePrompt);
-  }
-
-  isCommandBlocked(command: string): boolean {
+  isCommandAllowed(command: string): boolean {
     if (!command) return false;
+    const allowed = Boolean(this.findMatchingEntry("commands", command));
+    if (!allowed) {
+      logger.warn({ command }, "Permission denied for command");
+    }
+    return allowed;
+  }
 
-    const globalBlockedCommands = this.getGlobalBlockedCommands();
-    logger.debug({ command, blockedCommands: globalBlockedCommands }, "Checking if command is globally blocked");
-    if (globalBlockedCommands.length === 0) return false;
-
-    // On Windows, use case-sensitive matching to distinguish PowerShell cmdlets (Format-Table) 
-    // from legacy commands (format). On Unix, use case-insensitive for compatibility.
-    const isWindows = process.platform === "win32";
-    const cmdToCheck = isWindows ? command.trim() : command.toLowerCase().trim();
-    
-    const blocked = globalBlockedCommands.some((blocked) => {
-      const patternToMatch = isWindows ? blocked : blocked.toLowerCase();
-      const isMatch = cmdToCheck.includes(patternToMatch);
-      if (isMatch) {
-        logger.debug({ command: cmdToCheck, blockedBy: blocked, caseSensitive: isWindows }, "Command matched blocked pattern");
-      }
-      return isMatch;
-    });
-    logger.debug({ command, blocked, platform: process.platform, caseSensitive: isWindows }, "Command blocking check result");
-    return blocked;
+  isResourceAllowed(resourcePath: string): boolean {
+    if (!resourcePath) return false;
+    const normalized = this.normalizeResourcePath(resourcePath);
+    const match =
+      this.findMatchingEntry("resurces", normalized) ?? this.findMatchingEntry("resurces", resourcePath);
+    const allowed = Boolean(match);
+    if (!allowed) {
+      logger.warn({ resourcePath }, "Permission denied for resource path");
+    }
+    return allowed;
   }
 
   checkPermission(
@@ -291,23 +191,21 @@ export class PermissionManager {
     resourcePath?: string
   ): PermissionCheckResult {
     const result: PermissionCheckResult = { allowed: false, reason: "" };
-
     if (capabilityType === "tool") {
       result.allowed = this.isToolAllowed(name);
-      if (!result.allowed) result.reason = `Tool '${name}' is not in the allowed list`;
+      if (!result.allowed) result.reason = `Tool '${name}' is not in the allowed rules`;
     } else if (capabilityType === "skill") {
       result.allowed = this.isSkillAllowed(name);
-      if (!result.allowed) result.reason = `Skill '${name}' is not in the allowed list`;
+      if (!result.allowed) result.reason = `Skill '${name}' is not in the allowed rules`;
     } else if (capabilityType === "mcp") {
       result.allowed = this.isMcpAllowed(name);
-      if (!result.allowed) result.reason = `MCP '${name}' is not in the allowed list`;
+      if (!result.allowed) result.reason = `MCP '${name}' is not in the allowed rules`;
     }
 
     if (result.allowed && resourcePath) {
-      const deniedPattern = this.getDeniedResourcePattern(resourcePath);
-      if (deniedPattern) {
+      if (!this.isResourceAllowed(resourcePath)) {
         result.allowed = false;
-        result.reason = `Resource path '${resourcePath}' is denied by rule '${deniedPattern}'`;
+        result.reason = `Resource path '${resourcePath}' is not in the allowed rules`;
       }
     }
 
@@ -322,20 +220,29 @@ export class PermissionManager {
 
   listAllowedCapabilities(): { tools: string[]; skills: string[]; mcps: string[] } {
     return {
-      tools: [...this.config.tools.allowed],
-      skills: [...this.config.skills.allowed],
-      mcps: [...this.config.mcps.allowed]
+      tools: this.config.tools.map((rule) => rule.name),
+      skills: this.config.skills.map((rule) => rule.name),
+      mcps: this.config.mcps.map((rule) => rule.name)
     };
+  }
+
+  listPolicyNames(section: keyof PermissionPolicy): string[] {
+    const normalizedSection =
+      section === "resources" ? "resurces" : (section as PolicySectionKey);
+    const entries = this.config[normalizedSection];
+    return entries?.map((rule) => rule.name) ?? [];
   }
 
   reloadConfig(): boolean {
     const previous = this.config;
+    const previousCompiled = this.compiledSections;
     try {
       const loaded = this.loadConfig();
       logger.info("Permission configuration reloaded successfully");
       return loaded;
     } catch (error) {
       this.config = previous;
+      this.compiledSections = previousCompiled;
       logger.error({ error }, "Failed to reload permission config, keeping previous");
       return false;
     }

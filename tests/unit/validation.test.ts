@@ -5,12 +5,11 @@ import { validateToolRequest } from "../../src/validation/tool_request.ts";
 describe("validation", () => {
   it("accepts a valid permission policy shape", () => {
     const policy = {
-      version: "1.0",
-      settings: { default_deny: true, log_denials: false },
-      tools: { allowed: ["read_file"], restrictions: {} },
-      skills: { allowed: [] },
-      mcps: { allowed: [], settings: {} },
-      resources: { denied_paths: [] }
+      tools: [{ priority: 10, name: "read_file", desc: "Allow reads" }],
+      commands: [{ priority: 10, name: ".*", desc: "Allow all commands" }],
+      skills: [{ priority: 10, name: ".*", desc: "Enable all skills" }],
+      mcps: [],
+      resurces: [{ priority: 10, name: "/tmp/.*", desc: "Allow /tmp" }]
     };
 
     expect(() => validatePermissionPolicy(policy)).not.toThrow();
@@ -18,8 +17,7 @@ describe("validation", () => {
 
   it("rejects invalid permission policy shapes", () => {
     const invalidPolicy = {
-      version: 1,
-      tools: { allowed: "read_file" }
+      tools: [{ priority: "high", name: 5, desc: 1 }]
     };
 
     expect(() => validatePermissionPolicy(invalidPolicy)).toThrow();

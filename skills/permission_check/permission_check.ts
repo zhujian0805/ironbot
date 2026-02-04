@@ -11,14 +11,12 @@ export const executeSkill = async (input: string): Promise<string> => {
   }
 
   const capabilities = pm.listAllowedCapabilities();
-  const restrictions = pm.getToolRestrictions("run_powershell");
-  const blockedCmds = pm.getGlobalBlockedCommands();
-  
-  const testResults = [
-    `Get-Disk blocked: ${pm.isCommandBlocked("Get-Disk")}`,
-    `Get-Volume blocked: ${pm.isCommandBlocked("Get-Volume")}`,
-    `format blocked: ${pm.isCommandBlocked("format c:")}`
-  ];
+  const commandRules = pm.listPolicyNames("commands");
+  const resourceRules = pm.listPolicyNames("resurces");
+  const sampleCommands = ["Get-Disk", "Get-Volume", "format c:"];
+  const commandResults = sampleCommands.map(
+    (command) => `• ${command}: ${pm.isCommandAllowed(command) ? "allowed" : "denied"}`
+  );
 
   // Collect loaded skills from workspace and state directories
   const workspaceSkillsDir = path.join(process.cwd(), "skills");
@@ -81,9 +79,11 @@ ${loadedSkills.map(skill => `• ${skill}`).join('\n')}
 
 **📋 Allowed Skills:** ${capabilities.skills.join(", ")}
 
-**⚙️ Key Restrictions:**
-• PowerShell: ${restrictions?.allowedCommands?.includes('*') ? 'All commands allowed' : restrictions?.allowedCommands?.join(", ") || 'None'}
-• Blocked: ${blockedCmds.slice(0, 3).join(", ")}${blockedCmds.length > 3 ? ` (+${blockedCmds.length - 3} more)` : ''}
+**⚙️ Policy Highlights**
+• Allowed command patterns: ${commandRules.length ? commandRules.join(", ") : "none configured"}
+• Allowed resource patterns: ${resourceRules.length ? resourceRules.join(", ") : "none configured"}
+**🧪 Sample commands:**
+${commandResults.join("\n")}
 
 **💡 Pro Tips:**
 • Use natural language to install skills: "install this skill: <url>"

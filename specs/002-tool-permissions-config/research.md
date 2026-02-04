@@ -104,54 +104,39 @@
 
 ## Configuration File Schema
 
+Each section of `permissions.yaml` is a list of entries that resemble:
+
 ```yaml
-# permissions.yaml - Bot capability permissions
-# Default behavior: deny all (if file missing or section empty)
-
-version: "1.0"
-
-# Global settings
-settings:
-  default_deny: true  # Explicit default-deny (recommended)
-  log_denials: true   # Log all permission denials for audit
-
-# Allowed tools (Claude tool use)
 tools:
-  allowed:
-    - "list_directory"      # Exact match
-    - "read_file"           # Exact match
-    - "run_powershell"      # Allow PowerShell
-    - "file_*"              # Wildcard: all file operations
+  - priority: 0
+    name: "read_file"
+    desc: "Allow read operations"
+  - priority: 100
+    name: ".*"
+    desc: "Allow every remaining tool temporarily"
 
-  # Optional: tool-specific restrictions
-  restrictions:
-    run_powershell:
-      allowed_commands:
-        - "Get-*"           # Only Get commands
-        - "Test-*"
-      blocked_commands:
-        - "*-Item"          # Block delete/move/copy
+commands:
+  - priority: 0
+    name: "^read"
+    desc: "Permit read-prefixed commands only"
 
-# Allowed skills (legacy skill system)
 skills:
-  allowed:
-    - "calculator"
-    - "weather"
-    - "*"                   # Allow all skills (use with caution)
+  - priority: 0
+    name: ".*"
+    desc: "Enable all documented skills"
 
-# Allowed MCPs (Model Context Protocol servers)
 mcps:
-  allowed:
-    - "filesystem"
-    - "github"
+  - priority: 0
+    name: ".*"
+    desc: "Allow any MCP adapter"
 
-  # MCP-specific settings
-  settings:
-    filesystem:
-      allowed_paths:
-        - "/home/user/projects"
-        - "C:\\Projects"
+resurces:
+  - priority: 0
+    name: "/home/user/.*"
+    desc: "Permit paths under the user's home directory"
 ```
+
+`priority` values determine evaluation order (lower numbers run first). Each entry's `name` field is a regular expression that must match the tool/command/skill/MCP name or resource path for the action to be allowed. Entries that do not match are denied, so the approach is deny-by-default.
 
 ## Error Handling Strategy
 

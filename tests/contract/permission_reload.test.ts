@@ -17,18 +17,19 @@ const waitFor = async (
   throw new Error("Timed out waiting for condition");
 };
 
-const baseConfig = (tools: string[]) => `version: "1.0"
-settings:
-  default_deny: true
-  log_denials: false
-tools:
-  allowed: ${JSON.stringify(tools)}
-skills:
-  allowed: []
-mcps:
-  allowed: []
-resources:
-  denied_paths: []
+const baseConfig = (tools: string[]) => `tools: ${JSON.stringify(
+  tools.map((name, index) => ({
+    priority: index,
+    name,
+    desc: `Allow ${name}`
+  })),
+  null,
+  2
+)}
+mcps: []
+commands: ${JSON.stringify([{ priority: 0, name: ".*", desc: "Allow all commands" }], null, 2)}
+skills: []
+resurces: ${JSON.stringify([{ priority: 0, name: ".*", desc: "Allow all resources" }], null, 2)}
 `;
 
 describe("Permission config hot reload", () => {

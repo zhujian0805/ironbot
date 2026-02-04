@@ -1,166 +1,103 @@
 # Data Model: Tool Permissions Configuration
 
-**Feature**: 002-tool-permissions-config
-**Date**: 2026-01-31
+**Feature**: 002-tool-permissions-config  
+**Date**: 2026-02-04
 
 ## Entities
 
-### PermissionConfig
+### PermissionPolicy
 
-The root configuration object loaded from YAML.
+This is the root configuration object loaded from `permissions.yaml`. It has five ordered sections:
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| version | string | Yes | Config schema version (e.g., "1.0") |
-| settings | GlobalSettings | No | Global permission settings |
-| tools | ToolPermissions | No | Tool permission configuration |
-| skills | SkillPermissions | No | Skill permission configuration |
-| mcps | MCPPermissions | No | MCP permission configuration |
+| Field | Type | Description |
+|-------|------|-------------|
+| `tools` | list[`PolicyEntry`] | Tool names and glob/regex patterns that are permitted |
+| `mcps` | list[`PolicyEntry`] | Allowed Model Context Protocol identifiers |
+| `commands` | list[`PolicyEntry`] | Regex patterns that describe commands the bot may execute |
+| `skills` | list[`PolicyEntry`] | Skill names or patterns that can be invoked |
+| `resurces` | list[`PolicyEntry`] | Filesystem paths the bot is allowed to touch (note the intentional spelling) |
 
-### GlobalSettings
+The policy is deny-by-default: only matching entries (by `name`) are allowed. `priority` controls evaluation order to let you add specific rules before catch-all entries.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| default_deny | boolean | true | If true, deny unlisted capabilities |
-| log_denials | boolean | true | Log all permission denials |
+### PolicyEntry
 
-### ToolPermissions
+Each entry in a section has three required fields:
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| allowed | list[string] | No | List of allowed tool names/patterns |
-| restrictions | dict[string, ToolRestriction] | No | Per-tool restrictions |
+| Field | Type | Description |
+|-------|------|-------------|
+| `priority` | integer | Lower numbers run first; high values can act as catch-all fallbacks or denies |
+| `name` | string | Regular expression matched against the requested resource |
+| `desc` | string | Human-readable description recorded in logs |
 
-### ToolRestriction
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| allowed_commands | list[string] | No | Patterns for allowed command arguments |
-| blocked_commands | list[string] | No | Patterns for blocked command arguments |
-| allowed_paths | list[string] | No | Allowed working directories |
-| timeout_max | integer | No | Maximum allowed timeout in seconds |
-
-### SkillPermissions
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| allowed | list[string] | No | List of allowed skill names/patterns |
-
-### MCPPermissions
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| allowed | list[string] | No | List of allowed MCP identifiers/patterns |
-| settings | dict[string, MCPSettings] | No | Per-MCP settings |
-
-### MCPSettings
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| allowed_paths | list[string] | No | Allowed filesystem paths |
-| allowed_repos | list[string] | No | Allowed repository patterns |
+Ordering matters: if multiple entries match, the one with the lowest `priority` is evaluated first.
 
 ## State Transitions
 
-### PermissionManager States
+### PermissionManager Lifecycle
 
 ```
-[Uninitialized] --load()--> [Active]
-[Active] --reload()--> [Reloading] --success--> [Active]
-[Active] --reload()--> [Reloading] --failure--> [Active] (keep old config)
-[Active] --shutdown()--> [Stopped]
+[uninitialized] -- loadConfig() --> [active]
+[active] -- reloadConfig() --> [reloading] -- success --> [active]
+[active] -- reloadConfig() --> [reloading] -- failure --> [active] (keep previous)
+[active] -- stopFileWatcher() --> [stopped]
 ```
 
 ### Permission Check Flow
 
 ```
-Request arrives
+Request enters
     |
     v
-Is capability type valid? (tool/skill/mcp)
-    |-- No --> Return error
+Does section contain a matching PolicyEntry?
+    |-- No --> Deny (default)
     |-- Yes
     v
-Is capability in allowed list?
-    |-- No --> Log denial, return PermissionDenied
-    |-- Yes
-    v
-Does capability have restrictions?
-    |-- No --> Allow
-    |-- Yes
-    v
-Do arguments pass restrictions?
-    |-- No --> Log denial, return PermissionDenied
-    |-- Yes --> Allow
+Allow the requested capability
 ```
+
+Commands and resource paths are matched against their respective sections (`commands` and `resurces`) in addition to tool/skill/MCP checks.
 
 ## Validation Rules
 
-### Config File Validation
+### Config Schema
 
-1. `version` must be a valid semver string
-2. `allowed` lists must contain only strings
-3. Wildcard patterns must be valid fnmatch patterns
-4. Restriction fields must match expected types
+1. Each top-level key must be one of the five allowed sections.
+2. Each section must be a list of policy entries with integer priority, string name, and string description.
+3. `name` strings should be compatible regular expressions.
+4. No additional keys are permitted (`email`, `settings`, `blocked_commands`, etc. are not part of the schema).
 
-### Runtime Validation
+### Runtime Enforcement
 
-1. Tool names must be non-empty strings
-2. Skill names must be non-empty strings
-3. MCP identifiers must be non-empty strings
-4. Command arguments checked against restrictions when applicable
-
-## Relationships
-
-```
-PermissionConfig
-├── GlobalSettings (1:1)
-├── ToolPermissions (1:1)
-│   └── ToolRestriction (1:N, keyed by tool name)
-├── SkillPermissions (1:1)
-└── MCPPermissions (1:1)
-    └── MCPSettings (1:N, keyed by MCP name)
-```
+1. Tool names, skill names, and MCP identifiers must be non-empty strings.
+2. Every command string is tested against the `commands` entries before dispatching to `run_powershell` or `run_bash`.
+3. Resource paths are normalized (backslashes converted to slashes) and matched against `resurces` entries before any filesystem access.
 
 ## TypeScript Interfaces
 
 ```ts
-export interface GlobalSettings {
-  default_deny: boolean;
-  log_denials: boolean;
-}
+export type PolicyEntry = {
+  priority: number;
+  name: string;
+  desc: string;
+};
 
-export interface ToolRestriction {
-  allowed_commands: string[];
-  blocked_commands: string[];
-  allowed_paths: string[];
-  timeout_max?: number;
-}
+export type PermissionPolicy = {
+  tools: PolicyEntry[];
+  mcps: PolicyEntry[];
+  commands: PolicyEntry[];
+  skills: PolicyEntry[];
+  resurces: PolicyEntry[];
+  resources?: PolicyEntry[];
+};
+```
 
-export interface ToolPermissions {
-  allowed: string[];
-  restrictions: Record<string, ToolRestriction>;
-}
+## Relationships
 
-export interface SkillPermissions {
-  allowed: string[];
-}
-
-export interface MCPSettings {
-  allowed_paths: string[];
-  allowed_repos: string[];
-}
-
-export interface MCPPermissions {
-  allowed: string[];
-  settings: Record<string, MCPSettings>;
-}
-
-export interface PermissionConfig {
-  version: string;
-  settings: GlobalSettings;
-  tools: ToolPermissions;
-  skills: SkillPermissions;
-  mcps: MCPPermissions;
-}
+```
+PermissionPolicy
+├── tools (list of PolicyEntry)
+├── mcps (list of PolicyEntry)
+├── commands (list of PolicyEntry)
+├── skills (list of PolicyEntry)
+└── resurces (list of PolicyEntry)
 ```

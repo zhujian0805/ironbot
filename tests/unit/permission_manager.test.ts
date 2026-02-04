@@ -4,28 +4,38 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PermissionManager } from "../../src/services/permission_manager.ts";
 
-const buildConfig = (options: {
-  allowedTools: string[];
-  deniedPaths?: string[];
-}) => `version: "1.0"
-settings:
-  default_deny: true
-  log_denials: false
-tools:
-  allowed: ${JSON.stringify(options.allowedTools)}
-skills:
-  allowed: []
-mcps:
-  allowed: []
-resources:
-  denied_paths: ${JSON.stringify(options.deniedPaths ?? [])}
+type ConfigOptions = {
+  toolRules?: Array<{ priority: number; name: string; desc: string }>;
+  resourceRules?: Array<{ priority: number; name: string; desc: string }>;
+  commandRules?: Array<{ priority: number; name: string; desc: string }>;
+  skillRules?: Array<{ priority: number; name: string; desc: string }>;
+  mcpRules?: Array<{ priority: number; name: string; desc: string }>;
+};
+
+const defaultCommandRules = [{ priority: 0, name: ".*", desc: "allow all commands" }];
+
+const formatSection = (entries: Array<{ priority: number; name: string; desc: string }>) =>
+  JSON.stringify(entries ?? [], null, 2);
+
+const buildConfig = (options: ConfigOptions = {}) => `tools: ${formatSection(
+  options.toolRules ?? []
+)}
+mcps: ${formatSection(options.mcpRules ?? [])}
+commands: ${formatSection(options.commandRules ?? defaultCommandRules)}
+skills: ${formatSection(options.skillRules ?? [])}
+resurces: ${formatSection(options.resourceRules ?? [])}
 `;
 
 describe("PermissionManager", () => {
   it("enforces allowed tool patterns", async () => {
     const dir = await mkdtemp(join(tmpdir(), "ironbot-perm-unit-"));
     const filePath = join(dir, "permissions.yaml");
-    await writeFile(filePath, buildConfig({ allowedTools: ["read_*"] }));
+    await writeFile(
+      filePath,
+      buildConfig({
+        toolRules: [{ priority: 0, name: "read_.*", desc: "Allow read tools" }]
+      })
+    );
 
     const manager = new PermissionManager(filePath);
     manager.loadConfig();
@@ -36,27 +46,30 @@ describe("PermissionManager", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it("denies resource paths matching deny rules", async () => {
+  it("denies resource paths outside the allowed list", async () => {
     const dir = await mkdtemp(join(tmpdir(), "ironbot-perm-unit-"));
     const filePath = join(dir, "permissions.yaml");
     await writeFile(
       filePath,
       buildConfig({
-        allowedTools: ["read_file"],
-        deniedPaths: ["C:\\Windows\\*", "/etc/*"]
+        toolRules: [{ priority: 0, name: "read_file", desc: "Allow read file" }],
+        resourceRules: [
+          { priority: 0, name: "/home/.*", desc: "Allow home directory" },
+          { priority: 1, name: "C:\\\\Users\\\\.*", desc: "Allow user folder" }
+        ]
       })
     );
 
     const manager = new PermissionManager(filePath);
     manager.loadConfig();
 
-    expect(manager.checkResourceDenied("C:\\Windows\\System32")).toBe(true);
-    expect(manager.checkResourceDenied("/etc/passwd")).toBe(true);
-    expect(manager.checkResourceDenied("/home/user")).toBe(false);
+    expect(manager.isResourceAllowed("C:\\Windows\\System32")).toBe(false);
+    expect(manager.isResourceAllowed("/etc/passwd")).toBe(false);
+    expect(manager.isResourceAllowed("/home/user")).toBe(true);
 
-    const decision = manager.checkPermission("tool", "read_file", "C:\\Windows\\System32");
+    const decision = manager.checkPermission("tool", "read_file", "/etc/passwd");
     expect(decision.allowed).toBe(false);
-    expect(decision.reason).toContain("denied");
+    expect(decision.reason).toContain("not in the allowed rules");
 
     await rm(dir, { recursive: true, force: true });
   });
@@ -64,7 +77,15 @@ describe("PermissionManager", () => {
   it("supports wildcard tool patterns", async () => {
     const dir = await mkdtemp(join(tmpdir(), "ironbot-perm-unit-"));
     const filePath = join(dir, "permissions.yaml");
-    await writeFile(filePath, buildConfig({ allowedTools: ["read_??le", "write_*"] }));
+    await writeFile(
+      filePath,
+      buildConfig({
+    toolRules: [
+      { priority: 0, name: "^read_file$", desc: "Allow read_file only" },
+      { priority: 1, name: "^write_.*$", desc: "Allow write tools" }
+    ]
+      })
+    );
 
     const manager = new PermissionManager(filePath);
     manager.loadConfig();

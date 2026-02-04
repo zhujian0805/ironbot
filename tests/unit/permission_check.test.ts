@@ -8,10 +8,9 @@ const allowedSkills = new Set<string>();
 
 const permissionManagerStub = {
   listAllowedCapabilities: () => ({ tools: ["run_powershell"], skills: Array.from(allowedSkills), mcps: [] }),
-  getToolRestrictions: () => ({ allowedCommands: ["*"] }),
-  getGlobalBlockedCommands: () => ["rm -rf /"],
+  listPolicyNames: () => ["*"],
   isSkillAllowed: (name: string) => allowedSkills.has(name),
-  isCommandBlocked: () => false
+  isCommandAllowed: () => true
 };
 
 vi.mock("../../src/services/permission_manager.ts", () => ({
