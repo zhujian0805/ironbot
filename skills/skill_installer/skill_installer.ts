@@ -7,7 +7,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-const listPattern = /\b(?:list|show) (?:installed )?skills\b/i;
+const listPattern = /\b(?:list|show)\b(?:\s+(?:all|available|installed|enabled|active|current|loaded)){0,2}\s+skills\b/i;
 const removePattern = /\b(?:remove|uninstall)(?: skill)?\s+(.+)$/i;
 const helpPattern = /\b(?:how(?:\s+do\s+i)?\s+use|usage|instructions|help|guide)\b/i;
 const skillNamePattern = /\bskill_installer\b/i;

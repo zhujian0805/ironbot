@@ -93,6 +93,12 @@ export type SlackRateLimitConfig = {
   queueSize: number;
 };
 
+export type AutoRoutingConfig = {
+  enabled: boolean;
+  confidenceThreshold: number;
+  optOutSkills: string[];
+};
+
 export type EmbeddingsConfig = {
   provider: EmbeddingProvider;
   fallback: EmbeddingProvider;
@@ -140,6 +146,7 @@ export type AppConfig = {
   retry: RetryConfig;
   slackRetry: SlackRetryConfig;
   slackRateLimit: SlackRateLimitConfig;
+  autoRouting: AutoRoutingConfig;
 };
 
 const DEFAULT_OPENAI_MODEL = "text-embedding-3-small";
@@ -234,6 +241,11 @@ const loadBaseConfig = (): AppConfig => {
       maxAttempts: parseInteger(process.env.IRONBOT_SLACK_RETRY_MAX_ATTEMPTS, 3),
       baseDelayMs: parseInteger(process.env.IRONBOT_SLACK_RETRY_BASE_DELAY_MS, 10000),
       maxDelayMs: parseInteger(process.env.IRONBOT_SLACK_RETRY_MAX_DELAY_MS, 120000)
+    },
+    autoRouting: {
+      enabled: parseBoolean(process.env.CLAUDE_AUTO_ROUTE_ENABLED, true),
+      confidenceThreshold: parseNumber(process.env.CLAUDE_AUTO_ROUTE_CONFIDENCE, 0.5),
+      optOutSkills: parseStringArray(process.env.CLAUDE_AUTO_ROUTE_OPTOUT, [])
     }
   };
 };

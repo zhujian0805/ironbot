@@ -17,9 +17,26 @@ export type ToolResult = {
   exitCode?: number | null;
   stdout?: string;
   stderr?: string;
+  skillName?: string;
+  isExecutable?: boolean;
 };
 
 export const TOOLS: ToolDefinition[] = [
+  {
+    name: "read_skill",
+    description:
+      "Load the full documentation for a specific skill. Use this when you've identified a skill that applies to the user's request. The skill name should match exactly from the available_skills list. Returns the complete SKILL.md content with instructions.",
+    input_schema: {
+      type: "object",
+      properties: {
+        skill_name: {
+          type: "string",
+          description: "The exact name of the skill to load, as listed in available_skills"
+        }
+      },
+      required: ["skill_name"]
+    }
+  },
   {
     name: "run_powershell",
     description:
@@ -194,14 +211,34 @@ const runProcess = (
     });
   });
 
+export type SkillInfo = {
+  name: string;
+  description?: string;
+  documentation?: string;
+  isExecutable?: boolean;
+};
+
 export class ToolExecutor {
   private allowedTools?: string[];
   private retryManager?: RetryManager;
   private permissionManager = getPermissionManager();
+  private skills: Map<string, SkillInfo> = new Map();
 
-  constructor(allowedTools?: string[], retryManager?: RetryManager) {
+  constructor(allowedTools?: string[], retryManager?: RetryManager, skills?: SkillInfo[]) {
     this.allowedTools = allowedTools;
     this.retryManager = retryManager;
+    if (skills) {
+      for (const skill of skills) {
+        this.skills.set(skill.name, skill);
+      }
+    }
+  }
+
+  setSkills(skills: SkillInfo[]): void {
+    this.skills.clear();
+    for (const skill of skills) {
+      this.skills.set(skill.name, skill);
+    }
   }
 
   async executeTool(toolName: string, toolInput: Record<string, unknown>): Promise<ToolResult> {
@@ -269,6 +306,9 @@ export class ToolExecutor {
       const toolStart = Date.now();
       let result: ToolResult;
       switch (toolName) {
+        case "read_skill":
+          result = await this.readSkill(effectiveInput);
+          break;
         case "run_powershell":
           result = await this.runPowerShell(effectiveInput);
           break;
@@ -320,6 +360,34 @@ export class ToolExecutor {
         }
       );
     }
+  }
+
+  private async readSkill(toolInput: Record<string, unknown>): Promise<ToolResult> {
+    const skillName = String(toolInput.skill_name ?? "");
+
+    logger.debug({ tool: 'read_skill', skillName }, "[TOOL-EXEC] Reading skill documentation");
+
+    if (!skillName) {
+      return { success: false, error: "No skill_name provided" };
+    }
+
+    const skill = this.skills.get(skillName);
+    if (!skill) {
+      const availableSkills = Array.from(this.skills.keys()).join(", ");
+      logger.warn({ skillName, availableSkills }, "[TOOL-EXEC] Skill not found");
+      return {
+        success: false,
+        error: `Skill '${skillName}' not found. Available skills: ${availableSkills || 'none'}`
+      };
+    }
+
+    logger.info({ skillName, hasDocumentation: !!skill.documentation }, "[TOOL-EXEC] Skill documentation loaded");
+    return {
+      success: true,
+      result: skill.documentation || `Skill: ${skill.name}\nDescription: ${skill.description || 'No description provided.'}\n\nThis skill has no additional documentation.`,
+      skillName: skill.name,
+      isExecutable: skill.isExecutable
+    };
   }
 
   private async runPowerShell(toolInput: Record<string, unknown>): Promise<ToolResult> {

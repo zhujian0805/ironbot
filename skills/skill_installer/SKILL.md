@@ -4,7 +4,21 @@ description: Install, list, or remove skills for IronBot via natural language st
 metadata:
   openclaw:
     emoji: ⚙️
-    triggers: ["install skill", "add skill", "skill installer", "use skill", "new skill", "list skills", "show skills", "remove skill", "uninstall skill", "skill help"]
+    triggers:
+      - "install skill"
+      - "add skill"
+      - "skill installer"
+      - "use skill"
+      - "new skill"
+      - "list skills"
+      - "show skills"
+      - "list available skills"
+      - "list all skills"
+      - "list all available skills"
+      - "show available skills"
+      - "remove skill"
+      - "uninstall skill"
+      - "skill help"
 ---
 
 # Skill Installer

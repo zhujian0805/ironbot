@@ -8,6 +8,13 @@ import yaml from "yaml";
 
 export type SkillHandler = (input: string) => string | Promise<string>;
 
+export interface SkillTriggerMetadata {
+  triggers?: string[];
+  confidence?: number;
+  autoRoute?: boolean;
+  description?: string;
+}
+
 export interface SkillMetadata {
   name?: string;
   description?: string;
@@ -19,8 +26,17 @@ export interface SkillMetadata {
         bins?: string[];
       };
       triggers?: string[];
+      skillTriggers?: SkillTriggerMetadata;
     };
   };
+}
+
+export interface SkillTriggerConfig {
+  triggers: string[];
+  confidence: number;
+  autoRoute: boolean;
+  description?: string;
+  source: "metadata" | "heuristic";
 }
 
 export interface SkillInfo {
@@ -28,6 +44,7 @@ export interface SkillInfo {
   handler: SkillHandler;
   metadata?: SkillMetadata;
   triggers?: string[];
+  triggerConfig?: SkillTriggerConfig;
   isDocumentationSkill?: boolean; // True for SKILL.md-based skills that provide instructions
   skillDirectory?: string; // Path to skill directory for SKILL.md-based skills
   documentation?: string; // Pre-formatted documentation extracted from SKILL.md
@@ -100,24 +117,25 @@ export class SkillLoader {
     }
   }
 
-  private extractTriggersFromMetadata(metadata: SkillMetadata): string[] {
+  private extractTriggersFromMetadata(metadata?: SkillMetadata): string[] {
     const triggers: string[] = [];
 
     // Extract from openclaw metadata
-    if (metadata.metadata?.openclaw?.triggers) {
+    if (metadata?.metadata?.openclaw?.triggers) {
       triggers.push(...metadata.metadata.openclaw.triggers);
     }
 
     // Extract from description keywords
-    if (metadata.description) {
-      const description = metadata.description.toLowerCase();
+    const description = metadata?.description;
+    if (description) {
+      const normalizedDescription = description.toLowerCase();
       // Add common trigger words found in descriptions
-      if (description.includes('install')) triggers.push('install');
-      if (description.includes('setup')) triggers.push('setup');
-      if (description.includes('weather')) triggers.push('weather');
-      if (description.includes('finance') || description.includes('stock')) triggers.push('finance', 'stock');
-      if (description.includes('email')) triggers.push('email');
-      if (description.includes('calendar')) triggers.push('calendar');
+      if (normalizedDescription.includes('install')) triggers.push('install');
+      if (normalizedDescription.includes('setup')) triggers.push('setup');
+      if (normalizedDescription.includes('weather')) triggers.push('weather');
+      if (normalizedDescription.includes('finance') || normalizedDescription.includes('stock')) triggers.push('finance', 'stock');
+      if (normalizedDescription.includes('email')) triggers.push('email');
+      if (normalizedDescription.includes('calendar')) triggers.push('calendar');
     }
 
     return [...new Set(triggers)]; // Remove duplicates
@@ -146,6 +164,46 @@ export class SkillLoader {
     triggers.push(skillName);
 
     return [...new Set(triggers)]; // Remove duplicates
+  }
+
+  private clampConfidence(value: number): number {
+    if (Number.isNaN(value) || !Number.isFinite(value)) return 0;
+    if (value < 0) return 0;
+    if (value > 1) return 1;
+    return value;
+  }
+
+  private extractExplicitTriggerConfig(metadata?: SkillMetadata): SkillTriggerConfig | null {
+    const explicit = metadata?.metadata?.openclaw?.skillTriggers;
+    if (!explicit?.triggers?.length) return null;
+    const cleanedTriggers = explicit.triggers.filter(Boolean);
+    if (!cleanedTriggers.length) return null;
+    return {
+      triggers: [...new Set(cleanedTriggers)],
+      confidence: this.clampConfidence(explicit.confidence ?? 0.8),
+      autoRoute: explicit.autoRoute ?? true,
+      description: explicit.description,
+      source: "metadata"
+    };
+  }
+
+  private buildTriggerConfig(skillName: string, metadata?: SkillMetadata): SkillTriggerConfig {
+    const explicitConfig = this.extractExplicitTriggerConfig(metadata);
+    if (explicitConfig) return explicitConfig;
+
+    const derivedTriggers = [
+      ...new Set([
+        ...this.extractTriggersFromMetadata(metadata ?? {}),
+        ...this.extractTriggersFromName(skillName)
+      ])
+    ];
+
+    return {
+      triggers: derivedTriggers,
+      confidence: 0.3,
+      autoRoute: true,
+      source: "heuristic"
+    };
   }
 
   private async scanSkillsDirectory(skillsDir: string, permissionManager: PermissionManager | null): Promise<void> {
@@ -194,7 +252,8 @@ export class SkillLoader {
     }
 
     const metadata = skillMdContent ? this.parseFrontmatter(skillMdContent) : undefined;
-    const triggers = metadata ? this.extractTriggersFromMetadata(metadata) : this.extractTriggersFromName(skillName);
+    const triggerConfig = this.buildTriggerConfig(skillName, metadata);
+    const triggers = triggerConfig.triggers;
 
     const relativePath = path.relative(process.cwd(), skillDir) || skillDir;
     const description = metadata?.description?.trim() || "No description provided.";
@@ -214,6 +273,7 @@ export class SkillLoader {
         handler: directoryHandler,
         metadata,
         triggers,
+        triggerConfig,
         documentation: formattedDocumentation,
         skillDirectory: skillDir
       };
@@ -251,6 +311,7 @@ export class SkillLoader {
       handler,
       metadata,
       triggers,
+      triggerConfig,
       isDocumentationSkill: true,
       skillDirectory: skillDir,
       documentation: formattedDocumentation
@@ -319,10 +380,12 @@ export class SkillLoader {
         return;
       }
 
+      const triggerConfig = this.buildTriggerConfig(skillName);
       this.skills[skillName] = {
         name: skillName,
         handler,
-        triggers: this.extractTriggersFromName(skillName),
+        triggers: triggerConfig.triggers,
+        triggerConfig,
         isDocumentationSkill: false
       };
 

@@ -30,6 +30,10 @@ A sophisticated TypeScript-based AI agent that integrates with Slack to provide 
 - **Hot Reload**: Automatic reloading of permissions and skills
 - **Plugin Architecture**: Easy to add new capabilities
 
+### Skill Triggering
+- **Skill Trigger Control**: Skills can declare `metadata.openclaw.skillTriggers` inside their `SKILL.md`, specifying exact trigger words, a confidence score (0-1), and an `autoRoute` flag to opt out of automatic routing. When metadata is absent, IronBot falls back to heuristic triggers derived from the skill name or description.
+- **Visibility & Instrumentation**: Auto-routing now logs trigger decisions (skill, trigger phrase, confidence, threshold, decision) so you can audit which messages triggered which skills.
+
 ### Security & Permissions
 - **Default Deny**: Deny-all security model with explicit allow lists
 - **Resource Protection**: Block specific paths and dangerous operations
@@ -187,6 +191,11 @@ IronBot includes a sophisticated memory system for maintaining context across co
 - `LOG_LEVEL` - Logging level: DEBUG, INFO, WARNING, ERROR (default: INFO)
 - `LOG_FILE` - Optional file path for logging
 - `DEV_MODE` - Enable development features (boolean)
+
+#### Skill Triggering Controls
+- `CLAUDE_AUTO_ROUTE_ENABLED` - Enable or disable auto-routing entirely (default: true)
+- `CLAUDE_AUTO_ROUTE_CONFIDENCE` - Confidence threshold required for auto-routing (default: 0.5)
+- `CLAUDE_AUTO_ROUTE_OPTOUT` - Comma-separated list of skill names to block from auto-routing even if they match (default: empty)
 
 #### Retry & Timeout
 - `IRONBOT_RETRY_MAX_ATTEMPTS` - Maximum retry attempts (default: 3)

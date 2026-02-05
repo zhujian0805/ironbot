@@ -107,6 +107,13 @@ describe("skill_installer helpers", () => {
       expect(response).toBe("removed");
     });
 
+    it("handles broader list phrases like 'list all available skills'", async () => {
+      const listSpy = vi.spyOn(installerHelper, "listInstalledSkills").mockResolvedValue("listing");
+      const response = await executeSkill("list all available skills");
+      expect(listSpy).toHaveBeenCalled();
+      expect(response).toBe("listing");
+    });
+
     it("provides help documentation when asked", async () => {
       const response = await executeSkill("How do I use skill_installer?");
       expect(response).toContain("## How to trigger this skill");

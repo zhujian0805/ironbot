@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { MessageParam, Tool } from "@anthropic-ai/sdk/resources/messages";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { resolveConfig } from "../config.ts";
+import { resolveConfig, type AutoRoutingConfig } from "../config.ts";
 import { logger } from "../utils/logging.ts";
 import { SkillLoader, type SkillHandler, type SkillInfo } from "./skill_loader.ts";
 import { ToolExecutor, getAllowedTools } from "./tools.ts";
@@ -16,6 +16,13 @@ const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant with access to sys
 2. You MUST execute the appropriate tool for EVERY request that asks for system information
 3. NEVER respond with example or fake data - only use actual tool output
 4. If asked about system information (hostname, disks, printers, processes, etc.), you MUST use run_powershell or run_bash
+
+**SKILL SELECTION (Progressive Disclosure Pattern):**
+Before responding, scan the <available_skills> list:
+- If exactly one skill clearly applies: use the read_skill tool to load its full documentation, then follow its instructions
+- If multiple could apply: choose the most specific one, then use read_skill to load and follow it
+- If none clearly apply: do not use read_skill, proceed with normal tool usage
+- NEVER load more than one skill's documentation upfront - only load after selecting
 
 When asked to perform system tasks:
 1. Use the appropriate tool to accomplish the task
@@ -66,6 +73,7 @@ function loadSystemPrompt(): string {
 }
 
 const SYSTEM_PROMPT = loadSystemPrompt();
+const DEFAULT_AUTO_ROUTE_CONFIDENCE = 0.3;
 
 type OperationRecord = {
   kind: "tool" | "skill";
@@ -88,6 +96,8 @@ export class ClaudeProcessor {
   private readonly maxToolIterations = 6;
   private skillLoader: SkillLoader;
   private memoryManager?: MemoryManager;
+  private autoRoutingConfig: AutoRoutingConfig;
+  private autoRouteOptOutSet: Set<string>;
 
   constructor(skillDirs: string[], memoryManager?: MemoryManager) {
     const config = resolveConfig();
@@ -100,39 +110,87 @@ export class ClaudeProcessor {
     this.model = config.anthropicModel;
     this.devMode = config.devMode;
     this.retryManager = new RetryManager(config.retry);
-    this.toolExecutor = new ToolExecutor(undefined, this.retryManager);
+    this.toolExecutor = new ToolExecutor(undefined, this.retryManager, []);
     this.skillLoader = new SkillLoader(skillDirs);
     this.memoryManager = memoryManager;
+    this.autoRoutingConfig = config.autoRouting;
+    this.autoRouteOptOutSet = new Set(
+      (config.autoRouting.optOutSkills ?? []).map((skill) => skill.toLowerCase())
+    );
     logger.info({ model: this.model, skillDirs, hasMemoryManager: !!memoryManager }, "[INIT] ClaudeProcessor initialized");
   }
 
   private async checkAutoRouteSkills(userMessage: string): Promise<string | null> {
+    if (!this.autoRoutingConfig.enabled) return null;
     const lowerMessage = userMessage.toLowerCase();
     logger.debug({ userMessage: lowerMessage.substring(0, 100) }, "[SKILL-EXEC] Delegating routing decisions to Claude");
 
-    const matchedSkill = this.findAutoRouteSkill(lowerMessage);
-    if (matchedSkill) {
-      return this.executeSkillHandler(matchedSkill, userMessage, "auto-route");
-    }
-
-    const installerSkill = this.skills["skill_installer"];
     const documentationSkillMatch = this.findDocumentationSkill(lowerMessage);
     if (documentationSkillMatch) {
       logger.debug({ skillName: documentationSkillMatch.name }, "[SKILL-EXEC] Message matches documentation skill; allowing Claude to handle it");
       return null;
     }
 
-    const useSkillPattern = /\buse skill\b/;
-    const installSkillPattern = /\binstall (this )?skill\b|\badd skill\b/;
-    if (
-      installerSkill &&
-      (useSkillPattern.test(lowerMessage) || installSkillPattern.test(lowerMessage))
-    ) {
-      logger.debug({ lowerMessage }, "[SKILL-EXEC] Falling back to skill_installer auto-route");
+    const explicitMatch = this.findExplicitInvocation(lowerMessage);
+    if (explicitMatch) {
+      if (this.isSkillOptedOut(explicitMatch.skill)) {
+        this.logAutoRouteDecision(
+          explicitMatch.skill,
+          explicitMatch.trigger,
+          explicitMatch.confidence,
+          this.autoRoutingConfig.confidenceThreshold,
+          "suppressed",
+          "opted-out"
+        );
+        return null;
+      }
+      this.logAutoRouteDecision(
+        explicitMatch.skill,
+        explicitMatch.trigger,
+        explicitMatch.confidence,
+        this.autoRoutingConfig.confidenceThreshold,
+        "executed-explicit"
+      );
+      return this.executeSkillHandler(explicitMatch.skill, userMessage, "auto-route");
+    }
+
+    const installerSkill = this.skills["skill_installer"];
+    const installerMatch = this.matchesInstallerPattern(lowerMessage);
+    if (installerSkill && installerMatch && !this.isSkillOptedOut(installerSkill)) {
+      this.logAutoRouteDecision(
+        installerSkill,
+        "installer-fallback",
+        installerSkill.triggerConfig?.confidence ?? DEFAULT_AUTO_ROUTE_CONFIDENCE,
+        this.autoRoutingConfig.confidenceThreshold,
+        "executed",
+        "installer fallback"
+      );
       return this.executeSkillHandler(installerSkill, userMessage, "auto-route");
     }
 
-    return null;
+    const candidate = this.findAutoRouteCandidate(lowerMessage);
+    if (!candidate) return null;
+
+    if (candidate.confidence < this.autoRoutingConfig.confidenceThreshold) {
+      this.logAutoRouteDecision(
+        candidate.skill,
+        candidate.trigger,
+        candidate.confidence,
+        this.autoRoutingConfig.confidenceThreshold,
+        "suppressed",
+        "confidence below threshold"
+      );
+      return null;
+    }
+
+    this.logAutoRouteDecision(
+      candidate.skill,
+      candidate.trigger,
+      candidate.confidence,
+      this.autoRoutingConfig.confidenceThreshold,
+      "executed"
+    );
+    return this.executeSkillHandler(candidate.skill, userMessage, "auto-route");
   }
 
   private async ensureSkillsLoaded(): Promise<void> {
@@ -142,82 +200,151 @@ export class ClaudeProcessor {
       const skillInfos = this.skillLoader.getSkillInfo();
       this.skills = skillInfos;
       this.skillsLoaded = true;
+
+      // Update ToolExecutor with skill info for read_skill tool
+      const skillInfoList = Object.values(this.skills).map(skill => ({
+        name: skill.name,
+        description: skill.metadata?.description,
+        documentation: skill.documentation,
+        isExecutable: !skill.isDocumentationSkill
+      }));
+      this.toolExecutor.setSkills(skillInfoList);
+
       logger.info({ loadedSkillCount: Object.keys(this.skills).length, skillNames: Object.keys(this.skills) }, "[SKILL-FLOW] Skills loaded and cached");
     } else {
       logger.debug({ cachedSkillCount: Object.keys(this.skills).length }, "[SKILL-FLOW] Using cached skills");
     }
   }
 
+  private formatSkillsForPrompt(): string {
+    const skillList = Object.values(this.skills);
+    if (skillList.length === 0) {
+      return "\n\n<available_skills>\nNo skills available.\n</available_skills>";
+    }
+
+    const skillEntries = skillList.map(skill => {
+      const name = skill.name;
+      const description = skill.metadata?.description || "No description provided";
+      return `  - ${name}: ${description}`;
+    }).join("\n");
+
+    return `\n\n<available_skills>\n${skillEntries}\n</available_skills>\n\nTo use a skill, first identify which skill applies, then use the read_skill tool to load its full documentation.`;
+  }
+
   private async findRelevantSkillDocumentation(userMessage: string): Promise<string | null> {
-    const lowerMessage = userMessage.toLowerCase();
-    const docs: string[] = [];
-
-    // Find SKILL.md-based skills that match the message
-    for (const skillInfo of Object.values(this.skills)) {
-      if (!skillInfo.documentation && !skillInfo.isDocumentationSkill) continue;
-      if (!this.skillMatchesMessage(skillInfo, lowerMessage)) continue;
-
-      let documentation = skillInfo.documentation;
-      if (!documentation && skillInfo.handler) {
-        try {
-          documentation = await Promise.resolve(skillInfo.handler(userMessage));
-        } catch (error) {
-          logger.error({ error, skillName: skillInfo.name }, "[SKILL-CONTEXT] Failed to render documentation from handler");
-          documentation = undefined;
-        }
-      }
-
-      if (!documentation) continue;
-
-      docs.push(documentation);
-      logger.debug({ skillName: skillInfo.name }, "[SKILL-CONTEXT] Including SKILL.md documentation for context");
-    }
-
-    if (docs.length === 0) {
-      return null;
-    }
-
-    return `\n\n## Available Skills\n\nYou have access to the following skills. Use run_bash, run_powershell, or other tools as described in each SKILL.md to perform system actions.\n\n${docs.join("\n\n---\n\n")}`;
-  }
-
-  private skillMatchesMessage(skillInfo: SkillInfo, lowerMessage: string): boolean {
-    if (skillInfo.name && lowerMessage.includes(skillInfo.name.toLowerCase())) {
-      return true;
-    }
-    if (!skillInfo.triggers) {
-      return false;
-    }
-    return skillInfo.triggers.some((trigger) => lowerMessage.includes(trigger.toLowerCase()));
-  }
-
-  private messageMentionsSkill(message: string): boolean {
-    const lowerMessage = message.toLowerCase();
-    for (const skillInfo of Object.values(this.skills)) {
-      if (this.skillMatchesMessage(skillInfo, lowerMessage)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private findAutoRouteSkill(lowerMessage: string): SkillInfo | null {
-    for (const skillInfo of Object.values(this.skills)) {
-      if (skillInfo.isDocumentationSkill) continue;
-      if (this.skillMatchesMessage(skillInfo, lowerMessage)) {
-        return skillInfo;
-      }
-    }
+    // With progressive disclosure, we no longer pre-load skill documentation
+    // The LLM will use read_skill tool to load documentation on demand
     return null;
   }
 
   private findDocumentationSkill(lowerMessage: string): SkillInfo | null {
     for (const skillInfo of Object.values(this.skills)) {
       if (!skillInfo.isDocumentationSkill) continue;
-      if (this.skillMatchesMessage(skillInfo, lowerMessage)) {
+      if (this.matchTrigger(skillInfo, lowerMessage)) {
         return skillInfo;
       }
     }
     return null;
+  }
+
+  private matchTrigger(skillInfo: SkillInfo, lowerMessage: string): string | null {
+    const normalizedName = skillInfo.name?.toLowerCase();
+    if (normalizedName && lowerMessage.includes(normalizedName)) {
+      return skillInfo.name;
+    }
+    for (const trigger of skillInfo.triggers ?? []) {
+      const normalizedTrigger = trigger.toLowerCase();
+      if (!normalizedTrigger) continue;
+      if (lowerMessage.includes(normalizedTrigger)) return trigger;
+    }
+    return null;
+  }
+
+  private findExplicitInvocation(lowerMessage: string): {
+    skill: SkillInfo;
+    trigger: string;
+    confidence: number;
+  } | null {
+    for (const skillInfo of Object.values(this.skills)) {
+      const mention = skillInfo.name ? `@${skillInfo.name.toLowerCase()}` : null;
+      if (mention && lowerMessage.includes(mention)) {
+        return {
+          skill: skillInfo,
+          trigger: mention,
+          confidence: skillInfo.triggerConfig?.confidence ?? DEFAULT_AUTO_ROUTE_CONFIDENCE
+        };
+      }
+    }
+
+    const explicitPattern = /\b(?:run|use)\s+skill\s+([a-z0-9_-]+)/i;
+    const match = explicitPattern.exec(lowerMessage);
+    if (match && match[1]) {
+      const candidateSkill = this.getSkillByName(match[1]);
+      if (candidateSkill) {
+        return {
+          skill: candidateSkill,
+          trigger: match[0],
+          confidence: candidateSkill.triggerConfig?.confidence ?? DEFAULT_AUTO_ROUTE_CONFIDENCE
+        };
+      }
+    }
+
+    return null;
+  }
+
+  private matchesInstallerPattern(lowerMessage: string): boolean {
+    const useSkillPattern = /\buse skill\b/;
+    const installSkillPattern = /\binstall (this )?skill\b|\badd skill\b/;
+    return useSkillPattern.test(lowerMessage) || installSkillPattern.test(lowerMessage);
+  }
+
+  private getSkillByName(name: string): SkillInfo | undefined {
+    const direct = this.skills[name];
+    if (direct) return direct;
+    const normalized = name.toLowerCase();
+    return Object.values(this.skills).find((skill) => skill.name.toLowerCase() === normalized);
+  }
+
+  private findAutoRouteCandidate(lowerMessage: string): { skill: SkillInfo; trigger: string; confidence: number } | null {
+    let best: { skill: SkillInfo; trigger: string; confidence: number } | null = null;
+    for (const skillInfo of Object.values(this.skills)) {
+      if (skillInfo.isDocumentationSkill) continue;
+      if (this.isSkillOptedOut(skillInfo)) continue;
+      const trigger = this.matchTrigger(skillInfo, lowerMessage);
+      if (!trigger) continue;
+      if (skillInfo.triggerConfig?.autoRoute === false) continue;
+      const confidence = skillInfo.triggerConfig?.confidence ?? DEFAULT_AUTO_ROUTE_CONFIDENCE;
+      if (!best || confidence > best.confidence) {
+        best = { skill: skillInfo, trigger, confidence };
+      }
+    }
+    return best;
+  }
+
+  private isSkillOptedOut(skillInfo: SkillInfo): boolean {
+    const name = skillInfo.name?.toLowerCase();
+    return name ? this.autoRouteOptOutSet.has(name) : false;
+  }
+
+  private logAutoRouteDecision(
+    skillInfo: SkillInfo,
+    trigger: string,
+    confidence: number,
+    threshold: number,
+    decision: string,
+    reason?: string
+  ): void {
+    logger.info(
+      {
+        skillName: skillInfo.name,
+        trigger,
+        confidence,
+        threshold,
+        decision,
+        reason
+      },
+      "[SKILL-EXEC] Auto-routing decision"
+    );
   }
 
   private async executeSkillHandler(skillInfo: SkillInfo, userMessage: string, triggerType: string): Promise<string> {
@@ -319,14 +446,11 @@ export class ClaudeProcessor {
     const messages: MessageParam[] = [...conversationHistory, { role: "user", content: userMessage }];
     let finalResponse = "";
     const operations: OperationRecord[] = [];
-    
-    // Check if message mentions any SKILL.md-based skills and inject their content
-    const relevantSkillDocs = await this.findRelevantSkillDocumentation(userMessage);
-    
-    let systemPrompt = SYSTEM_PROMPT;
-    if (relevantSkillDocs) {
-      systemPrompt = `${SYSTEM_PROMPT}\n\n${relevantSkillDocs}`;
-    }
+
+    // Build system prompt with skill metadata only (progressive disclosure)
+    const skillsList = this.formatSkillsForPrompt();
+
+    let systemPrompt = `${SYSTEM_PROMPT}${skillsList}`;
     if (memoryContext) {
       systemPrompt = `${systemPrompt}\n\nRelevant memory:\n${memoryContext}\n\nUse this context if it helps answer the user.`;
     }

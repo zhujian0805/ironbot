@@ -75,6 +75,33 @@ const mockSkillInfos: Record<string, any> = {
   },
 };
 
+const resetTriggerConfigs = () => {
+  mockSkillInfos['skill_installer'].triggerConfig = {
+    triggers: ['install', 'setup', 'add skill'],
+    confidence: 0.8,
+    autoRoute: true,
+    source: "heuristic"
+  };
+  mockSkillInfos['permission_check'].triggerConfig = {
+    triggers: ['what skills', 'permission', 'access', 'can I'],
+    confidence: 0.75,
+    autoRoute: true,
+    source: "heuristic"
+  };
+  mockSkillInfos['calculator'].triggerConfig = {
+    triggers: ['use calculator', 'calculate'],
+    confidence: 0.9,
+    autoRoute: true,
+    source: "heuristic"
+  };
+  mockSkillInfos['testskill'].triggerConfig = {
+    triggers: [],
+    confidence: 0.9,
+    autoRoute: true,
+    source: "heuristic"
+  };
+};
+
 vi.mock("../../src/services/skill_loader.ts", () => ({
   SkillLoader: class MockSkillLoader {
     constructor() {
@@ -96,6 +123,11 @@ vi.mock("../../src/config.ts", () => ({
       maxDelayMs: 100,
       backoffMultiplier: 2,
       jitterMax: 0.1
+    },
+    autoRouting: {
+      enabled: true,
+      confidenceThreshold: 0.5,
+      optOutSkills: []
     }
   })
 }));
@@ -132,6 +164,11 @@ describe("ClaudeProcessor", () => {
   let mockMemoryManager: any;
 
   beforeEach(() => {
+    resetTriggerConfigs();
+    mockAnthropicClient.messages.create.mockClear();
+    for (const skillInfo of Object.values(mockSkillInfos)) {
+      skillInfo.handler.mockClear();
+    }
     // Set up default mock responses
     mockAnthropicClient.messages.create.mockResolvedValue({
       stop_reason: "end_turn",
@@ -327,6 +364,38 @@ describe("ClaudeProcessor", () => {
 
       expect(result).toBe("Hello, how can I help you?");
       expect(mockAnthropicClient.messages.create).toHaveBeenCalled();
+    });
+
+    it("suppresses low-confidence auto-route candidates", async () => {
+      (processor as any).autoRoutingConfig.confidenceThreshold = 0.5;
+      mockSkillInfos['calculator'].triggerConfig.confidence = 0.2;
+      mockAnthropicClient.messages.create.mockClear();
+
+      const result = await processor.processMessage("use calculator");
+
+      expect(mockSkillInfos['calculator'].handler).not.toHaveBeenCalled();
+      expect(mockAnthropicClient.messages.create).toHaveBeenCalled();
+      expect(result).toBe("Mock response");
+    });
+
+    it("auto-routes explicit @invocations regardless of confidence", async () => {
+      (processor as any).autoRoutingConfig.confidenceThreshold = 0.95;
+      mockSkillInfos['calculator'].triggerConfig.confidence = 0.2;
+
+      await processor.processMessage("Can you run @calculator for me?");
+
+      expect(mockSkillInfos['calculator'].handler).toHaveBeenCalled();
+    });
+
+    it("respects auto-routing opt-outs", async () => {
+      (processor as any).autoRouteOptOutSet.add("calculator");
+      mockAnthropicClient.messages.create.mockClear();
+
+      const result = await processor.processMessage("use calculator");
+
+      expect(mockSkillInfos['calculator'].handler).not.toHaveBeenCalled();
+      expect(mockAnthropicClient.messages.create).toHaveBeenCalled();
+      expect(result).toBe("Mock response");
     });
 
     it.skip("returns dev mode response when in dev mode", async () => {
