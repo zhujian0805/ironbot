@@ -23,7 +23,8 @@ mockAnthropicClient = {
 };
 
 const mockToolExecutorInstance = {
-  executeTool: vi.fn()
+  executeTool: vi.fn(),
+  setSkills: vi.fn()
 };
 
 vi.mock("../../src/services/tools.ts", () => ({
@@ -128,7 +129,8 @@ vi.mock("../../src/config.ts", () => ({
       enabled: true,
       confidenceThreshold: 0.5,
       optOutSkills: []
-    }
+    },
+    maxToolIterations: 10
   })
 }));
 
@@ -406,7 +408,8 @@ describe("ClaudeProcessor", () => {
         anthropicBaseUrl: undefined,
         anthropicModel: "claude-3-sonnet-20240229",
         devMode: true,
-        skillsDir: "./skills"
+        skillsDir: "./skills",
+        maxToolIterations: 10
       });
 
       const devProcessor = new ClaudeProcessor(["./skills"], mockMemoryManager as any);

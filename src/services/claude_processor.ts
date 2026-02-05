@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { resolveConfig, type AutoRoutingConfig } from "../config.ts";
 import { logger } from "../utils/logging.ts";
 import { SkillLoader, type SkillHandler, type SkillInfo } from "./skill_loader.ts";
-import { ToolExecutor, getAllowedTools } from "./tools.ts";
+import { ToolExecutor, getAllowedTools, type ToolResult } from "./tools.ts";
 import { RetryManager } from "./retry_manager.ts";
 import type { MemoryManager } from "../memory/manager.ts";
 
@@ -123,6 +123,8 @@ type OperationRecord = {
   resourcePath?: string;
   workingDirectory?: string;
   reason?: string;
+  result?: string;
+  toolResult?: ToolResult;
 };
 
 export class ClaudeProcessor {
@@ -133,7 +135,7 @@ export class ClaudeProcessor {
   private skills: Record<string, SkillInfo> = {};
   private skillsLoaded = false;
   private retryManager: RetryManager;
-  private readonly maxToolIterations = 6;
+  private readonly maxToolIterations: number;
   private skillLoader: SkillLoader;
   private memoryManager?: MemoryManager;
   private autoRoutingConfig: AutoRoutingConfig;
@@ -157,6 +159,7 @@ export class ClaudeProcessor {
     this.autoRouteOptOutSet = new Set(
       (config.autoRouting.optOutSkills ?? []).map((skill) => skill.toLowerCase())
     );
+    this.maxToolIterations = config.maxToolIterations;
     logger.info({ model: this.model, skillDirs, hasMemoryManager: !!memoryManager }, "[INIT] ClaudeProcessor initialized");
   }
 
@@ -569,7 +572,9 @@ export class ClaudeProcessor {
           command,
           resourcePath,
           workingDirectory,
-          reason: result.success ? undefined : result.error
+          reason: result.success ? undefined : result.error,
+          result: this.extractOperationOutput(result),
+          toolResult: result
         });
       }
 
@@ -577,10 +582,12 @@ export class ClaudeProcessor {
     }
 
     if (!finalResponse) {
-      finalResponse =
-        (await this.retryForFinalResponse(userMessage, messages, systemPrompt, operations)) ??
-        this.summarizeOperations(operations) ??
-        "Sorry, I could not complete the request.";
+      const retryResult = await this.retryForFinalResponse(userMessage, messages, systemPrompt, operations);
+      if (retryResult) {
+        finalResponse = retryResult;
+      } else {
+        finalResponse = this.buildDetailedResponse(operations) ?? "Sorry, I could not complete the request.";
+      }
     }
 
     finalResponse = this.sanitizeResponse(finalResponse);
@@ -691,5 +698,82 @@ export class ClaudeProcessor {
       return response;
     }
     return response;
+  }
+
+  private extractOperationOutput(result: ToolResult): string | null {
+    if (!result) return null;
+    if (result.stdout && result.stdout.trim()) {
+      return result.stdout.trim();
+    }
+    if (typeof result.result === "string" && result.result.trim()) {
+      return result.result.trim();
+    }
+    if (result.stderr && result.stderr.trim()) {
+      return result.stderr.trim();
+    }
+    const serialized = JSON.stringify(result.result ?? result, null, 2);
+    return serialized.length ? serialized : null;
+  }
+
+  private truncateForDisplay(text: string | null, maxLength = 800): string | null {
+    if (!text) return null;
+    if (text.length <= maxLength) return text;
+    return `${text.slice(0, maxLength)}\n... (truncated ${text.length - maxLength} chars)`;
+  }
+
+  private buildDetailedResponse(operations: OperationRecord[]): string | null {
+    if (!operations.length) return null;
+    const steps: string[] = [];
+    for (let index = 0; index < operations.length; index += 1) {
+      const op = operations[index];
+      const stepNum = index + 1;
+      const description = op.command
+        ? `Executed \`${op.command}\``
+        : `Invoked tool \`${op.name}\``;
+      const lines: string[] = [`### Step ${stepNum}: ${description}`];
+      const output = this.truncateForDisplay(op.result);
+      if (output) {
+        lines.push("```\n" + output + "\n```");
+      }
+      if (op.resourcePath) {
+        lines.push(`- **Affected resource**: \`${op.resourcePath}\``);
+      }
+      if (op.workingDirectory) {
+        lines.push(`- **Working directory**: \`${op.workingDirectory}\``);
+      }
+      steps.push(lines.join("\n"));
+    }
+    const summarySection = this.buildSummarySection(operations);
+    return [steps.join("\n\n"), summarySection].filter(Boolean).join("\n\n");
+  }
+
+  private buildSummarySection(operations: OperationRecord[]): string | null {
+    if (!operations.length) return null;
+    const summaryLines = ["### Summary"];
+    summaryLines.push(`- **Operations performed**: ${operations.length} tool call(s)`);
+    const uniqueResources = Array.from(
+      new Set(operations.filter((op) => op.resourcePath).map((op) => op.resourcePath as string))
+    );
+    if (uniqueResources.length) {
+      summaryLines.push(`- **Resources touched**: ${uniqueResources.map((path) => `\`${path}\``).join(", ")}`);
+    }
+    const recipients = this.extractEmailRecipients(operations);
+    if (recipients.length) {
+      summaryLines.push(`- **Email sent to**: ${recipients.join(", ")}`);
+    }
+    return summaryLines.join("\n");
+  }
+
+  private extractEmailRecipients(operations: OperationRecord[]): string[] {
+    const recipientPattern = /--to\s+([^\s]+)/i;
+    const recipients = new Set<string>();
+    for (const op of operations) {
+      if (!op.command) continue;
+      const match = recipientPattern.exec(op.command);
+      if (match && match[1]) {
+        recipients.add(match[1]);
+      }
+    }
+    return Array.from(recipients);
   }
 }

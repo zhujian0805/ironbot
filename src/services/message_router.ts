@@ -206,6 +206,7 @@ export class MessageRouter {
       logger.warn({ error }, "Failed to append user message to transcript");
     }
 
+    let lastSlackPayload: unknown = null;
     try {
       await this.setThreadStatus({ channelId: channel, threadTs, status: "is typing..." });
       
@@ -241,27 +242,34 @@ export class MessageRouter {
 
       if (this.slackClient && channel) {
         if (threadTs) {
-          logger.debug({ channel, threadTs }, "Posting response to thread via slackClient");
-          await this.slackClient.chat.postMessage({
+          const payload = {
             channel,
             text: responseText,
             thread_ts: threadTs,
             reply_broadcast: false,
             mrkdwn: true
-          });
+          };
+          lastSlackPayload = payload;
+          logger.debug({ channel, threadTs }, "Posting response to thread via slackClient");
+          await this.slackClient.chat.postMessage(payload);
         } else {
           logger.warn({ channel }, "No threadTs available, posting to channel root");
-          await this.slackClient.chat.postMessage({ channel, text: responseText, mrkdwn: true });
+          const payload = { channel, text: responseText, mrkdwn: true };
+          lastSlackPayload = payload;
+          await this.slackClient.chat.postMessage(payload);
         }
       } else if (threadTs) {
         logger.debug({ channel, threadTs }, "Posting response to thread via say()");
-        await say({ text: responseText, thread_ts: threadTs });
+        const payload = { text: responseText, thread_ts: threadTs };
+        lastSlackPayload = payload;
+        await say(payload);
       } else {
         logger.warn({ channel }, "No threadTs available, posting via say() without thread");
+        lastSlackPayload = responseText;
         await say(responseText);
       }
     } catch (error) {
-      logger.error({ error }, "Failed to handle message");
+      logger.error({ error, payload: lastSlackPayload }, "Failed to handle message");
       const errorMessage = "Sorry, I encountered an error processing your message.";
       const errorText = formatForSlack(`${responsePrefix}:x: ${errorMessage}`);
       if (this.slackClient && channel) {

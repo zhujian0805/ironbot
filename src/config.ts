@@ -147,6 +147,7 @@ export type AppConfig = {
   slackRetry: SlackRetryConfig;
   slackRateLimit: SlackRateLimitConfig;
   autoRouting: AutoRoutingConfig;
+  maxToolIterations: number;
 };
 
 const DEFAULT_OPENAI_MODEL = "text-embedding-3-small";
@@ -246,7 +247,8 @@ const loadBaseConfig = (): AppConfig => {
       enabled: parseBoolean(process.env.CLAUDE_AUTO_ROUTE_ENABLED, true),
       confidenceThreshold: parseNumber(process.env.CLAUDE_AUTO_ROUTE_CONFIDENCE, 0.5),
       optOutSkills: parseStringArray(process.env.CLAUDE_AUTO_ROUTE_OPTOUT, [])
-    }
+    },
+    maxToolIterations: parseInteger(process.env.CLAUDE_MAX_TOOL_ITERATIONS, 10)
   };
 };
 
