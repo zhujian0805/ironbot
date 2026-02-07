@@ -148,7 +148,7 @@ export class ClaudeProcessor {
       apiKey: config.anthropicAuthToken,
       baseURL: config.anthropicBaseUrl ?? undefined,
       maxRetries: 2,
-      timeout: 20000
+      timeout: config.anthropicTimeoutMs
     });
     this.model = config.anthropicModel;
     this.devMode = config.devMode;
@@ -276,9 +276,42 @@ export class ClaudeProcessor {
   }
 
   private async findRelevantSkillDocumentation(userMessage: string): Promise<string | null> {
-    // With progressive disclosure, we no longer pre-load skill documentation
-    // The LLM will use read_skill tool to load documentation on demand
-    return null;
+    const lowerMessage = userMessage.toLowerCase();
+    const relevantDocs: string[] = [];
+    const seenSkills = new Set<string>();
+
+    for (const skillInfo of Object.values(this.skills)) {
+      if (!skillInfo.isDocumentationSkill) continue;
+      const triggerMatch = this.matchTrigger(skillInfo, lowerMessage);
+      const explicitMention = skillInfo.name
+        ? lowerMessage.includes(`@${skillInfo.name.toLowerCase()}`)
+        : false;
+      if (!triggerMatch && !explicitMention) continue;
+      if (seenSkills.has(skillInfo.name)) continue;
+      seenSkills.add(skillInfo.name);
+
+      let documentation = skillInfo.documentation;
+      if (!documentation) {
+        try {
+          documentation = await skillInfo.handler(userMessage);
+        } catch (error) {
+          logger.warn({ skillName: skillInfo.name, error }, "[SKILL-FLOW] Failed to load documentation for skill");
+          continue;
+        }
+      }
+
+      if (!documentation) continue;
+      relevantDocs.push(documentation);
+    }
+
+    if (!relevantDocs.length) return null;
+
+    return [
+      "## Available Skills",
+      "The following SKILL.md-based instructions match the user request. Use the appropriate system tool (e.g., run_powershell, run_bash) and work inside each skill's directory to execute the documented commands.",
+      "",
+      relevantDocs.join("\n\n---\n\n")
+    ].join("\n");
   }
 
   private findDocumentationSkill(lowerMessage: string): SkillInfo | null {
@@ -500,8 +533,12 @@ export class ClaudeProcessor {
 
     // Build system prompt with skill metadata only (progressive disclosure)
     const skillsList = this.formatSkillsForPrompt();
+    const relevantSkillDocs = await this.findRelevantSkillDocumentation(userMessage);
 
     let systemPrompt = `${SYSTEM_PROMPT}${skillsList}`;
+    if (relevantSkillDocs) {
+      systemPrompt = `${systemPrompt}\n\n${relevantSkillDocs}`;
+    }
     if (memoryContext) {
       systemPrompt = `${systemPrompt}\n\nRelevant memory:\n${memoryContext}\n\nUse this context if it helps answer the user.`;
     }

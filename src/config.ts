@@ -148,6 +148,7 @@ export type AppConfig = {
   slackRetry: SlackRetryConfig;
   slackRateLimit: SlackRateLimitConfig;
   autoRouting: AutoRoutingConfig;
+  anthropicTimeoutMs: number;
   cron: CronConfig;
   maxToolIterations: number;
 };
@@ -255,6 +256,7 @@ const loadBaseConfig = (): AppConfig => {
       confidenceThreshold: parseNumber(process.env.CLAUDE_AUTO_ROUTE_CONFIDENCE, 0.5),
       optOutSkills: parseStringArray(process.env.CLAUDE_AUTO_ROUTE_OPTOUT, [])
     },
+    anthropicTimeoutMs: parseInteger(process.env.ANTHROPIC_TIMEOUT_MS, 60000),
     cron: {
       enabled: !parseBoolean(process.env.IRONBOT_SKIP_CRON),
       storePath: resolveCronStorePath(process.env.IRONBOT_CRON_STORE_PATH)

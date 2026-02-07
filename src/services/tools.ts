@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { promises as fs } from "node:fs";
 import { logger } from "../utils/logging.ts";
 import { getPermissionManager } from "./permission_manager.ts";
-import { RetryManager } from "./retry_manager.ts";
+import { RetryManager, type RetryContext } from "./retry_manager.ts";
 
 export type ToolDefinition = {
   name: string;
@@ -242,6 +242,7 @@ export class ToolExecutor {
   }
 
   async executeTool(toolName: string, toolInput: Record<string, unknown>): Promise<ToolResult> {
+    const retryContext = this.buildRetryContext(toolName, toolInput);
     const runAttempt = async (): Promise<ToolResult> => {
       logger.info({ toolName, input: toolInput }, "[TOOL-FLOW] Executing tool");
       logger.debug({ 
@@ -349,7 +350,7 @@ export class ToolExecutor {
         }
         lastResult = null;
         return attemptResult;
-      }, `tool:${toolName}`, { shouldRetry: () => true });
+      }, retryContext, { shouldRetry: () => true });
       return result;
     } catch (error) {
       return (
@@ -622,6 +623,24 @@ export class ToolExecutor {
       }, "[TOOL-EXEC] File download failed");
       return { success: false, error: String(error) };
     }
+  }
+
+  private buildRetryContext(toolName: string, toolInput: Record<string, unknown>): RetryContext {
+    if (toolName === "run_powershell" || toolName === "run_bash") {
+      const context: Record<string, unknown> = {
+        label: `tool:${toolName}`,
+        tool: toolName
+      };
+      const command = typeof toolInput.command === "string" ? toolInput.command : undefined;
+      const workingDirectory =
+        typeof toolInput.working_directory === "string" ? toolInput.working_directory : undefined;
+      const timeoutSeconds = typeof toolInput.timeout === "number" ? toolInput.timeout : undefined;
+      if (command) context.command = command;
+      if (workingDirectory) context.workingDirectory = workingDirectory;
+      if (timeoutSeconds !== undefined) context.timeoutSeconds = timeoutSeconds;
+      return context;
+    }
+    return `tool:${toolName}`;
   }
 }
 

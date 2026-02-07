@@ -8,6 +8,8 @@ export interface RetryConfig {
   jitterMax: number; // Maximum jitter as fraction of delay (0.1 = 10%)
 }
 
+export type RetryContext = string | (Record<string, unknown> & { label?: string });
+
 export class RetryManager {
   private config: RetryConfig;
 
@@ -20,7 +22,7 @@ export class RetryManager {
    */
   async executeWithRetry<T>(
     operation: () => Promise<T>,
-    context?: string,
+    context?: RetryContext,
     options?: { shouldRetry?: (error: unknown) => boolean }
   ): Promise<T> {
     let lastError: Error;
@@ -29,7 +31,7 @@ export class RetryManager {
       try {
         const result = await operation();
         if (attempt > 0) {
-          logger.info({ attempt, context }, "Operation succeeded after retry");
+          logger.info({ attempt, ...formatContext(context) }, "Operation succeeded after retry");
         }
         return result;
       } catch (error) {
@@ -45,7 +47,7 @@ export class RetryManager {
             attempt,
             maxAttempts: this.config.maxAttempts,
             shouldRetry,
-            context
+            ...formatContext(context)
           }, "Operation failed, giving up");
           throw lastError;
         }
@@ -55,7 +57,7 @@ export class RetryManager {
           error: lastError.message,
           attempt,
           delay,
-          context
+          ...formatContext(context)
         }, "Operation failed, retrying after delay");
 
         await this.sleep(delay);
@@ -122,3 +124,24 @@ export class RetryManager {
     this.config = { ...this.config, ...newConfig };
   }
 }
+
+const formatContext = (context?: RetryContext): Record<string, unknown> => {
+  if (!context) return {};
+  if (typeof context === "string") {
+    return { context };
+  }
+  const { label, ...rest } = context;
+  const filteredDetails = Object.entries(rest).reduce<Record<string, unknown>>((acc, [key, value]) => {
+    if (value !== undefined) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+  if (label) {
+    return {
+      context: label,
+      ...(Object.keys(filteredDetails).length ? { contextDetails: filteredDetails } : {})
+    };
+  }
+  return Object.keys(filteredDetails).length ? { contextDetails: filteredDetails } : {};
+};

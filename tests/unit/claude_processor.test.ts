@@ -239,7 +239,7 @@ describe("ClaudeProcessor", () => {
     it("handles skill execution when message contains skill reference", async () => {
       const result = await processor.processMessage("Please run @testskill");
 
-      expect(mockSkillInfos['testskill'].handler).toHaveBeenCalledWith("Please run @testskill");
+      expect(mockSkillInfos['testskill'].handler).toHaveBeenCalledWith("Please run @testskill", undefined);
       expect(result).toBe("Skill executed successfully");
     });
 
@@ -254,14 +254,14 @@ describe("ClaudeProcessor", () => {
     it("auto-routes install commands to skill_installer", async () => {
       const result = await processor.processMessage("install this skill: https://github.com/example/skill");
 
-      expect(mockSkillInfos['skill_installer'].handler).toHaveBeenCalledWith("install this skill: https://github.com/example/skill");
+      expect(mockSkillInfos['skill_installer'].handler).toHaveBeenCalledWith("install this skill: https://github.com/example/skill", undefined);
       expect(result).toBe("Skill installed successfully");
     });
 
     it("auto-routes capability queries to permission_check", async () => {
       const result = await processor.processMessage("what skills do you have?");
 
-      expect(mockSkillInfos['permission_check'].handler).toHaveBeenCalledWith("what skills do you have?");
+      expect(mockSkillInfos['permission_check'].handler).toHaveBeenCalledWith("what skills do you have?", undefined);
       expect(result).toContain("🤖 **IronBot System Status**");
     });
 
@@ -271,21 +271,21 @@ describe("ClaudeProcessor", () => {
 
       await processor.processMessage("what skills do you have?");
 
-      expect(mockSkillInfos['permission_check'].handler).toHaveBeenCalledWith("what skills do you have?");
+      expect(mockSkillInfos['permission_check'].handler).toHaveBeenCalledWith("what skills do you have?", undefined);
       expect(mockSkillInfos['skill_installer'].handler).not.toHaveBeenCalled();
     });
 
     it("auto-routes direct skill execution requests", async () => {
       const result = await processor.processMessage("use calculator");
 
-      expect(mockSkillInfos['calculator'].handler).toHaveBeenCalledWith("use calculator");
+      expect(mockSkillInfos['calculator'].handler).toHaveBeenCalledWith("use calculator", undefined);
       expect(result).toBe("42");
     });
 
     it("auto-routes unknown skill usage requests to skill_installer", async () => {
       const result = await processor.processMessage("use skill smtp-send to send an email");
 
-      expect(mockSkillInfos['skill_installer'].handler).toHaveBeenCalledWith("use skill smtp-send to send an email");
+      expect(mockSkillInfos['skill_installer'].handler).toHaveBeenCalledWith("use skill smtp-send to send an email", undefined);
       expect(result).toBe("Skill installed successfully");
     });
 
