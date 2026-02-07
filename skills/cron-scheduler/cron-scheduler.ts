@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadCronStore, resolveCronStorePath } from "../../src/cron/store.ts";
 import type { CronJob } from "../../src/cron/types.ts";
+import type { SkillContext } from "../../src/services/skill_context.ts";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -159,13 +160,70 @@ const parseSchedule = (
   return null;
 };
 
-const runCronAddCommand = async (
+const formatChannelMention = (channel: string): string => {
+  if (!channel) return channel;
+  if (channel.startsWith("C") || channel.startsWith("G")) {
+    return `<#${channel}>`;
+  }
+  return channel;
+};
+
+type CronAddExtras = {
+  description?: string;
+  details?: string;
+  threadTs?: string;
+};
+
+export const resolveChannelFromInput = (input: string, context?: SkillContext): string | null => {
+  return parseChannelId(input) ?? context?.channel ?? null;
+};
+
+type SlackMetadata = {
+  description: string;
+  details?: string;
+  threadTs?: string;
+  scheduledBy: string;
+  location: string;
+};
+
+export const buildSlackMetadata = (context?: SkillContext, input?: string): SlackMetadata => {
+  const scheduledBy = context?.userId ? `<@${context.userId}>` : "Slack user";
+  const locationParts: string[] = [];
+  if (context?.channel) {
+    locationParts.push(formatChannelMention(context.channel));
+  }
+  if (context?.threadTs) {
+    locationParts.push(`thread ${context.threadTs}`);
+  }
+  const location = locationParts.length ? locationParts.join(" / ") : "Slack conversation";
+  const description = `Scheduled via Slack by ${scheduledBy} in ${location}.`;
+  const details = input ? `Original request: ${input}` : undefined;
+  return {
+    description,
+    details,
+    threadTs: context?.threadTs,
+    scheduledBy,
+    location
+  };
+};
+
+export const buildCronAddArgs = (
   jobName: string,
   channel: string,
   text: string,
-  schedule: { kind: string; value: string }
-) => {
+  schedule: { kind: string; value: string },
+  extras?: CronAddExtras
+): string[] => {
   const args = ["run", "cron", "--", "add", "--name", jobName, "--channel", channel, "--text", text];
+  if (extras?.threadTs) {
+    args.push("--thread-ts", extras.threadTs);
+  }
+  if (extras?.description) {
+    args.push("--description", extras.description);
+  }
+  if (extras?.details) {
+    args.push("--details", extras.details);
+  }
   if (schedule.kind === "at") {
     args.push("--at", schedule.value);
   } else if (schedule.kind === "every") {
@@ -173,6 +231,17 @@ const runCronAddCommand = async (
   } else if (schedule.kind === "cron") {
     args.push("--cron", schedule.value);
   }
+  return args;
+};
+
+const runCronAddCommand = async (
+  jobName: string,
+  channel: string,
+  text: string,
+  schedule: { kind: string; value: string },
+  extras?: CronAddExtras
+) => {
+  const args = buildCronAddArgs(jobName, channel, text, schedule, extras);
   const child = spawn("npm", args, { cwd: repoRoot, env: process.env });
   let stdout = "";
   let stderr = "";
@@ -206,15 +275,15 @@ const formatNextRun = (job: CronJob): string => {
   return new Date(job.state.nextRunAtMs).toLocaleString("en-US", { timeZoneName: "short" });
 };
 
-export const executeSkill = async (input: string): Promise<string> => {
+export const executeSkill = async (input: string, context?: SkillContext): Promise<string> => {
   const cleanedInput = input.trim();
   if (!cleanedInput) {
     return "Please tell me what reminder you want to schedule.";
   }
 
-  const channel = parseChannelId(cleanedInput);
+  const channel = resolveChannelFromInput(cleanedInput, context);
   if (!channel) {
-    return "I could not find a Slack channel ID in your request. Please include an ID like C12345678 or D12345678.";
+    return "I could not determine which channel to post this reminder in. Please specify a channel ID (e.g., C12345678) or run this command inside the desired channel/thread.";
   }
 
   const parsedText = parseMessageText(cleanedInput);
@@ -227,8 +296,14 @@ export const executeSkill = async (input: string): Promise<string> => {
     return "I need a schedule (e.g., 'at 4:29 PM today', 'every 10 minutes', or a cron expression).";
   }
 
+  const metadata = buildSlackMetadata(context, cleanedInput);
+  const extras: CronAddExtras = {
+    threadTs: metadata.threadTs,
+    description: metadata.description,
+    details: metadata.details
+  };
   const inferredName = parseJobName(cleanedInput) ?? slugifyJobName(parsedText);
-  const { success, stdout, stderr } = await runCronAddCommand(inferredName, channel, parsedText, schedule);
+  const { success, stdout, stderr } = await runCronAddCommand(inferredName, channel, parsedText, schedule, extras);
   if (!success) {
     const message = stderr || stdout || "Cron command failed to run.";
     return `❌ Unable to schedule the reminder: ${message.split(/\r?\n/)[0]}`;
@@ -247,9 +322,14 @@ export const executeSkill = async (input: string): Promise<string> => {
     return `✅ Cron reminder ${inferredName} created (ID ${jobId}), but I could not find it in ${storePath}.`;
   }
 
+  const channelLabel = formatChannelMention(job.payload.channel);
+  const threadLine = metadata.threadTs ? `- Thread: ${metadata.threadTs}` : "- Thread: main conversation";
+  const scheduledByLine = `- Scheduled by: ${metadata.scheduledBy}`;
   return [
     `✅ Scheduled cron reminder **${job.name}** (ID ${job.id})`,
-    `- Channel: ${job.payload.channel}`,
+    `- Channel: ${channelLabel}`,
+    threadLine,
+    scheduledByLine,
     `- Schedule: ${describeSchedule(schedule)}`,
     `- Next run: ${formatNextRun(job)}`,
     `- Message: ${job.payload.text}`,

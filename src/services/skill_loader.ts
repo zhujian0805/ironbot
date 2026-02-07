@@ -5,8 +5,9 @@ import { pathToFileURL } from "node:url";
 import { logger } from "../utils/logging.ts";
 import { getPermissionManager, type PermissionManager } from "./permission_manager.ts";
 import yaml from "yaml";
+import type { SkillContext } from "./skill_context.ts";
 
-export type SkillHandler = (input: string) => string | Promise<string>;
+export type SkillHandler = (input: string, context?: SkillContext) => string | Promise<string>;
 
 export interface SkillTriggerMetadata {
   triggers?: string[];

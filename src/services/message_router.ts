@@ -9,6 +9,7 @@ import { updateLastRoute } from "../sessions/store.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { SlackConnectionSupervisor } from "./slack_connection_supervisor.ts";
+import type { SkillContext } from "./skill_context.ts";
 
 type SlackClientLike = {
   chat: {
@@ -134,6 +135,13 @@ export class MessageRouter {
     const messageTs = event.ts ?? `${Date.now() / 1000}`;
     // Use user's message as thread root. For existing threads, use thread_ts; for root messages, use ts
     const threadTs = event.thread_ts ?? messageTs;
+    const skillContext: SkillContext = {
+      source: "slack",
+      channel,
+      threadTs,
+      messageTs,
+      userId: event.user
+    };
     const responsePrefix = "↪️ ";
 
     // Check if this is a new conversation request
@@ -214,7 +222,7 @@ export class MessageRouter {
         conversationHistory,
         sessionKey,
         crossSessionMemory
-      });
+      }, skillContext);
 
       try {
         await appendTranscriptMessage({

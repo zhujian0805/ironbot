@@ -8,6 +8,7 @@ import { SkillLoader, type SkillHandler, type SkillInfo } from "./skill_loader.t
 import { ToolExecutor, getAllowedTools, type ToolResult } from "./tools.ts";
 import { RetryManager } from "./retry_manager.ts";
 import type { MemoryManager } from "../memory/manager.ts";
+import type { SkillContext } from "./skill_context.ts";
 
 const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant with access to system tools. You can execute PowerShell commands, Bash commands, read and write files, and list directory contents.
 
@@ -163,7 +164,7 @@ export class ClaudeProcessor {
     logger.info({ model: this.model, skillDirs, hasMemoryManager: !!memoryManager }, "[INIT] ClaudeProcessor initialized");
   }
 
-  private async checkAutoRouteSkills(userMessage: string): Promise<string | null> {
+  private async checkAutoRouteSkills(userMessage: string, context?: SkillContext): Promise<string | null> {
     if (!this.autoRoutingConfig.enabled) return null;
     const lowerMessage = userMessage.toLowerCase();
     logger.debug({ userMessage: lowerMessage.substring(0, 100) }, "[SKILL-EXEC] Delegating routing decisions to Claude");
@@ -194,7 +195,7 @@ export class ClaudeProcessor {
         this.autoRoutingConfig.confidenceThreshold,
         "executed-explicit"
       );
-      return this.executeSkillHandler(explicitMatch.skill, userMessage, "auto-route");
+      return this.executeSkillHandler(explicitMatch.skill, userMessage, "auto-route", context);
     }
 
     const installerSkill = this.skills["skill_installer"];
@@ -208,7 +209,7 @@ export class ClaudeProcessor {
         "executed",
         "installer fallback"
       );
-      return this.executeSkillHandler(installerSkill, userMessage, "auto-route");
+      return this.executeSkillHandler(installerSkill, userMessage, "auto-route", context);
     }
 
     const candidate = this.findAutoRouteCandidate(lowerMessage);
@@ -233,7 +234,7 @@ export class ClaudeProcessor {
       this.autoRoutingConfig.confidenceThreshold,
       "executed"
     );
-    return this.executeSkillHandler(candidate.skill, userMessage, "auto-route");
+      return this.executeSkillHandler(candidate.skill, userMessage, "auto-route", context);
   }
 
   private async ensureSkillsLoaded(): Promise<void> {
@@ -390,10 +391,15 @@ export class ClaudeProcessor {
     );
   }
 
-  private async executeSkillHandler(skillInfo: SkillInfo, userMessage: string, triggerType: string): Promise<string> {
+  private async executeSkillHandler(
+    skillInfo: SkillInfo,
+    userMessage: string,
+    triggerType: string,
+    context?: SkillContext
+  ): Promise<string> {
     logger.info({ skillName: skillInfo.name, triggerType }, "[SKILL-EXEC] Executing skill via auto-routing");
     try {
-      const result = await this.invokeSkillHandler(skillInfo, userMessage);
+      const result = await this.invokeSkillHandler(skillInfo, userMessage, context);
       logger.info({ skillName: skillInfo.name, triggerType, resultLength: result.length }, "[SKILL-EXEC] Auto-routed skill execution completed successfully");
       return this.appendOperationSummary(result, [
         { kind: "skill", name: skillInfo.name, status: "success" }
@@ -406,12 +412,13 @@ export class ClaudeProcessor {
     }
   }
 
-  private async invokeSkillHandler(skillInfo: SkillInfo, userMessage: string): Promise<string> {
+  private async invokeSkillHandler(skillInfo: SkillInfo, userMessage: string, context?: SkillContext): Promise<string> {
+    const execute = () => Promise.resolve(skillInfo.handler(userMessage, context));
     if (!this.retryManager) {
-      return Promise.resolve(skillInfo.handler(userMessage));
+      return execute();
     }
     return this.retryManager.executeWithRetry(
-      () => Promise.resolve(skillInfo.handler(userMessage)),
+      execute,
       `skill:${skillInfo.name}`,
       { shouldRetry: () => true }
     );
@@ -447,14 +454,15 @@ export class ClaudeProcessor {
 
   async processMessage(
     userMessage: string,
-    options: { conversationHistory?: MessageParam[]; sessionKey?: string; crossSessionMemory?: boolean } = {}
+    options: { conversationHistory?: MessageParam[]; sessionKey?: string; crossSessionMemory?: boolean } = {},
+    context?: SkillContext
   ): Promise<string> {
     logger.debug({ messageLength: userMessage.length, hasSessionKey: !!options.sessionKey }, "[MSG-PROCESS] Processing user message");
 
     await this.ensureSkillsLoaded();
 
     // Check for automatic skill routing based on command patterns
-    const autoRouteResult = await this.checkAutoRouteSkills(userMessage);
+    const autoRouteResult = await this.checkAutoRouteSkills(userMessage, context);
     if (autoRouteResult) {
       logger.debug("[MSG-PROCESS] Auto-routing applied, returning result");
       return autoRouteResult;
@@ -464,7 +472,7 @@ export class ClaudeProcessor {
     logger.debug({ availableSkills: Object.keys(this.skills) }, "[MSG-PROCESS] Checking for @skill references");
     for (const skillInfo of Object.values(this.skills)) {
       if (userMessage.includes(`@${skillInfo.name}`)) {
-        return this.executeSkillHandler(skillInfo, userMessage, "@reference");
+        return this.executeSkillHandler(skillInfo, userMessage, "@reference", context);
       }
     }
 
