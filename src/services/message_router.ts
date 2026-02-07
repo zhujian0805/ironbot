@@ -218,11 +218,23 @@ export class MessageRouter {
     try {
       await this.setThreadStatus({ channelId: channel, threadTs, status: "is typing..." });
       
-      const response = await this.claude.processMessage(text, {
-        conversationHistory,
-        sessionKey,
-        crossSessionMemory
-      }, skillContext);
+      let response: string;
+      try {
+        response = await this.claude.processMessage(
+          text,
+          {
+            conversationHistory,
+            sessionKey,
+            crossSessionMemory
+          },
+          skillContext
+        );
+      } catch (error) {
+        const details =
+          error instanceof Error ? `${error.message}\n${error.stack}` : JSON.stringify(error);
+        logger.error({ error: details, channel, threadTs }, "Claude processing failed");
+        response = "Sorry, I had trouble understanding that request. Please try again.";
+      }
 
       try {
         await appendTranscriptMessage({
