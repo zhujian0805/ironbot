@@ -33,3 +33,6 @@ Thumbs.db
 
 # Temp directory
 temp/
+
+# Codex directory
+.codex/
