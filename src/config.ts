@@ -7,6 +7,7 @@ import {
   resolveUserPath
 } from "./sessions/paths.ts";
 import { DEFAULT_AGENT_ID, DEFAULT_MAIN_SESSION_KEY } from "./sessions/session_key.ts";
+import { resolveCronStorePath } from "./cron/store.ts";
 
 loadDotenv();
 
@@ -147,7 +148,13 @@ export type AppConfig = {
   slackRetry: SlackRetryConfig;
   slackRateLimit: SlackRateLimitConfig;
   autoRouting: AutoRoutingConfig;
+  cron: CronConfig;
   maxToolIterations: number;
+};
+
+export type CronConfig = {
+  enabled: boolean;
+  storePath: string;
 };
 
 const DEFAULT_OPENAI_MODEL = "text-embedding-3-small";
@@ -247,6 +254,10 @@ const loadBaseConfig = (): AppConfig => {
       enabled: parseBoolean(process.env.CLAUDE_AUTO_ROUTE_ENABLED, true),
       confidenceThreshold: parseNumber(process.env.CLAUDE_AUTO_ROUTE_CONFIDENCE, 0.5),
       optOutSkills: parseStringArray(process.env.CLAUDE_AUTO_ROUTE_OPTOUT, [])
+    },
+    cron: {
+      enabled: !parseBoolean(process.env.IRONBOT_SKIP_CRON),
+      storePath: resolveCronStorePath(process.env.IRONBOT_CRON_STORE_PATH)
     },
     maxToolIterations: parseInteger(process.env.CLAUDE_MAX_TOOL_ITERATIONS, 10)
   };

@@ -2,16 +2,20 @@ import { App, LogLevel } from "@slack/bolt";
 import type { App as SlackApp, LogLevel as SlackLogLevel } from "@slack/bolt";
 import { resolveConfig } from "./config.ts";
 import { setupLogging, logger } from "./utils/logging.ts";
+import { CronService } from "./cron/service.ts";
+import { formatForSlack } from "./utils/slack_formatter.ts";
 import { initPermissionManager } from "./services/permission_manager.ts";
 import { SlackMessageHandler } from "./services/slack_handler.ts";
 import { ClaudeProcessor } from "./services/claude_processor.ts";
 import { MessageRouter } from "./services/message_router.ts";
 import { MemoryManager } from "./memory/manager.ts";
 import { parseCliArgs } from "./cli/args.ts";
-import { RateLimiter } from "./services/rate_limiter.ts";
+import { RateLimiter, type ApiMethod } from "./services/rate_limiter.ts";
 import { RetryManager } from "./services/retry_manager.ts";
 import { SlackApiOptimizer } from "./services/slack_api_optimizer.ts";
 import { SlackConnectionSupervisor } from "./services/slack_connection_supervisor.ts";
+import type { CronMessagePayload } from "./cron/types.ts";
+import { SocketModeClient } from "@slack/socket-mode";
 
 const toSlackLogLevel = (level: string): SlackLogLevel => {
   switch (level.toUpperCase()) {
@@ -44,6 +48,35 @@ const checkSlackConnection = async (app: SlackApp, supervisor: SlackConnectionSu
     return false;
   }
 };
+
+const patchSocketModeDisconnectDuringConnect = (() => {
+  let applied = false;
+  return () => {
+    if (applied) {
+      return;
+    }
+    applied = true;
+    const original = SocketModeClient.prototype.onWebSocketMessage;
+    SocketModeClient.prototype.onWebSocketMessage = async function (payload) {
+      try {
+        const currentState = this.stateMachine?.getCurrentState?.();
+        if (currentState === "connecting") {
+          const parsed = JSON.parse(String(payload.data));
+          if (parsed?.type === "disconnect") {
+            this.logger.debug("Ignoring server explicit disconnect while still connecting");
+            return;
+          }
+        }
+      } catch {
+        // ignore parsing errors and fall back to the original handler
+      }
+      return original.call(this, payload);
+    };
+  };
+})();
+
+patchSocketModeDisconnectDuringConnect();
+
 
 const checkLlmConnection = async (claude: ClaudeProcessor): Promise<boolean> => {
   try {
@@ -155,6 +188,38 @@ const main = async (): Promise<void> => {
   const handler = new SlackMessageHandler(app, router);
   handler.registerHandlers();
 
+  const sendCronMessage = async (payload: CronMessagePayload) => {
+    const formatted = formatForSlack(payload.text);
+    const postPayload = {
+      channel: payload.channel,
+      text: formatted,
+      mrkdwn: true,
+      thread_ts: payload.threadTs,
+      reply_broadcast: payload.replyBroadcast ?? false,
+    };
+    const method: ApiMethod = "postMessage";
+    const probe = await slackSupervisor.runProbe(
+      method,
+      () => app.client.chat.postMessage(postPayload),
+      "cron job notification"
+    );
+    if (probe.status === "executed") {
+      slackSupervisor.recordActivity();
+      return probe.value;
+    }
+    const cooldownUntil = probe.cooldownUntil
+      ? new Date(probe.cooldownUntil).toISOString()
+      : "unknown";
+    throw new Error(`Slack probe is cooling down until ${cooldownUntil}`);
+  };
+
+  const cronService = new CronService({
+    log: logger.child({ subsystem: "cron" }),
+    storePath: config.cron.storePath,
+    cronEnabled: config.cron.enabled,
+    sendMessage: sendCronMessage
+  });
+
   const healthOk = await performHealthChecks(app, claude, config.skipHealthChecks, slackSupervisor);
   if (!healthOk) {
     logger.warn("Continuing despite health check failures...");
@@ -163,6 +228,11 @@ const main = async (): Promise<void> => {
   const launchTimestamp = Date.now();
   logger.info("Launching Slack Bolt app (Socket Mode)...");
   await app.start();
+  try {
+    await cronService.start();
+  } catch (error) {
+    logger.error({ error }, "cron: failed to start");
+  }
   logger.info({ durationMs: Date.now() - launchTimestamp }, "Slack Bolt app started with Socket Mode");
 };
 
