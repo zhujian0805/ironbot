@@ -5,6 +5,9 @@ description: Schedule Slack reminders via the existing cron store. Use when the 
 
 # Cron Scheduler
 
+## Purpose
+This skill creates **internal cron jobs only**. It never creates Windows scheduled tasks or uses any external scheduler. All jobs are stored in `~/.ironbot/cron/jobs.json` and managed by the internal cron system.
+
 ## Trigger signals
 - The user explicitly says "schedule", "remind", "cron", or "wake" in a Slack thread or DM.
 - They ask the bot to send a message at a future time (once or repeating) in a specific channel/thread.
@@ -42,6 +45,27 @@ description: Schedule Slack reminders via the existing cron store. Use when the 
    - Mention that the job is stored in `~/.ironbot/cron/jobs.json` (or whatever `IRONBOT_CRON_STORE_PATH` / `--store` path was used) so the user knows where to look if they want to edit/remove it manually.
    - Suggest `npm run cron -- list` or `npm run cron -- status` to the user if they want to see all scheduled jobs.
    - Report back in Slack that the reminder will fire as scheduled and note the job ID and next run time.
+
+## Important Implementation Detail
+**Always create internal cron jobs using the `npm run cron -- add` command. Never create Windows scheduled tasks or use any external scheduler. All jobs must be stored in the internal cron system at `~/.ironbot/cron/jobs.json`.**
+
+## Direct Execution for Scripts (NEW: Always use TypeScript)
+For jobs that need to execute scripts directly, **always use TypeScript** instead of PowerShell:
+
+**TypeScript scripts**: Use the `--tool` parameter with run_bash to execute with tsx
+```
+npm run cron -- add --name "typescript-job" --tool run_bash --tool-param "command=npx tsx C:/full/path/to/script.ts" --at "2025-03-01T09:00:00Z"
+```
+
+**When running scripts, always specify the full path** to ensure reliable execution:
+- Use absolute paths like `C:/full/path/to/script.ts` instead of relative paths
+- Always use forward slashes `/` instead of backslashes `\` in paths for cross-platform compatibility
+- Always include the complete file extension `.ts`
+
+**Python scripts**: Use the `--tool` parameter with run_bash
+```
+npm run cron -- add --name "python-job" --tool run_bash --tool-param "command=python3 /full/path/to/script.py" --at "2025-03-01T09:00:00Z"
+```
 
 ## Edge cases
 - If the user does not know the channel ID, ask for the workspace link (`https://app.slack.com/client/T00000000/C12345678`) and extract the `C…`.

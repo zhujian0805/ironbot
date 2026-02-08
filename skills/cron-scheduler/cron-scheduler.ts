@@ -85,7 +85,77 @@ const parseMessageText = (input: string): string | null => {
 const detectDirectExecution = (input: string): { isDirect: boolean; toolName?: string; command?: string } | null => {
   const lower = input.toLowerCase();
 
-  // Check for PowerShell execution
+  // Look for any indication of wanting to run/execute something - broad pattern matching
+  const executionIndicators = [
+    /\brun\s+/i,           // run something
+    /\bexecute\s+/i,       // execute something
+    /\bscript/i,           // script related
+    /\bautomat/i,          // automation related
+    /\btask/i,             // task related
+    /\bcommand/i,          // command related
+    /\bprogram/i,          // program related
+    /\btool/i,             // tool related
+    /\bservice/i,          // service related
+    /\.ps1\b/i,            // PowerShell file
+    /\.sh\b/i,             // Shell script
+    /\.bat\b/i,            // Batch file
+    /\.exe\b/i,            // Executable
+    /\bpowershell/i,       // PowerShell command
+    /\bcmd\b/i,            // Command prompt
+    /\bshell/i,            // Shell
+    /\bcheck\b/i,          // Check operation
+    /\bmonitor/i,          // Monitor operation
+    /\breport/i,           // Report generation
+    /\bsave/i,             // Save operation
+    /\bfile/i,             // File operation
+    /\bemail/i,            // Email operation
+    /\bsend/i,             // Send operation
+    /\bhtml/i,             // HTML generation
+    /\bnetwork/i,          // Network operation
+    /\bsystem/i,           // System operation
+    /\bprocess/i,          // Process operation
+    /\bdata/i,             // Data operation
+    /\banalysis/i,         // Analysis operation
+    /\bgenerate/i,         // Generation operation
+    /\bcreate/i,           // Creation operation
+    /\bdownload/i,         // Download operation
+    /\bupload/i,           // Upload operation
+    /\bbackup/i,           // Backup operation
+    /\brestore/i,          // Restore operation
+  ];
+
+  // Check if input contains any execution-related patterns
+  for (const pattern of executionIndicators) {
+    if (pattern.test(input)) {
+      // For any kind of execution task, prefer TypeScript
+      return {
+        isDirect: true,
+        toolName: 'run_bash',
+        command: 'npx tsx generic_task.ts'  // Generic TS script for any task
+      };
+    }
+  }
+
+  // Check for TypeScript execution if explicitly mentioned (highest priority)
+  if (lower.includes('typescript') || lower.includes('.ts') || lower.includes('run typescript') || lower.includes('ts-node') || lower.includes('tsx')) {
+    const match = input.match(/(run|execute|typescript|ts-node|tsx).*?((?:\.\/)?\S+\.ts|\w+:\\\S+\.ts)/i);
+    if (match) {
+      return {
+        isDirect: true,
+        toolName: 'run_bash', // Using run_bash to execute TypeScript with tsx
+        command: `npx tsx ${match[2].trim()}`
+      };
+    }
+    // Fallback: if it mentions typescript but no specific file, try to extract a command
+    const extractedCmd = input.replace(/.*?(run|execute|typescript|ts-node|tsx)\s*/i, '').trim();
+    return {
+      isDirect: true,
+      toolName: 'run_bash',
+      command: `npx tsx ${extractedCmd || 'script.ts'}`
+    };
+  }
+
+  // Check for PowerShell execution (fallback)
   if (lower.includes('powershell') || lower.includes('.ps1') || lower.includes('run powershell')) {
     const match = input.match(/(run|execute|powershell).*?((?:\.\/)?\S+\.ps1|\w+:\\\S+\.ps1)/i);
     if (match) {
@@ -103,7 +173,7 @@ const detectDirectExecution = (input: string): { isDirect: boolean; toolName?: s
     };
   }
 
-  // Check for bash execution
+  // Check for bash execution (fallback)
   if (lower.includes('bash') || lower.includes('.sh') || lower.includes('run bash')) {
     const match = input.match(/(run|execute|bash).*?((?:\.\/)?\S+\.sh|\w+:\\\S+\.sh)/i);
     if (match) {

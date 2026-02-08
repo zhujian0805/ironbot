@@ -181,6 +181,17 @@ export async function executeJob(
   opts: { forced: boolean },
 ) {
   const startedAt = state.deps.nowMs();
+  state.deps.log.info(
+    {
+      jobId: job.id,
+      jobName: job.name,
+      channel: job.payload.channel,
+      scheduleKind: job.schedule.kind,
+      executionType: 'type' in job.payload && job.payload.type === 'direct-execution' ? 'direct-tool-execution' : 'slack-message'
+    },
+    "cron: starting job execution"
+  );
+
   job.state.runningAtMs = startedAt;
   job.state.lastError = undefined;
   emit(state, { jobId: job.id, action: "started", runAtMs: startedAt });
@@ -196,6 +207,19 @@ const finish = async (status: "ok" | "error" | "skipped", err?: string, summary?
     job.state.lastError = err;
     job.updatedAtMs = nowMs;
 
+    state.deps.log.info(
+      {
+        jobId: job.id,
+        jobName: job.name,
+        status,
+        durationMs: job.state.lastDurationMs,
+        error: err,
+        scheduleKind: job.schedule.kind,
+        executionType: 'type' in job.payload && job.payload.type === 'direct-execution' ? 'direct-tool-execution' : 'slack-message'
+      },
+      "cron: job execution completed"
+    );
+
     const shouldDelete =
       job.schedule.kind === "at" && status === "ok" && job.deleteAfterRun === true;
 
@@ -203,8 +227,16 @@ const finish = async (status: "ok" | "error" | "skipped", err?: string, summary?
       if (job.schedule.kind === "at" && status === "ok") {
         job.enabled = false;
         job.state.nextRunAtMs = undefined;
+        state.deps.log.info(
+          { jobId: job.id, jobName: job.name },
+          "cron: disabling one-time job after successful execution"
+        );
       } else if (job.enabled) {
         job.state.nextRunAtMs = computeJobNextRunAtMs(job, endedAt);
+        state.deps.log.info(
+          { jobId: job.id, jobName: job.name, nextRunAtMs: job.state.nextRunAtMs },
+          "cron: calculated next run time for job"
+        );
       } else {
         job.state.nextRunAtMs = undefined;
       }
@@ -236,6 +268,12 @@ const finish = async (status: "ok" | "error" | "skipped", err?: string, summary?
       durationMs: job.state.lastDurationMs,
       nextRunAtMs: job.state.nextRunAtMs,
     };
+
+    state.deps.log.debug(
+      { jobId: job.id, logPath },
+      "cron: appending run log entry"
+    );
+
     void appendCronRunLog(logPath, logEntry).catch((logErr) => {
       state.deps.log.warn(
         { jobId: job.id, err: String(logErr) },
@@ -248,6 +286,10 @@ const finish = async (status: "ok" | "error" | "skipped", err?: string, summary?
     if (shouldDelete && state.store) {
       state.store.jobs = state.store.jobs.filter((j) => j.id !== job.id);
       deleted = true;
+      state.deps.log.info(
+        { jobId: job.id, jobName: job.name },
+        "cron: deleted one-time job after successful execution"
+      );
       emit(state, { jobId: job.id, action: "removed" });
     }
   };
@@ -256,7 +298,7 @@ const finish = async (status: "ok" | "error" | "skipped", err?: string, summary?
     // Determine if this is a direct execution or a Slack message
     if ('type' in job.payload && job.payload.type === 'direct-execution') {
       // Direct execution mode
-      state.deps.log.debug(
+      state.deps.log.info(
         { jobId: job.id, toolName: job.payload.toolName, params: job.payload.toolParams },
         "cron: executing tool directly"
       );
@@ -269,7 +311,7 @@ const finish = async (status: "ok" | "error" | "skipped", err?: string, summary?
       await finish("ok", undefined, `executed tool: ${job.payload.toolName}`);
     } else {
       // Slack message mode (existing behavior)
-      state.deps.log.debug(
+      state.deps.log.info(
         { jobId: job.id, channel: job.payload.channel, message: job.payload.text },
         "cron: sending scheduled message to Slack"
       );
