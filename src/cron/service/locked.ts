@@ -11,7 +11,13 @@ const resolveChain = (promise: Promise<unknown>) =>
 export async function locked<T>(state: CronServiceState, fn: () => Promise<T>): Promise<T> {
   const storePath = state.deps.storePath;
   const storeOp = storeLocks.get(storePath) ?? Promise.resolve();
-  const next = Promise.all([resolveChain(state.op), resolveChain(storeOp)]).then(fn);
+  state.deps.log.debug({ storePath }, "cron: waiting for store lock");
+  const next = Promise.all([resolveChain(state.op), resolveChain(storeOp)]).then(() => {
+    state.deps.log.debug({ storePath }, "cron: acquired store lock");
+    return fn();
+  }).finally(() => {
+    state.deps.log.debug({ storePath }, "cron: releasing store lock");
+  });
 
   const keepAlive = resolveChain(next);
   state.op = keepAlive;

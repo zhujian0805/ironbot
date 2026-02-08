@@ -217,7 +217,13 @@ const main = async (): Promise<void> => {
     log: logger.child({ subsystem: "cron" }),
     storePath: config.cron.storePath,
     cronEnabled: config.cron.enabled,
-    sendMessage: sendCronMessage
+    sendMessage: sendCronMessage,
+    executeTool: async (toolName: string, params: Record<string, unknown>) => {
+      logger.info({ toolName, params }, "cron: executing tool directly");
+
+      // Execute the tool using the ToolExecutor's executeTool method
+      return await claude.toolExecutor.executeTool(toolName, params);
+    }
   });
 
   const healthOk = await performHealthChecks(app, claude, config.skipHealthChecks, slackSupervisor);

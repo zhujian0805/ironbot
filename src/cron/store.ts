@@ -23,11 +23,13 @@ export async function loadCronStore(storePath: string): Promise<CronStoreFile> {
     const raw = await fs.promises.readFile(storePath, "utf-8");
     const parsed = JSON.parse(raw);
     const jobs = Array.isArray(parsed?.jobs) ? parsed?.jobs : [];
+    console.log(`Loaded cron store from ${storePath} with ${jobs.length} jobs`);
     return {
       version: 1,
       jobs: jobs.filter(Boolean) as CronJob[],
     };
-  } catch {
+  } catch (error) {
+    console.log(`Could not load cron store from ${storePath}, creating empty store:`, (error as Error).message);
     return { version: 1, jobs: [] };
   }
 }
@@ -38,6 +40,7 @@ export async function saveCronStore(storePath: string, store: CronStoreFile) {
   const json = JSON.stringify(store, null, 2);
   await fs.promises.writeFile(tmp, json, "utf-8");
   await fs.promises.rename(tmp, storePath);
+  console.log(`Saved cron store to ${storePath} with ${store.jobs.length} jobs`);
   try {
     await fs.promises.copyFile(storePath, `${storePath}.bak`);
   } catch {

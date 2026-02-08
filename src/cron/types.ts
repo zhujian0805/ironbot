@@ -10,6 +10,15 @@ export type CronMessagePayload = {
   replyBroadcast?: boolean;
 };
 
+export type CronDirectExecutionPayload = {
+  // Direct execution mode - no channel needed
+  type: "direct-execution";
+  toolName: string; // Name of the tool to execute (e.g., "run_powershell", "run_bash")
+  toolParams: Record<string, unknown>; // Parameters for the tool
+};
+
+export type CronJobPayload = CronMessagePayload | CronDirectExecutionPayload;
+
 export type CronJobState = {
   nextRunAtMs?: number;
   runningAtMs?: number;
@@ -28,7 +37,7 @@ export type CronJob = {
   createdAtMs: number;
   updatedAtMs: number;
   schedule: CronSchedule;
-  payload: CronMessagePayload;
+  payload: CronJobPayload;
   details?: string;
   state: CronJobState;
 };

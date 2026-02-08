@@ -24,6 +24,7 @@ export type CronServiceDeps = {
   storePath: string;
   cronEnabled: boolean;
   sendMessage: (payload: CronMessagePayload) => Promise<void>;
+  executeTool?: (toolName: string, params: Record<string, unknown>) => Promise<unknown>;
   onEvent?: (event: CronEvent) => void;
 };
 

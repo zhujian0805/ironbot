@@ -19,21 +19,38 @@ const normalizeOptionalDescription = (value: string | undefined): string | undef
   return trimmed || undefined;
 };
 
-const normalizePayload = (payload: { channel: string; text: string; threadTs?: string; replyBroadcast?: boolean }) => {
-  const channel = (payload.channel ?? "").trim();
-  const text = (payload.text ?? "").trim();
-  if (!channel) {
-    throw new Error("cron payload requires a channel");
+const normalizePayload = (payload: CronJobPayload) => {
+  if ('type' in payload && payload.type === 'direct-execution') {
+    // Validate direct execution payload
+    if (!payload.toolName) {
+      throw new Error("Direct execution payload requires a toolName");
+    }
+    if (typeof payload.toolParams !== 'object' || payload.toolParams === null) {
+      throw new Error("Direct execution payload requires toolParams as an object");
+    }
+
+    return {
+      type: payload.type,
+      toolName: payload.toolName,
+      toolParams: payload.toolParams
+    };
+  } else {
+    // Validate Slack message payload
+    const channel = (payload.channel ?? "").trim();
+    const text = (payload.text ?? "").trim();
+    if (!channel) {
+      throw new Error("cron payload requires a channel for Slack messages");
+    }
+    if (!text) {
+      throw new Error("cron payload requires text for Slack messages");
+    }
+    return {
+      channel,
+      text,
+      threadTs: payload.threadTs?.trim() || undefined,
+      replyBroadcast: Boolean(payload.replyBroadcast),
+    };
   }
-  if (!text) {
-    throw new Error("cron payload requires text");
-  }
-  return {
-    channel,
-    text,
-    threadTs: payload.threadTs?.trim() || undefined,
-    replyBroadcast: Boolean(payload.replyBroadcast),
-  };
 };
 
 export const computeJobNextRunAtMs = (job: CronJob, nowMs: number): number | undefined =>
@@ -121,7 +138,8 @@ export const nextWakeAtMs = (state: CronServiceState): number | undefined => {
   if (candidates.length === 0) {
     return undefined;
   }
-  return candidates.reduce((min, job) => Math.min(min, job.state.nextRunAtMs as number), candidates[0].state.nextRunAtMs as number);
+  const nextWake = candidates.reduce((min, job) => Math.min(min, job.state.nextRunAtMs as number), candidates[0].state.nextRunAtMs as number);
+  return nextWake;
 };
 
 export const findJobOrThrow = (state: CronServiceState, id: string) => {

@@ -13,44 +13,84 @@ export function armTimer(state: CronServiceState) {
   }
   state.timer = null;
   if (!state.deps.cronEnabled) {
+    state.deps.log.info("cron: scheduler disabled, not arming timer");
     return;
   }
+
+  // Always arm a periodic check timer to ensure jobs are regularly checked
+  const REGULAR_CHECK_INTERVAL_MS = 30000; // 30 seconds - regular check for any due jobs
   const nextAt = nextWakeAtMs(state);
-  if (!nextAt) {
-    return;
+
+  // If there's a specific upcoming job that should run before the next regular check
+  if (nextAt && nextAt < state.deps.nowMs() + REGULAR_CHECK_INTERVAL_MS) {
+    const delay = Math.max(nextAt - state.deps.nowMs(), 0);
+    const clampedDelay = Math.min(delay, REGULAR_CHECK_INTERVAL_MS);
+    const nextRunTime = new Date(nextAt).toISOString();
+    state.deps.log.info(
+      { nextRunAt: nextRunTime, delayMs: delay, clampedDelayMs: clampedDelay },
+      "cron: arming timer for next specific job (sooner than regular check)"
+    );
+    state.timer = setTimeout(() => {
+      state.deps.log.info("cron: timer triggered, processing due jobs");
+      void onTimer(state).catch((err) => {
+        state.deps.log.error({ err: String(err) }, "cron: timer tick failed");
+      });
+    }, clampedDelay);
+  } else {
+    // Otherwise, arm the regular check timer
+    state.deps.log.info(
+      { regularCheckIntervalMs: REGULAR_CHECK_INTERVAL_MS },
+      "cron: arming regular check timer"
+    );
+    state.timer = setTimeout(() => {
+      state.deps.log.info("cron: regular check timer triggered, processing due jobs");
+      void onTimer(state).catch((err) => {
+        state.deps.log.error({ err: String(err) }, "cron: timer tick failed");
+      });
+    }, REGULAR_CHECK_INTERVAL_MS);
   }
-  const delay = Math.max(nextAt - state.deps.nowMs(), 0);
-  const clampedDelay = Math.min(delay, MAX_TIMEOUT_MS);
-  state.timer = setTimeout(() => {
-    void onTimer(state).catch((err) => {
-      state.deps.log.error({ err: String(err) }, "cron: timer tick failed");
-    });
-  }, clampedDelay);
+
   state.timer.unref?.();
 }
 
 export async function onTimer(state: CronServiceState) {
+  state.deps.log.debug("cron: timer callback initiated");
   if (state.running) {
+    state.deps.log.warn("cron: timer tick skipped, previous execution still running");
     return;
   }
   state.running = true;
   try {
     await locked(state, async () => {
+      state.deps.log.debug("cron: loading current store state");
       await ensureLoaded(state, { forceReload: true });
+
+      // Check for and run any past-due jobs that may have been missed
+      await runPastDueJobs(state);
+
+      state.deps.log.debug("cron: checking for due jobs");
       await runDueJobs(state);
+      state.deps.log.debug("cron: persisting updated store state");
       await persist(state);
+      state.deps.log.debug("cron: rearming timer");
       armTimer(state);
     });
   } finally {
     state.running = false;
+    state.deps.log.debug("cron: timer processing completed");
   }
 }
 
 export async function runDueJobs(state: CronServiceState) {
   if (!state.store) {
+    state.deps.log.warn("cron: no store loaded, skipping due jobs check");
     return;
   }
+
   const now = state.deps.nowMs();
+  const allJobsCount = state.store.jobs.length;
+  state.deps.log.debug({ totalJobs: allJobsCount }, "cron: checking for due jobs");
+
   const due = state.store.jobs.filter((job) => {
     if (!job.enabled || job.state.runningAtMs) {
       return false;
@@ -58,8 +98,79 @@ export async function runDueJobs(state: CronServiceState) {
     const next = job.state.nextRunAtMs;
     return typeof next === "number" && now >= next;
   });
+
+  state.deps.log.info(
+    { dueJobs: due.length, totalJobs: allJobsCount },
+    "cron: identified due jobs for execution"
+  );
+
   for (const job of due) {
+    state.deps.log.info(
+      { jobId: job.id, jobName: job.name, scheduleKind: job.schedule.kind },
+      "cron: executing due job"
+    );
     await executeJob(state, job, now, { forced: false });
+  }
+
+  if (due.length > 0) {
+    state.deps.log.info({ executedJobs: due.length }, "cron: completed execution of due jobs");
+  } else {
+    state.deps.log.debug("cron: no jobs were due for execution");
+  }
+}
+
+export async function runPastDueJobs(state: CronServiceState) {
+  if (!state.store) {
+    state.deps.log.warn("cron: no store loaded, skipping past-due jobs check");
+    return;
+  }
+
+  const now = state.deps.nowMs();
+  state.deps.log.debug("cron: checking for past-due jobs");
+
+  // Find "at" jobs that were scheduled in the past but have no nextRunAtMs
+  // (meaning their time has passed according to computeNextRunAtMs)
+  const pastDueAtJobs = state.store.jobs.filter((job) => {
+    // Look for enabled "at" jobs that would have run in the past but weren't executed
+    if (!job.enabled || job.state.runningAtMs) {
+      return false;
+    }
+
+    // If it's an "at" job and its scheduled time has passed but nextRunAtMs is undefined
+    if (job.schedule.kind === "at") {
+      const scheduledTime = new Date(job.schedule.at).getTime();
+      const isPastDue = scheduledTime <= now;
+      const hasNoFutureRun = job.state.nextRunAtMs === undefined;
+
+      if (isPastDue && hasNoFutureRun) {
+        state.deps.log.info(
+          {
+            jobId: job.id,
+            jobName: job.name,
+            scheduledAt: new Date(scheduledTime).toISOString(),
+            now: new Date(now).toISOString()
+          },
+          "cron: detected past-due 'at' job"
+        );
+        return true;
+      }
+    }
+
+    return false;
+  });
+
+  for (const job of pastDueAtJobs) {
+    state.deps.log.info(
+      { jobId: job.id, jobName: job.name },
+      "cron: executing past-due 'at' job"
+    );
+    await executeJob(state, job, now, { forced: false });
+  }
+
+  if (pastDueAtJobs.length > 0) {
+    state.deps.log.info({ executedJobs: pastDueAtJobs.length }, "cron: completed execution of past-due jobs");
+  } else {
+    state.deps.log.debug("cron: no past-due jobs found");
   }
 }
 
@@ -142,25 +253,58 @@ const finish = async (status: "ok" | "error" | "skipped", err?: string, summary?
   };
 
   try {
-    await state.deps.sendMessage(job.payload);
-    await finish("ok", undefined, job.payload.text);
+    // Determine if this is a direct execution or a Slack message
+    if ('type' in job.payload && job.payload.type === 'direct-execution') {
+      // Direct execution mode
+      state.deps.log.debug(
+        { jobId: job.id, toolName: job.payload.toolName, params: job.payload.toolParams },
+        "cron: executing tool directly"
+      );
+
+      if (!state.deps.executeTool) {
+        throw new Error('Direct execution is not supported - executeTool dependency not provided');
+      }
+
+      await state.deps.executeTool(job.payload.toolName, job.payload.toolParams);
+      await finish("ok", undefined, `executed tool: ${job.payload.toolName}`);
+    } else {
+      // Slack message mode (existing behavior)
+      state.deps.log.debug(
+        { jobId: job.id, channel: job.payload.channel, message: job.payload.text },
+        "cron: sending scheduled message to Slack"
+      );
+
+      await state.deps.sendMessage(job.payload);
+      await finish("ok", undefined, job.payload.text);
+    }
   } catch (err) {
+    state.deps.log.error(
+      { jobId: job.id, error: String(err) },
+      "cron: job execution failed"
+    );
     await finish("error", String(err));
   } finally {
     if (!opts.forced && job.enabled && !deleted) {
       job.state.nextRunAtMs = computeJobNextRunAtMs(job, state.deps.nowMs());
+      state.deps.log.debug(
+        { jobId: job.id, nextRunAtMs: job.state.nextRunAtMs },
+        "cron: recomputed next run time after execution"
+      );
     }
   }
 }
 
 export function stopTimer(state: CronServiceState) {
   if (state.timer) {
+    state.deps.log.info("cron: stopping timer");
     clearTimeout(state.timer);
   }
   state.timer = null;
+  state.deps.log.info("cron: timer stopped");
 }
 
 export function emit(state: CronServiceState, evt: CronEvent) {
+  state.deps.log.debug({ event: evt }, "cron: emitting event");
   try {
     state.deps.onEvent?.(evt);
   } catch {
@@ -197,7 +341,15 @@ async function reportJobRunStatus(
     replyBroadcast: job.payload.replyBroadcast ?? false,
   };
   try {
+    state.deps.log.debug(
+      { jobId: job.id, jobName: job.name, channel, status },
+      "cron: sending status update to Slack"
+    );
     await state.deps.sendMessage(payload);
+    state.deps.log.info(
+      { jobId: job.id, jobName: job.name, channel, status },
+      "cron: status update sent to Slack"
+    );
   } catch (error) {
     state.deps.log.warn({ jobId: job.id, err: String(error) }, "cron: failed to report job run status");
   }

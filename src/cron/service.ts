@@ -10,10 +10,12 @@ export class CronService {
   }
 
   async start() {
+    console.log("Starting cron service...");
     await ops.start(this.state);
   }
 
   stop() {
+    console.log("Stopping cron service...");
     ops.stop(this.state);
   }
 

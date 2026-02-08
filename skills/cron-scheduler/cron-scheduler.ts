@@ -69,7 +69,53 @@ const parseMessageText = (input: string): string | null => {
   if (quoted && quoted[1]) {
     return quoted[1].trim();
   }
+
+  // Check if the input suggests direct execution
+  const executionIndicators = ['run ', 'execute ', 'script:', 'powershell', 'bash:', 'command:', '.ps1', '.sh'];
+  for (const indicator of executionIndicators) {
+    if (input.toLowerCase().includes(indicator)) {
+      return null; // Don't extract text for direct execution
+    }
+  }
+
   return input.trim() || null;
+};
+
+// New function to detect if user wants direct execution
+const detectDirectExecution = (input: string): { isDirect: boolean; toolName?: string; command?: string } | null => {
+  const lower = input.toLowerCase();
+
+  // Check for PowerShell execution
+  if (lower.includes('powershell') || lower.includes('.ps1') || lower.includes('run powershell')) {
+    const match = input.match(/(run|execute|powershell).*?((?:\.\/)?\S+\.ps1|\w+:\\\S+\.ps1)/i);
+    if (match) {
+      return {
+        isDirect: true,
+        toolName: 'run_powershell',
+        command: match[2].trim()
+      };
+    }
+    // Fallback: if it mentions powershell but no specific script, try to extract a command
+    return {
+      isDirect: true,
+      toolName: 'run_powershell',
+      command: input.replace(/.*?(run|execute|powershell)\s*/i, '').trim()
+    };
+  }
+
+  // Check for bash execution
+  if (lower.includes('bash') || lower.includes('.sh') || lower.includes('run bash')) {
+    const match = input.match(/(run|execute|bash).*?((?:\.\/)?\S+\.sh|\w+:\\\S+\.sh)/i);
+    if (match) {
+      return {
+        isDirect: true,
+        toolName: 'run_bash',
+        command: match[2].trim()
+      };
+    }
+  }
+
+  return null;
 };
 
 const parseEverySchedule = (input: string): string | null => {
@@ -209,12 +255,22 @@ export const buildSlackMetadata = (context?: SkillContext, input?: string): Slac
 
 export const buildCronAddArgs = (
   jobName: string,
-  channel: string,
-  text: string,
+  channel: string | null, // Channel is optional for direct execution
+  text: string | null,    // Text is optional for direct execution
   schedule: { kind: string; value: string },
-  extras?: CronAddExtras
+  extras?: CronAddExtras,
+  directExec?: { toolName: string; command: string } // Optional direct execution parameters
 ): string[] => {
-  const args = ["run", "cron", "--", "add", "--name", jobName, "--channel", channel, "--text", text];
+  let args: string[];
+
+  if (directExec) {
+    // Direct execution job
+    args = ["run", "cron", "--", "add", "--name", jobName, "--tool", directExec.toolName, "--tool-param", `command=${directExec.command}`];
+  } else {
+    // Traditional Slack message job
+    args = ["run", "cron", "--", "add", "--name", jobName, "--channel", channel!, "--text", text!];
+  }
+
   if (extras?.threadTs) {
     args.push("--thread-ts", extras.threadTs);
   }
@@ -236,12 +292,13 @@ export const buildCronAddArgs = (
 
 const runCronAddCommand = async (
   jobName: string,
-  channel: string,
-  text: string,
+  channel: string | null, // Can be null for direct execution
+  text: string | null,    // Can be null for direct execution
   schedule: { kind: string; value: string },
-  extras?: CronAddExtras
+  extras?: CronAddExtras,
+  directExec?: { toolName: string; command: string } // Optional direct execution parameters
 ) => {
-  const args = buildCronAddArgs(jobName, channel, text, schedule, extras);
+  const args = buildCronAddArgs(jobName, channel, text, schedule, extras, directExec);
   const child = spawn("npm", args, { cwd: repoRoot, env: process.env });
   let stdout = "";
   let stderr = "";
@@ -281,14 +338,23 @@ export const executeSkill = async (input: string, context?: SkillContext): Promi
     return "Please tell me what reminder you want to schedule.";
   }
 
-  const channel = resolveChannelFromInput(cleanedInput, context);
-  if (!channel) {
-    return "I could not determine which channel to post this reminder in. Please specify a channel ID (e.g., C12345678) or run this command inside the desired channel/thread.";
-  }
+  // Check if user wants direct execution (like PowerShell scripts)
+  const directExec = detectDirectExecution(cleanedInput);
 
-  const parsedText = parseMessageText(cleanedInput);
-  if (!parsedText) {
-    return "I could not figure out what message you want to send. Please describe the reminder text.";
+  let channel: string | null = null;
+  let parsedText: string | null = null;
+
+  if (!directExec) {
+    // Traditional behavior: requires channel and text
+    channel = resolveChannelFromInput(cleanedInput, context);
+    if (!channel) {
+      return "I could not determine which channel to post this reminder in. Please specify a channel ID (e.g., C12345678) or run this command inside the desired channel/thread.";
+    }
+
+    parsedText = parseMessageText(cleanedInput);
+    if (!parsedText) {
+      return "I could not figure out what message you want to send. Please describe the reminder text.";
+    }
   }
 
   const schedule = parseSchedule(cleanedInput);
@@ -302,8 +368,21 @@ export const executeSkill = async (input: string, context?: SkillContext): Promi
     description: metadata.description,
     details: metadata.details
   };
-  const inferredName = parseJobName(cleanedInput) ?? slugifyJobName(parsedText);
-  const { success, stdout, stderr } = await runCronAddCommand(inferredName, channel, parsedText, schedule, extras);
+
+  // Extract job name based on execution type
+  const inferredName = parseJobName(cleanedInput) ??
+                       (directExec ? slugifyJobName(directExec.toolName + "-" + directExec.command) :
+                        slugifyJobName(parsedText!));
+
+  const { success, stdout, stderr } = await runCronAddCommand(
+    inferredName,
+    channel,
+    parsedText,
+    schedule,
+    extras,
+    directExec || undefined
+  );
+
   if (!success) {
     const message = stderr || stdout || "Cron command failed to run.";
     return `❌ Unable to schedule the reminder: ${message.split(/\r?\n/)[0]}`;
@@ -312,30 +391,46 @@ export const executeSkill = async (input: string, context?: SkillContext): Promi
   const jobMatch = stdout.match(/Created job ([0-9a-f-]+)/i);
   const jobId = jobMatch ? jobMatch[1] : null;
   if (!jobId) {
-    return "✅ The cron reminder seems to have been created, but I could not parse the job ID.";
+    return "✅ The cron job seems to have been created, but I could not parse the job ID.";
   }
 
   const storePath = resolveCronStorePath(process.env.IRONBOT_CRON_STORE_PATH);
   const store = await loadCronStore(storePath);
   const job = store.jobs.find((entry) => entry.id === jobId);
   if (!job) {
-    return `✅ Cron reminder ${inferredName} created (ID ${jobId}), but I could not find it in ${storePath}.`;
+    return `✅ Cron job ${inferredName} created (ID ${jobId}), but I could not find it in ${storePath}.`;
   }
 
-  const channelLabel = formatChannelMention(job.payload.channel);
   const threadLine = metadata.threadTs ? `- Thread: ${metadata.threadTs}` : "- Thread: main conversation";
   const scheduledByLine = `- Scheduled by: ${metadata.scheduledBy}`;
-  return [
-    `✅ Scheduled cron reminder **${job.name}** (ID ${job.id})`,
-    `- Channel: ${channelLabel}`,
-    threadLine,
-    scheduledByLine,
-    `- Schedule: ${describeSchedule(schedule)}`,
-    `- Next run: ${formatNextRun(job)}`,
-    `- Message: ${job.payload.text}`,
-    `Stored at: ${storePath}`,
-    "You can inspect or manage it with `npm run cron -- list` or `npm run cron -- remove <job-id>`."
-  ].join("\n");
+
+  // Customize response based on execution type
+  if (directExec) {
+    return [
+      `✅ Scheduled direct execution job **${job.name}** (ID ${job.id})`,
+      `- Schedule: ${describeSchedule(schedule)}`,
+      `- Tool: ${directExec.toolName}`,
+      `- Command: ${directExec.command}`,
+      threadLine,
+      scheduledByLine,
+      `- Next run: ${formatNextRun(job)}`,
+      `Stored at: ${storePath}`,
+      "The script will run automatically at the scheduled time without manual intervention."
+    ].join("\n");
+  } else {
+    const channelLabel = formatChannelMention(job.payload.channel);
+    return [
+      `✅ Scheduled cron reminder **${job.name}** (ID ${job.id})`,
+      `- Channel: ${channelLabel}`,
+      threadLine,
+      scheduledByLine,
+      `- Schedule: ${describeSchedule(schedule)}`,
+      `- Next run: ${formatNextRun(job)}`,
+      `- Message: ${job.payload.text}`,
+      `Stored at: ${storePath}`,
+      "You can inspect or manage it with `npm run cron -- list` or `npm run cron -- remove <job-id>`."
+    ].join("\n");
+  }
 };
 
 export { parseSchedule };

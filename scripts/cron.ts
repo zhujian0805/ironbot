@@ -27,13 +27,17 @@ const resolveStorePath = (): string =>
 
 const loadStore = async (): Promise<CronStoreFile> => {
   const storePath = resolveStorePath();
+  console.log(`Loading cron store from ${storePath}`);
   const store = await loadCronStore(storePath);
+  console.log(`Loaded store with ${store.jobs.length} jobs`);
   return store;
 };
 
 const saveStore = async (store: CronStoreFile) => {
   const storePath = resolveStorePath();
+  console.log(`Saving cron store to ${storePath} with ${store.jobs.length} jobs`);
   await saveCronStore(storePath, store);
+  console.log(`Successfully saved cron store`);
 };
 
 const error = (message: string): never => {
@@ -211,8 +215,16 @@ program
   .command("add")
   .description("Add a cron reminder")
   .requiredOption("--name <name>", "Name for the job")
-  .requiredOption("--channel <channel>", "Slack channel ID (C..., D..., etc.)")
-  .requiredOption("--text <text>", "Message to send")
+  .option("--channel <channel>", "Slack channel ID (C..., D..., etc.) for notifications (optional for direct execution)")
+  .option("--text <text>", "Message to send to Slack channel")
+  .option("--tool <toolName>", "Tool to execute directly (e.g., run_powershell, run_bash)")
+  .option("--tool-param <key=value...>", "Parameters for the tool execution (format: key=value)", (val, prev) => {
+    const [key, value] = val.split('=');
+    if (key && value !== undefined) {
+      prev[key] = value;
+    }
+    return prev;
+  }, {})
   .option("--description <text>", "Optional description")
   .option("--details <text>", "Optional narrative describing what the job does")
   .option("--thread-ts <ts>", "Post inside an existing thread")
@@ -224,11 +236,36 @@ program
   .option("--delete-after-run", "Remove one-shot job after it succeeds", false)
   .action(async (opts) => {
     const schedule = buildSchedule({ at: opts.at, every: opts.every, cron: opts.cron, tz: opts.tz });
-    const payload = {
-      channel: opts.channel,
-      text: opts.text,
-      threadTs: opts.threadTs,
-    };
+
+    let payload;
+    if (opts.tool) {
+      // Direct execution payload
+      if (opts.channel) {
+        console.log(`Creating direct execution job with tool '${opts.tool}' and Slack notification to channel '${opts.channel}'`);
+      } else {
+        console.log(`Creating direct execution job with tool '${opts.tool}' (no Slack notification)`);
+      }
+      payload = {
+        type: "direct-execution" as const,
+        toolName: opts.tool,
+        toolParams: opts.toolParam || {}
+      };
+    } else {
+      // Slack message payload (requires channel and text)
+      if (!opts.channel) {
+        error("For Slack message jobs, you must specify --channel");
+      }
+      if (!opts.text) {
+        error("For Slack message jobs, you must specify --text");
+      }
+      payload = {
+        channel: opts.channel,
+        text: opts.text,
+        threadTs: opts.threadTs,
+      };
+      console.log(`Creating Slack message job to channel '${opts.channel}'`);
+    }
+
     const store = await loadStore();
     const jobInput: CronJobCreate = {
       name: opts.name,

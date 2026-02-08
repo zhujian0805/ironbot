@@ -32,6 +32,7 @@ async function pruneIfNeeded(filePath: string, opts: { maxBytes: number; keepLin
     return;
   }
 
+  console.log(`Pruning log file ${filePath}, size: ${stat.size} bytes`);
   const raw = await fs.readFile(filePath, "utf-8").catch(() => "");
   if (!raw) {
     return;
@@ -41,6 +42,7 @@ async function pruneIfNeeded(filePath: string, opts: { maxBytes: number; keepLin
   const tmp = `${filePath}.${process.pid}.${Math.random().toString(16).slice(2)}.tmp`;
   await fs.writeFile(tmp, `${kept.join("\n")}\n`, "utf-8");
   await fs.rename(tmp, filePath);
+  console.log(`Pruned log file ${filePath}, kept ${kept.length} lines`);
 }
 
 export async function appendCronRunLog(
@@ -55,6 +57,7 @@ export async function appendCronRunLog(
     .then(async () => {
       await fs.mkdir(path.dirname(resolved), { recursive: true });
       await fs.appendFile(resolved, `${JSON.stringify(entry)}\n`, "utf-8");
+      console.log(`Appended log entry to ${resolved} for job ${entry.jobId}`);
       await pruneIfNeeded(resolved, {
         maxBytes: opts?.maxBytes ?? defaultPruneOptions.maxBytes,
         keepLines: opts?.keepLines ?? defaultPruneOptions.keepLines,
@@ -73,6 +76,7 @@ export async function readCronRunLogEntries(
   const resolved = path.resolve(filePath);
   const raw = await fs.readFile(resolved, "utf-8").catch(() => "");
   if (!raw.trim()) {
+    console.log(`No log entries found at ${resolved}`);
     return [];
   }
   const parsed: CronRunLogEntry[] = [];
@@ -102,5 +106,6 @@ export async function readCronRunLogEntries(
     }
   }
   parsed.reverse();
+  console.log(`Read ${parsed.length} log entries from ${resolved} for job ${jobId || 'all'}`);
   return parsed;
 }
