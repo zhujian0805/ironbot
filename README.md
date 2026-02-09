@@ -34,6 +34,10 @@ A sophisticated TypeScript-based AI agent that integrates with Slack to provide 
 - **Skill Trigger Control**: Skills can declare `metadata.openclaw.skillTriggers` inside their `SKILL.md`, specifying exact trigger words, a confidence score (0-1), and an `autoRoute` flag to opt out of automatic routing. When metadata is absent, IronBot falls back to heuristic triggers derived from the skill name or description.
 - **Visibility & Instrumentation**: Auto-routing now logs trigger decisions (skill, trigger phrase, confidence, threshold, decision) so you can audit which messages triggered which skills.
 
+### Scheduler Reliability
+- **Verified cron persistence**: After `npm run cron -- add` writes a job, the CLI reloads `jobs.json` (via `IRONBOT_CRON_STORE_PATH` or `--store`) and confirms the new `CronJob` exists before reporting success, so you can trust the job ID reported in Slack matches what's on disk.
+- **Direct-execution transparency**: Both Slack reminders and direct tool executions now echo the verified job details (name, schedule, next run) when they are confirmed, making it easier to audit automated work.
+
 ### Security & Permissions
 - **Default Deny**: Deny-all security model with explicit allow lists
 - **Resource Protection**: Block specific paths and dangerous operations
@@ -216,6 +220,16 @@ Options:
   --skip-health-checks       Skip startup health checks
   --help                     Display help information
 ```
+
+## Testing & Quality
+
+- **Session cache integrity**: Tests now cover `loadSessionStore`, cache invalidation, entry creation, and route updates to ensure session metadata stays consistent when files are missing or change while cached.
+- **Cron store verification**: Added unit coverage for the helper that reloads `jobs.json` after `cron` jobs are added so the CLI reports only verified entries when it confirms schedules.
+- **Key validation suites**:
+  ```bash
+  npx vitest run tests/unit/sessions/store.test.ts
+  npx vitest run tests/unit/cron/store_verification.test.ts
+  ```
 
 ## Permission System
 
