@@ -450,7 +450,7 @@ export const executeSkill = async (input: string, context?: SkillContext): Promi
     parsedText,
     schedule,
     extras,
-    directExec || undefined
+    directExec && directExec.isDirect ? { toolName: directExec.toolName!, command: directExec.command! } : undefined
   );
 
   if (!success) {
@@ -488,19 +488,64 @@ export const executeSkill = async (input: string, context?: SkillContext): Promi
       "The script will run automatically at the scheduled time without manual intervention."
     ].join("\n");
   } else {
-    const channelLabel = formatChannelMention(job.payload.channel);
-    return [
-      `✅ Scheduled cron reminder **${job.name}** (ID ${job.id})`,
-      `- Channel: ${channelLabel}`,
-      threadLine,
-      scheduledByLine,
-      `- Schedule: ${describeSchedule(schedule)}`,
-      `- Next run: ${formatNextRun(job)}`,
-      `- Message: ${job.payload.text}`,
-      `Stored at: ${storePath}`,
-      "You can inspect or manage it with `npm run cron -- list` or `npm run cron -- remove <job-id>`."
-    ].join("\n");
+    // For Slack message jobs, verify the payload has the expected structure
+    if ('channel' in job.payload && 'text' in job.payload) {
+      const channelLabel = formatChannelMention(job.payload.channel);
+      return [
+        `✅ Scheduled cron reminder **${job.name}** (ID ${job.id})`,
+        `- Channel: ${channelLabel}`,
+        threadLine,
+        scheduledByLine,
+        `- Schedule: ${describeSchedule(schedule)}`,
+        `- Next run: ${formatNextRun(job)}`,
+        `- Message: ${job.payload.text}`,
+        `Stored at: ${storePath}`,
+        "You can inspect or manage it with `npm run cron -- list` or `npm run cron -- remove <job-id>`."
+      ].join("\n");
+    } else {
+      // Handle the case where payload is direct execution but shouldn't be (shouldn't happen with proper control flow)
+      return [
+        `✅ Scheduled cron job **${job.name}** (ID ${job.id})`,
+        `- Schedule: ${describeSchedule(schedule)}`,
+        `- Next run: ${formatNextRun(job)}`,
+        `Stored at: ${storePath}`,
+        "You can inspect or manage it with `npm run cron -- list` or `npm run cron -- remove <job-id>`."
+      ].join("\n");
+    }
   }
+};
+
+const runCronRemoveCommand = async (jobId: string) => {
+  const args = ["run", "cron", "--", "remove", jobId];
+  const child = spawn("npm", args, { cwd: repoRoot, env: process.env });
+  let stdout = "";
+  let stderr = "";
+  return new Promise<{ success: boolean; stdout: string; stderr: string }>((resolve) => {
+    child.stdout?.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    child.stderr?.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    child.on("close", (code) => {
+      resolve({ success: code === 0, stdout, stderr });
+    });
+  });
+};
+
+export const removeSkill = async (jobId: string): Promise<string> => {
+  if (!jobId) {
+    return "Please provide a job ID to remove.";
+  }
+
+  const { success, stdout, stderr } = await runCronRemoveCommand(jobId);
+
+  if (!success) {
+    const message = stderr || stdout || "Cron remove command failed to run.";
+    return `❌ Unable to remove the cron job: ${message.split(/\r?\n/)[0]}`;
+  }
+
+  return `✅ Successfully removed cron job: ${stdout.trim()}`;
 };
 
 export { parseSchedule };

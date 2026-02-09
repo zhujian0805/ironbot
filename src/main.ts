@@ -72,6 +72,20 @@ const patchSocketModeDisconnectDuringConnect = (() => {
       }
       return original.call(this, payload);
     };
+
+    // Additionally patch the disconnect handling to add delays
+    const originalHandleDisconnect = SocketModeClient.prototype.handleDisconnect;
+    SocketModeClient.prototype.handleDisconnect = async function () {
+      try {
+        // Log the disconnection and add a small delay to prevent rapid reconnects
+        this.logger.debug("Handling disconnection, preparing for reconnect...");
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay before attempting to reconnect
+        return originalHandleDisconnect.apply(this, arguments);
+      } catch (error) {
+        this.logger.error({ error }, "Error in handleDisconnect patch");
+        return originalHandleDisconnect.apply(this, arguments);
+      }
+    };
   };
 })();
 
@@ -118,6 +132,9 @@ const main = async (): Promise<void> => {
 
   if (!config.slackBotToken || !config.slackAppToken) {
     logger.error("Slack tokens not configured");
+    logger.error("Missing SLACK_BOT_TOKEN" + (!config.slackBotToken ? ": undefined" : ": defined"));
+    logger.error("Missing SLACK_APP_TOKEN" + (!config.slackAppToken ? ": undefined" : ": defined"));
+    process.exit(1); // Exit if tokens are not configured
   }
 
   logger.info(
@@ -147,10 +164,23 @@ const main = async (): Promise<void> => {
   }
   logger.debug({ permissionsFile: config.permissionsFile, permissionsWatcher: true }, "Permission manager ready");
 
+  // Create a custom SocketModeClient with additional patches
+  const socketModeClient = new SocketModeClient({
+    appToken: config.slackAppToken!,
+    logLevel: toSlackLogLevel(config.logLevel),
+    logger: undefined, // Use default logger
+    // Increase ping timeout to avoid premature disconnections
+    pingTimeoutMilliseconds: 30000, // 30 seconds instead of default
+    // Add event handlers to better monitor connection state
+    clientPingTimeoutMilliseconds: 30000, // 30 seconds
+  });
+
   const app = new App({
     token: config.slackBotToken,
-    appToken: config.slackAppToken,
+    appToken: config.slackAppToken,  // Still pass appToken as it's required for Socket Mode
     socketMode: true,
+    // Use our custom socket mode client
+    socketModeClient: socketModeClient,
     logLevel: toSlackLogLevel(config.logLevel),
     retryConfig: {
       retries: config.slackRetry.maxAttempts,
@@ -158,6 +188,24 @@ const main = async (): Promise<void> => {
       minTimeout: config.slackRetry.baseDelayMs,
       maxTimeout: config.slackRetry.maxDelayMs
     }
+  });
+
+  // Add event listeners to monitor connection state
+  socketModeClient.on("web_client_connected", () => {
+    logger.info("Socket Mode web client connected");
+  });
+
+  socketModeClient.on("web_client_disconnected", () => {
+    logger.info("Socket Mode web client disconnected");
+  });
+
+  socketModeClient.on("authenticated", (info) => {
+    logger.info({ info }, "Socket Mode authentication successful");
+  });
+
+  // Add more conservative retry configuration for connection
+  socketModeClient.on("unable_to_socket_mode_auth", (err) => {
+    logger.error({ error: err }, "Unable to authenticate in Socket Mode");
   });
 
   const memoryManager = new MemoryManager(config);
@@ -178,7 +226,11 @@ const main = async (): Promise<void> => {
     retryMaxDelayMs: config.slackRetry.maxDelayMs
   });
   const slackRetryManager = new RetryManager(config.retry);
-  const slackSupervisor = new SlackConnectionSupervisor(slackOptimizer, slackRateLimiter, slackRetryManager);
+  const slackSupervisor = new SlackConnectionSupervisor(slackOptimizer, slackRateLimiter, slackRetryManager, {
+    idleThresholdMs: 60000,      // 60 seconds (increased from 30s to reduce unnecessary activity probes)
+    cooldownWindowMs: 120000,    // 120 seconds (increased from 60s to reduce API pressure)
+    maxCooldownExpiryMs: 300000  // 5 minutes max
+  });
   const router = new MessageRouter(
     claude,
     app.client as unknown as { chat: { postMessage: any; update: any } },
@@ -240,6 +292,37 @@ const main = async (): Promise<void> => {
     logger.error({ error }, "cron: failed to start");
   }
   logger.info({ durationMs: Date.now() - launchTimestamp }, "Slack Bolt app started with Socket Mode");
+
+  // Handle graceful shutdown
+  const gracefulShutdown = async () => {
+    logger.info("Received shutdown signal, cleaning up...");
+
+    try {
+      await cronService.stop();
+      logger.info("Cron service stopped");
+    } catch (error) {
+      logger.error({ error }, "Error stopping cron service");
+    }
+
+    try {
+      slackOptimizer.shutdown();
+      logger.info("Slack API optimizer shut down");
+    } catch (error) {
+      logger.error({ error }, "Error shutting down Slack API optimizer");
+    }
+
+    try {
+      await app.stop();
+      logger.info("Slack app stopped");
+    } catch (error) {
+      logger.error({ error }, "Error stopping Slack app");
+    }
+
+    process.exit(0);
+  };
+
+  process.on('SIGINT', gracefulShutdown);
+  process.on('SIGTERM', gracefulShutdown);
 };
 
 main().catch((error) => {

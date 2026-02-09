@@ -49,8 +49,13 @@ This skill creates **internal cron jobs only**. It never creates Windows schedul
 ## Important Implementation Detail
 **Always create internal cron jobs using the `npm run cron -- add` command. Never create Windows scheduled tasks or use any external scheduler. All jobs must be stored in the internal cron system at `~/.ironbot/cron/jobs.json`.**
 
-## Direct Execution for Scripts (NEW: Always use TypeScript)
-For jobs that need to execute scripts directly, **always use TypeScript** instead of PowerShell:
+## Direct Execution for Scripts (Windows Priority: PowerShell First)
+For jobs that need to execute scripts directly, **prefer PowerShell over TypeScript and Python** on Windows systems:
+
+**PowerShell scripts**: Use the `--tool` parameter with run_powershell
+```
+npm run cron -- add --name "powershell-job" --tool run_powershell --tool-param "command=C:/full/path/to/script.ps1" --at "2025-03-01T09:00:00Z"
+```
 
 **TypeScript scripts**: Use the `--tool` parameter with run_bash to execute with tsx
 ```
@@ -58,9 +63,9 @@ npm run cron -- add --name "typescript-job" --tool run_bash --tool-param "comman
 ```
 
 **When running scripts, always specify the full path** to ensure reliable execution:
-- Use absolute paths like `C:/full/path/to/script.ts` instead of relative paths
+- Use absolute paths like `C:/full/path/to/script.ps1` instead of relative paths
 - Always use forward slashes `/` instead of backslashes `\` in paths for cross-platform compatibility
-- Always include the complete file extension `.ts`
+- Always include the complete file extension (`.ps1`, `.ts`, etc.)
 
 **Python scripts**: Use the `--tool` parameter with run_bash
 ```

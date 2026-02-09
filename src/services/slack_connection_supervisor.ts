@@ -6,6 +6,7 @@ import { SlackApiOptimizer } from "./slack_api_optimizer.ts";
 export type SlackConnectionSupervisorOptions = {
   idleThresholdMs?: number;
   cooldownWindowMs?: number;
+  maxCooldownExpiryMs?: number; // Added to prevent extremely long cooldowns
 };
 
 export type SlackProbeResult<T> =
@@ -18,6 +19,7 @@ export class SlackConnectionSupervisor {
   private cooldownExpiresAt = 0;
   private idleThresholdMs: number;
   private cooldownWindowMs: number;
+  private maxCooldownExpiryMs: number; // Added to cap maximum cooldown time
 
   constructor(
     private optimizer: SlackApiOptimizer,
@@ -27,6 +29,7 @@ export class SlackConnectionSupervisor {
   ) {
     this.idleThresholdMs = options.idleThresholdMs ?? 30_000;
     this.cooldownWindowMs = options.cooldownWindowMs ?? 60_000;
+    this.maxCooldownExpiryMs = options.maxCooldownExpiryMs ?? 300_000; // 5 minutes maximum
   }
 
   recordActivity(): void {
@@ -43,8 +46,8 @@ export class SlackConnectionSupervisor {
   ): Promise<SlackProbeResult<T>> {
     const skipInfo = this.shouldSkipProbe();
     if (skipInfo.skip && skipInfo.cooldownUntil) {
-      this.reportCooldown(skipInfo.cooldownUntil);
-      return { status: "skipped", cooldownUntil: skipInfo.cooldownUntil };
+      this.reportCooldown(Math.min(skipInfo.cooldownUntil, Date.now() + this.maxCooldownExpiryMs)); // Cap the cooldown time
+      return { status: "skipped", cooldownUntil: Math.min(skipInfo.cooldownUntil, Date.now() + this.maxCooldownExpiryMs) };
     }
 
     await this.rateLimiter.waitForRequest(method);
@@ -60,6 +63,12 @@ export class SlackConnectionSupervisor {
 
   private shouldSkipProbe(): { skip: boolean; cooldownUntil?: number } {
     const now = Date.now();
+
+    // Check if we're still in a cooldown period
+    if (this.cooldownExpiresAt > now) {
+      return { skip: true, cooldownUntil: this.cooldownExpiresAt };
+    }
+
     if (now - this.lastActivity < this.idleThresholdMs) {
       return { skip: false };
     }
@@ -74,7 +83,7 @@ export class SlackConnectionSupervisor {
 
   private markProbeAllow(): void {
     this.lastProbeAt = Date.now();
-    this.cooldownExpiresAt = this.lastProbeAt + this.cooldownWindowMs;
+    this.cooldownExpiresAt = 0; // Reset any active cooldown since we just made a successful probe
   }
 
   private isCooldownExpired(): boolean {
@@ -82,10 +91,16 @@ export class SlackConnectionSupervisor {
   }
 
   private reportCooldown(expiresAt: number): void {
-    this.optimizer.registerCooldown("slack-probe", expiresAt);
+    // Cap the expiry time to prevent indefinitely long cooldowns
+    const cappedExpiresAt = Math.min(expiresAt, Date.now() + this.maxCooldownExpiryMs);
+    this.optimizer.registerCooldown("slack-probe", cappedExpiresAt);
     logger.warn(
-      { cooldownExpiresAt: new Date(expiresAt).toISOString() },
-      "Slack probe deferred while cooldown is active"
+      {
+        cooldownExpiresAt: new Date(cappedExpiresAt).toISOString(),
+        originalExpiresAt: new Date(expiresAt).toISOString(),
+        maxCooldownExpiryMs: this.maxCooldownExpiryMs
+      },
+      "Slack probe deferred while cooldown is active (cooldown capped to prevent excessively long waits)"
     );
   }
 }

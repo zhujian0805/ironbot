@@ -235,21 +235,21 @@ const loadBaseConfig = (): AppConfig => {
     },
     retry: {
       maxAttempts: parseInteger(process.env.IRONBOT_RETRY_MAX_ATTEMPTS, 3),
-      baseDelayMs: parseInteger(process.env.IRONBOT_RETRY_BASE_DELAY_MS, 1000),
-      maxDelayMs: parseInteger(process.env.IRONBOT_RETRY_MAX_DELAY_MS, 30000),
+      baseDelayMs: parseInteger(process.env.IRONBOT_RETRY_BASE_DELAY_MS, 2000), // Increased from 1000 to 2000ms
+      maxDelayMs: parseInteger(process.env.IRONBOT_RETRY_MAX_DELAY_MS, 60000), // Increased from 30000 to 60000ms
       backoffMultiplier: parseNumber(process.env.IRONBOT_RETRY_BACKOFF_MULTIPLIER, 2),
       jitterMax: parseNumber(process.env.IRONBOT_RETRY_JITTER_MAX, 0.1)
     },
     slackRateLimit: {
       enabled: parseBoolean(process.env.SLACK_RATE_LIMIT_ENABLED, true),
-      requestsPerSecond: parseInteger(process.env.SLACK_RATE_LIMIT_RPS, 5),
-      burstCapacity: parseInteger(process.env.SLACK_RATE_LIMIT_BURST, 10),
-      queueSize: parseInteger(process.env.SLACK_RATE_LIMIT_QUEUE_SIZE, 50)
+      requestsPerSecond: parseInteger(process.env.SLACK_RATE_LIMIT_RPS, 2), // Reduced from 5 to 2 to prevent rate limiting
+      burstCapacity: parseInteger(process.env.SLACK_RATE_LIMIT_BURST, 5),  // Reduced from 10 to 5 to prevent rate limiting
+      queueSize: parseInteger(process.env.SLACK_RATE_LIMIT_QUEUE_SIZE, 20) // Reduced from 50 to 20
     },
     slackRetry: {
-      maxAttempts: parseInteger(process.env.IRONBOT_SLACK_RETRY_MAX_ATTEMPTS, 3),
-      baseDelayMs: parseInteger(process.env.IRONBOT_SLACK_RETRY_BASE_DELAY_MS, 10000),
-      maxDelayMs: parseInteger(process.env.IRONBOT_SLACK_RETRY_MAX_DELAY_MS, 120000)
+      maxAttempts: parseInteger(process.env.IRONBOT_SLACK_RETRY_MAX_ATTEMPTS, 5), // Increased to 5 for more resilience
+      baseDelayMs: parseInteger(process.env.IRONBOT_SLACK_RETRY_BASE_DELAY_MS, 15000), // Increased to 15 seconds to avoid aggressive retries
+      maxDelayMs: parseInteger(process.env.IRONBOT_SLACK_RETRY_MAX_DELAY_MS, 300000) // Increased to 5 minutes max for stability
     },
     autoRouting: {
       enabled: parseBoolean(process.env.CLAUDE_AUTO_ROUTE_ENABLED, true),

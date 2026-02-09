@@ -107,8 +107,19 @@ export class RateLimiter {
   async waitForRequest(method: ApiMethod): Promise<void> {
     const waitTime = this.getWaitTime(method);
     if (waitTime > 0) {
-      logger.debug({ method, waitTime }, "Rate limiting: waiting before request");
-      await new Promise(resolve => setTimeout(resolve, waitTime));
+      // Add a safety cap to prevent extremely long waits that can cause connection issues
+      const cappedWaitTime = Math.min(waitTime, 10000); // Max 10 seconds wait
+
+      if (cappedWaitTime !== waitTime) {
+        logger.warn({
+          method,
+          originalWaitTime: waitTime,
+          cappedWaitTime: cappedWaitTime
+        }, "Rate limit wait time capped to prevent connection issues");
+      }
+
+      logger.debug({ method, waitTime: cappedWaitTime }, "Rate limiting: waiting before request");
+      await new Promise(resolve => setTimeout(resolve, cappedWaitTime));
     }
   }
 
