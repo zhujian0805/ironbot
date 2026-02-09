@@ -4,6 +4,7 @@ import {
   applyJobPatch,
   computeJobNextRunAtMs,
   createJob,
+  ensureUniqueJobName,
   findJobOrThrow,
   isJobDue,
   nextWakeAtMs,
@@ -78,8 +79,13 @@ export async function add(state: CronServiceState, input: CronJobCreate) {
       state.deps.log.debug("cron: initializing empty store");
       state.store = { version: 1, jobs: [] };
     }
+
+    // Ensure the job name is unique
+    const uniqueName = ensureUniqueJobName(state, input.name);
+    const inputWithUniqueName = { ...input, name: uniqueName };
+
     const now = state.deps.nowMs();
-    const job = createJob(input, now);
+    const job = createJob(inputWithUniqueName, now);
     state.store.jobs.push(job);
     await persist(state);
     state.deps.log.info(

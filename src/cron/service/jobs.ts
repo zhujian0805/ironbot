@@ -150,6 +150,27 @@ export const findJobOrThrow = (state: CronServiceState, id: string) => {
   return job;
 };
 
+export const findJobByName = (state: CronServiceState, name: string) => {
+  return state.store?.jobs.find((j) => j.name === name);
+};
+
+export const ensureUniqueJobName = (state: CronServiceState, baseName: string): string => {
+  if (!findJobByName(state, baseName)) {
+    return baseName; // Name is already unique
+  }
+
+  // If the name exists, try appending a number until we find a unique one
+  let counter = 1;
+  let candidateName = `${baseName}-${counter}`;
+
+  while (findJobByName(state, candidateName)) {
+    counter++;
+    candidateName = `${baseName}-${counter}`;
+  }
+
+  return candidateName;
+};
+
 export const isJobDue = (job: CronJob, nowMs: number, opts: { forced: boolean }) => {
   if (opts.forced) {
     return true;

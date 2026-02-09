@@ -269,8 +269,24 @@ program
 
     const storePath = resolveStorePath();
     const store = await loadStore();
+
+    // Check for duplicate names and make unique if needed
+    let uniqueName = opts.name;
+    if (store.jobs.some(job => job.name === opts.name)) {
+      let counter = 1;
+      let candidateName = `${opts.name}-${counter}`;
+
+      while (store.jobs.some(job => job.name === candidateName)) {
+        counter++;
+        candidateName = `${opts.name}-${counter}`;
+      }
+
+      uniqueName = candidateName;
+      console.log(`Job name '${opts.name}' already exists. Using unique name: '${uniqueName}'`);
+    }
+
     const jobInput: CronJobCreate = {
-      name: opts.name,
+      name: uniqueName,
       description: opts.description,
       details: opts.details,
       enabled: !opts.disabled,
