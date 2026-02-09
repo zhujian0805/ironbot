@@ -35,7 +35,7 @@ describe("MessageRouter", () => {
     const say = vi.fn().mockResolvedValue(undefined);
 
     const handlePromise = router.handleMessage({ text: "hi", channel: "C1", ts: "111" }, say);
-    await vi.advanceTimersByTimeAsync(1100);
+    vi.advanceTimersByTime(1100);
     await handlePromise;
 
     expect(postMessage).toHaveBeenCalledWith({
@@ -96,7 +96,7 @@ describe("MessageRouter", () => {
     const say = vi.fn().mockResolvedValue(undefined);
 
     const handlePromise = router.handleMessage({ text: "hi", channel: "C1", ts: "111" }, say);
-    await vi.advanceTimersByTimeAsync(1100);
+    vi.advanceTimersByTime(1100);
     await handlePromise;
 
     expect(postMessage).toHaveBeenCalledWith({
@@ -287,6 +287,115 @@ describe("MessageRouter", () => {
     expect(rootSessionKey).toBe("agent:default:slack:C1");
     // Thread replies have their own isolated session
     expect(threadSessionKey).toBe("agent:default:slack:C1:thread:111");
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("preserves conversation history across multiple sequential channel messages", async () => {
+    const { dir, config } = await createConfig();
+    const claude = createClaude("Response");
+    const router = new MessageRouter(claude as unknown as { processMessage: (text: string, opts: any) => Promise<string> }, undefined, config);
+    const say = vi.fn().mockResolvedValue(undefined);
+
+    // Three sequential messages in the same channel
+    await router.handleMessage({ text: "first message", channel: "C1", ts: "111", user: "U1" }, say);
+    await router.handleMessage({ text: "second message", channel: "C1", ts: "112", user: "U1" }, say);
+    await router.handleMessage({ text: "third message", channel: "C1", ts: "113", user: "U1" }, say);
+
+    // All should use the same session
+    const calls = (claude.processMessage as any).mock.calls;
+    expect(calls[0][1]?.sessionKey).toBe("agent:default:slack:C1");
+    expect(calls[1][1]?.sessionKey).toBe("agent:default:slack:C1");
+    expect(calls[2][1]?.sessionKey).toBe("agent:default:slack:C1");
+
+    // Check that conversation history is being passed and growing
+    const firstHistory = calls[0][1]?.conversationHistory || [];
+    const secondHistory = calls[1][1]?.conversationHistory || [];
+    const thirdHistory = calls[2][1]?.conversationHistory || [];
+
+    // First message should have no history (starting fresh)
+    expect(firstHistory).toHaveLength(0);
+    
+    // Second message should have 2 messages (user + assistant from first exchange)
+    expect(secondHistory.length).toBeGreaterThanOrEqual(2);
+    
+    // Third message should have 4 messages (2 from first exchange + 2 from second)
+    expect(thirdHistory.length).toBeGreaterThanOrEqual(4);
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("maintains separate contexts for different channels", async () => {
+    const { dir, config } = await createConfig();
+    const claude = createClaude("Response");
+    const router = new MessageRouter(claude as unknown as { processMessage: (text: string, opts: any) => Promise<string> }, undefined, config);
+    const say = vi.fn().mockResolvedValue(undefined);
+
+    // Messages in different channels
+    await router.handleMessage({ text: "message in C1", channel: "C1", ts: "111", user: "U1" }, say);
+    await router.handleMessage({ text: "message in C2", channel: "C2", ts: "222", user: "U1" }, say);
+    await router.handleMessage({ text: "another in C1", channel: "C1", ts: "112", user: "U1" }, say);
+
+    const calls = (claude.processMessage as any).mock.calls;
+    const session1 = calls[0][1]?.sessionKey;
+    const session2 = calls[1][1]?.sessionKey;
+    const session3 = calls[2][1]?.sessionKey;
+
+    // C1 messages share session
+    expect(session1).toBe("agent:default:slack:C1");
+    expect(session3).toBe("agent:default:slack:C1");
+    
+    // C2 message has different session
+    expect(session2).toBe("agent:default:slack:C2");
+    expect(session2).not.toBe(session1);
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("DM messages maintain conversation history", async () => {
+    const { dir, config } = await createConfig();
+    const claude = createClaude("Response");
+    const router = new MessageRouter(claude as unknown as { processMessage: (text: string, opts: any) => Promise<string> }, undefined, config);
+    const say = vi.fn().mockResolvedValue(undefined);
+
+    // Sequential DM messages
+    await router.handleMessage({ text: "first DM", channel: "D123", ts: "111", user: "U1" }, say);
+    await router.handleMessage({ text: "second DM", channel: "D123", ts: "112", user: "U1" }, say);
+
+    const calls = (claude.processMessage as any).mock.calls;
+    
+    // Both should use the same DM session
+    expect(calls[0][1]?.sessionKey).toBe("agent:default:dm:D123");
+    expect(calls[1][1]?.sessionKey).toBe("agent:default:dm:D123");
+
+    // Second message should have history from first message
+    const secondHistory = calls[1][1]?.conversationHistory || [];
+    expect(secondHistory.length).toBeGreaterThanOrEqual(2);
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("conversation history includes actual message content", async () => {
+    const { dir, config } = await createConfig();
+    const claude = createClaude("Response");
+    const router = new MessageRouter(claude as unknown as { processMessage: (text: string, opts: any) => Promise<string> }, undefined, config);
+    const say = vi.fn().mockResolvedValue(undefined);
+
+    await router.handleMessage({ text: "what VMs do I have?", channel: "C1", ts: "111", user: "U1" }, say);
+    await router.handleMessage({ text: "show me their status", channel: "C1", ts: "112", user: "U1" }, say);
+
+    const calls = (claude.processMessage as any).mock.calls;
+    const secondHistory = calls[1][1]?.conversationHistory || [];
+
+    // Verify history exists and has at least 2 messages (user + assistant from first exchange)
+    expect(secondHistory.length).toBeGreaterThanOrEqual(2);
+    
+    // Verify history contains messages with proper structure
+    const hasUserMessage = secondHistory.some((msg: any) => msg.role === "user");
+    const hasAssistantMessage = secondHistory.some((msg: any) => msg.role === "assistant");
+    
+    expect(hasUserMessage).toBe(true);
+    expect(hasAssistantMessage).toBe(true);
 
     await rm(dir, { recursive: true, force: true });
   });
