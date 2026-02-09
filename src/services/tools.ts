@@ -242,21 +242,33 @@ export class ToolExecutor {
   }
 
   async executeTool(toolName: string, toolInput: Record<string, unknown>): Promise<ToolResult> {
-    const retryContext = this.buildRetryContext(toolName, toolInput);
+    // Handle case where arguments are wrapped in a raw_arguments string
+    let parsedInput = toolInput;
+    if (typeof toolInput.raw_arguments === "string") {
+      try {
+        parsedInput = JSON.parse(toolInput.raw_arguments) as Record<string, unknown>;
+        logger.debug({ toolName, rawArguments: toolInput.raw_arguments }, "[TOOL-FLOW] Parsed raw_arguments string into object");
+      } catch (error) {
+        logger.error({ toolName, rawArguments: toolInput.raw_arguments, error: String(error) }, "[TOOL-FLOW] Failed to parse raw_arguments");
+        return { success: false, error: `Failed to parse tool arguments: ${String(error)}` };
+      }
+    }
+
+    const retryContext = this.buildRetryContext(toolName, parsedInput);
     const runAttempt = async (): Promise<ToolResult> => {
-      logger.info({ toolName, input: toolInput }, "[TOOL-FLOW] Executing tool");
+      logger.info({ toolName, input: parsedInput }, "[TOOL-FLOW] Executing tool");
       logger.debug({ 
         toolName, 
-        toolInput: JSON.stringify(toolInput, null, 2),
+        toolInput: JSON.stringify(parsedInput, null, 2),
         hasPermissionManager: Boolean(this.permissionManager) 
       }, "[TOOL-FLOW] Tool execution started with full input");
 
-      let effectiveInput = { ...toolInput };
+      let effectiveInput = { ...parsedInput };
       const resourcePath =
-        typeof toolInput.path === "string"
-          ? toolInput.path
-          : typeof toolInput.working_directory === "string"
-            ? toolInput.working_directory
+        typeof parsedInput.path === "string"
+          ? parsedInput.path
+          : typeof parsedInput.working_directory === "string"
+            ? parsedInput.working_directory
             : undefined;
 
       if (this.permissionManager) {
@@ -283,7 +295,7 @@ export class ToolExecutor {
 
         const { validateToolRequest } = await import("../validation/tool_request.ts");
         try {
-          validateToolRequest({ toolName, arguments: toolInput, requestedResource: resourcePath });
+          validateToolRequest({ toolName, arguments: parsedInput, requestedResource: resourcePath });
         } catch (error) {
           const reason = `Tool request validation failed: ${String(error)}`;
           logger.debug({ toolName, reason }, "Tool execution denied by validation");

@@ -5,6 +5,9 @@ import { locked } from "./locked.ts";
 import { ensureLoaded, persist } from "./store.ts";
 import { computeJobNextRunAtMs, nextWakeAtMs, isJobDue } from "./jobs.ts";
 
+const formatMsIso = (ms?: number) =>
+  typeof ms === "number" ? new Date(ms).toISOString() : undefined;
+
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
 export function armTimer(state: CronServiceState) {
@@ -105,8 +108,16 @@ export async function runDueJobs(state: CronServiceState) {
   );
 
   for (const job of due) {
+    const scheduledFor = formatMsIso(job.state.nextRunAtMs);
+    const triggeredAt = new Date(now).toISOString();
     state.deps.log.info(
-      { jobId: job.id, jobName: job.name, scheduleKind: job.schedule.kind },
+      {
+        jobId: job.id,
+        jobName: job.name,
+        scheduleKind: job.schedule.kind,
+        scheduledFor,
+        triggeredAt,
+      },
       "cron: executing due job"
     );
     await executeJob(state, job, now, { forced: false });
@@ -181,13 +192,16 @@ export async function executeJob(
   opts: { forced: boolean },
 ) {
   const startedAt = state.deps.nowMs();
+  const scheduledFor = formatMsIso(job.state.nextRunAtMs);
   state.deps.log.info(
     {
       jobId: job.id,
       jobName: job.name,
       channel: job.payload.channel,
       scheduleKind: job.schedule.kind,
-      executionType: 'type' in job.payload && job.payload.type === 'direct-execution' ? 'direct-tool-execution' : 'slack-message'
+      executionType: 'type' in job.payload && job.payload.type === 'direct-execution' ? 'direct-tool-execution' : 'slack-message',
+      scheduledFor,
+      startedAt: new Date(startedAt).toISOString(),
     },
     "cron: starting job execution"
   );
@@ -198,7 +212,7 @@ export async function executeJob(
 
   let deleted = false;
 
-const finish = async (status: "ok" | "error" | "skipped", err?: string, summary?: string) => {
+  const finish = async (status: "ok" | "error" | "skipped", err?: string, summary?: string) => {
     const endedAt = state.deps.nowMs();
     job.state.runningAtMs = undefined;
     job.state.lastRunAtMs = startedAt;

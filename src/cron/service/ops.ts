@@ -12,6 +12,9 @@ import { locked } from "./locked.ts";
 import { ensureLoaded, persist, warnIfDisabled } from "./store.ts";
 import { armTimer, executeJob, emit, runDueJobs, runPastDueJobs, stopTimer } from "./timer.ts";
 
+const formatNextRunAt = (ms?: number) =>
+  typeof ms === "number" ? new Date(ms).toISOString() : undefined;
+
 export async function start(state: CronServiceState) {
   await locked(state, async () => {
     if (!state.deps.cronEnabled) {
@@ -80,7 +83,12 @@ export async function add(state: CronServiceState, input: CronJobCreate) {
     state.store.jobs.push(job);
     await persist(state);
     state.deps.log.info(
-      { jobId: job.id, jobName: job.name },
+      {
+        jobId: job.id,
+        jobName: job.name,
+        scheduleKind: job.schedule.kind,
+        nextRunAt: formatNextRunAt(job.state.nextRunAtMs),
+      },
       "cron: job added and persisted"
     );
     armTimer(state);
@@ -102,7 +110,12 @@ export async function update(state: CronServiceState, id: string, patch: CronJob
     applyJobPatch(job, patch, now);
     await persist(state);
     state.deps.log.info(
-      { jobId: id, jobName: job.name },
+      {
+        jobId: id,
+        jobName: job.name,
+        scheduleKind: job.schedule.kind,
+        nextRunAt: formatNextRunAt(job.state.nextRunAtMs),
+      },
       "cron: job updated and persisted"
     );
     armTimer(state);
