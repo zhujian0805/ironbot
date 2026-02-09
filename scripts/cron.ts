@@ -8,6 +8,7 @@ import { readCronRunLogEntries, resolveCronRunLogPath } from "../src/cron/run-lo
 import { resolveCronStorePath, loadCronStore, saveCronStore } from "../src/cron/store.ts";
 import { parseAbsoluteTimeMs } from "../src/cron/parse.ts";
 import { createJob, computeJobNextRunAtMs } from "../src/cron/service/jobs.ts";
+import { ensureJobInStore } from "../src/cron/store_verification.ts";
 
 const DEFAULT_STORE_ENV = process.env.IRONBOT_CRON_STORE_PATH;
 
@@ -266,6 +267,7 @@ program
       console.log(`Creating Slack message job to channel '${opts.channel}'`);
     }
 
+    const storePath = resolveStorePath();
     const store = await loadStore();
     const jobInput: CronJobCreate = {
       name: opts.name,
@@ -280,7 +282,8 @@ program
     const job = createJob(jobInput, Date.now());
     store.jobs.push(job);
     await saveStore(store);
-    console.log(`Created job ${job.id} (${job.name})`);
+    const persistedJob = await ensureJobInStore(storePath, job.id);
+    console.log(`Created job ${persistedJob.id} (${persistedJob.name})`);
   });
 
 const toggleJob = async (id: string, enabled: boolean) => {
