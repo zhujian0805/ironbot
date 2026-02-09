@@ -99,6 +99,7 @@ export class MessageRouter {
 
     const text = event.text ?? "";
     const channel = event.channel ?? "";
+    const isDm = channel.startsWith("D");
     this.slackSupervisor?.recordActivity();
     
     // Check for commands in messages (e.g., "/remember" typed as a message)
@@ -131,10 +132,12 @@ export class MessageRouter {
     }
     
     // Ensure we have a ts value. If missing (can happen in DM events), generate one
-    // Ensure we have a ts value. If missing (can happen in DM events), generate one
     const messageTs = event.ts ?? `${Date.now() / 1000}`;
-    // Use user's message as thread root. For existing threads, use thread_ts; for root messages, use ts
+    // Use the message ts as the thread root when thread_ts is absent (non-DM only)
     const threadTs = event.thread_ts ?? messageTs;
+    // For channel messages, use undefined threadTs to share session across messages in the same channel
+    // This enables context awareness between sequential messages even outside of threads
+    const sessionThreadTs = event.thread_ts ?? (isDm ? undefined : undefined);
     const skillContext: SkillContext = {
       source: "slack",
       channel,
@@ -169,20 +172,22 @@ export class MessageRouter {
 
     const { sessionKey } = deriveSlackSessionKey({
       channel,
-      threadTs: event.thread_ts,
+      threadTs: sessionThreadTs,
       ts: event.ts,
       mainKey: this.config.sessions.dmSessionKey,
       forceNewSession
     });
 
     // Check if cross-session memory is enabled for this channel/thread
-    const channelKey = event.thread_ts ? `${channel}:${event.thread_ts}` : `${channel}`;
+    const channelKey = sessionThreadTs ? `${channel}:${sessionThreadTs}` : `${channel}`;
     const crossSessionMemory = this.globalCrossSessionMemory || this.crossSessionMemoryChannels.has(channelKey);
 
     let conversationHistory = [] as MessageParam[];
-    
-    // Only load conversation history for threads or when cross-session memory is enabled
-    if (event.thread_ts || crossSessionMemory) {
+    // Load history for threads, DMs, and ALL channel messages to maintain context
+    const shouldLoadHistory = Boolean(event.thread_ts || isDm || !sessionThreadTs);
+
+    // Only load conversation history for threads, direct messages, or channel messages
+    if (shouldLoadHistory) {
       try {
         const session = await resolveSessionTranscript({
           storePath: this.config.sessions.storePath,
@@ -193,7 +198,7 @@ export class MessageRouter {
           sessionFile: session.sessionFile,
           maxMessages: this.config.sessions.maxHistoryMessages
         });
-        logger.info({ channel, threadTs }, "Loaded conversation history");
+        logger.info({ channel, threadTs, sessionKey }, "Loaded conversation history");
       } catch (error) {
         logger.warn({ error }, "Failed to load session transcript history");
       }

@@ -101,7 +101,7 @@ describe("MessageRouter", () => {
 
     expect(postMessage).toHaveBeenCalledWith({
       channel: "C1",
-      text: "↪️ :x: Sorry, I encountered an error processing your message.",
+      text: "↪️ Sorry, I had trouble understanding that request. Please try again.",
       thread_ts: "111",
       reply_broadcast: false,
       mrkdwn: true
@@ -244,6 +244,49 @@ describe("MessageRouter", () => {
 
     // The transcript should not contain any messages since /clear was handled and not stored
     expect(history).toHaveLength(0);
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("channel messages share session context for sequential messages", async () => {
+    const { dir, config } = await createConfig();
+    const claude = createClaude("Response");
+    const router = new MessageRouter(claude as unknown as { processMessage: (text: string, opts: any) => Promise<string> }, undefined, config);
+    const say = vi.fn().mockResolvedValue(undefined);
+
+    // First message in channel
+    await router.handleMessage({ text: "what VMs do I have?", channel: "C1", ts: "111", user: "U1" }, say);
+    // Second message in channel (not a thread reply)
+    await router.handleMessage({ text: "show me their status", channel: "C1", ts: "112", user: "U1" }, say);
+
+    const firstSessionKey = (claude.processMessage as any).mock.calls[0][1]?.sessionKey;
+    const secondSessionKey = (claude.processMessage as any).mock.calls[1][1]?.sessionKey;
+
+    // Both messages should share the same channel-level session
+    expect(firstSessionKey).toBe("agent:default:slack:C1");
+    expect(secondSessionKey).toBe("agent:default:slack:C1");
+
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("thread replies maintain isolated context from main channel", async () => {
+    const { dir, config } = await createConfig();
+    const claude = createClaude("Response");
+    const router = new MessageRouter(claude as unknown as { processMessage: (text: string, opts: any) => Promise<string> }, undefined, config);
+    const say = vi.fn().mockResolvedValue(undefined);
+
+    // Root message in channel
+    await router.handleMessage({ text: "root", channel: "C1", ts: "111", user: "U1" }, say);
+    // Reply in thread
+    await router.handleMessage({ text: "reply", channel: "C1", ts: "112", thread_ts: "111", user: "U1" }, say);
+
+    const rootSessionKey = (claude.processMessage as any).mock.calls[0][1]?.sessionKey;
+    const threadSessionKey = (claude.processMessage as any).mock.calls[1][1]?.sessionKey;
+
+    // Root message uses channel session
+    expect(rootSessionKey).toBe("agent:default:slack:C1");
+    // Thread replies have their own isolated session
+    expect(threadSessionKey).toBe("agent:default:slack:C1:thread:111");
 
     await rm(dir, { recursive: true, force: true });
   });
