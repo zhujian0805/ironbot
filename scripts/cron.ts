@@ -334,17 +334,32 @@ program
   });
 
 program
-  .command("remove <id>")
+  .command("remove")
   .description("Remove a cron job")
-  .action(async (id) => {
+  .argument("[id]", "Job ID to remove (alternative: use --name option)")
+  .option("--name <jobName>", "Name of the job to remove")
+  .action(async (id, opts) => {
     const store = await loadStore();
     const before = store.jobs.length;
-    store.jobs = store.jobs.filter((job) => job.id !== id);
-    if (store.jobs.length === before) {
-      error(`job not found: ${id}`);
+
+    if (opts.name) {
+      // Remove by name
+      store.jobs = store.jobs.filter((job) => job.name !== opts.name);
+    } else if (id) {
+      // Remove by ID (default behavior)
+      store.jobs = store.jobs.filter((job) => job.id !== id);
+    } else {
+      error("Either provide a job ID as an argument or use the --name option");
     }
+
+    const removedCount = before - store.jobs.length;
+    if (removedCount === 0) {
+      error(opts.name ? `job with name '${opts.name}' not found` : `job with ID '${id}' not found`);
+    }
+
     await saveStore(store);
-    console.log(`Removed job ${id}`);
+    const identifier = opts.name || id;
+    console.log(`Removed job ${identifier}`);
   });
 
 program.parseAsync(process.argv).catch((err) => {
