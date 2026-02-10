@@ -65,9 +65,11 @@ npm run cron -- add --name "typescript-job" --tool run_bash --tool-param "comman
 ```
 
 **When running scripts, always specify the full path** to ensure reliable execution:
-- Use absolute paths like `C:/full/path/to/script.ps1` instead of relative paths
+- Use absolute paths like `C:/full/path/to/script.ps1` instead of relative paths like `./script.ps1` or `../script.ps1`
 - Always use forward slashes `/` instead of backslashes `\` in paths for cross-platform compatibility
 - Always include the complete file extension (`.ps1`, `.ts`, etc.)
+- Verify paths are absolute before scheduling to prevent execution failures
+- **CRITICAL**: Never use relative paths (e.g., `./script.ts`, `../scripts/job.py`) as they will fail when the cron job executes
 
 **Python scripts**: Use the `--tool` parameter with run_bash
 ```
@@ -79,3 +81,4 @@ npm run cron -- add --name "python-job" --tool run_bash --tool-param "command=py
 - If the user asks for a timezone, validate against IANA names (e.g., `America/Los_Angeles`) when adding `--tz`.
 - For duration schedules, confirm they meant repeating (`--every`) rather than one-off (`--at`).
 - For jobs involving external tools or scripts, ensure all context and parameters are fully contained within the job definition rather than relying on external state or context.
+- For scripts, **always validate that absolute paths are used** instead of relative paths to ensure successful execution.
