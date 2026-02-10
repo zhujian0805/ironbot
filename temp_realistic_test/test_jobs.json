@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "jobs": [
+    {
+      "id": "0f342e9a-2cdf-4c26-a3a4-36c099483d76",
+      "name": "system-resource-report-complete-1",
+      "description": "System resource check and email report",
+      "enabled": true,
+      "createdAtMs": 1770737049260,
+      "updatedAtMs": 1770737049260,
+      "schedule": {
+        "kind": "at",
+        "at": "2026-02-10T15:25:09.260Z"
+      },
+      "payload": {
+        "type": "direct-execution",
+        "toolName": "run_powershell",
+        "toolParams": {
+          "command": "Get-Process | Select-Object Name,CPU | ConvertTo-Html | Out-File ./temp/resource_report.html; Write-Host \"Report generated\""
+        }
+      },
+      "state": {
+        "nextRunAtMs": 1770737109260
+      }
+    }
+  ]
+}

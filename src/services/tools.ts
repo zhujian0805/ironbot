@@ -425,11 +425,24 @@ export class ToolExecutor {
       return { success: false, error: "Command blocked: This operation is not permitted by policy" };
     }
 
-    logger.info({ command }, "Running PowerShell command");
-    const result = await runProcess("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", command], workingDirectory, timeout);
+    // Check if command is a PowerShell script file (ends with .ps1)
+    const isScriptFile = command.trim().match(/\.(ps1|PS1)$/);
+
+    let args: string[];
+    if (isScriptFile) {
+      // Execute script file with -ExecutionPolicy Bypass -File
+      args = ["-ExecutionPolicy", "Bypass", "-File", command.trim()];
+    } else {
+      // Execute inline command
+      args = ["-NoProfile", "-NonInteractive", "-Command", command];
+    }
+
+    logger.info({ command, isScriptFile }, "Running PowerShell command");
+    const result = await runProcess("powershell.exe", args, workingDirectory, timeout);
     logger.debug({ 
       tool: 'run_powershell',
       command,
+      isScriptFile,
       success: result.success,
       exitCode: result.exitCode,
       stdoutLength: result.stdout?.length,

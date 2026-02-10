@@ -52,4 +52,20 @@ describe("powershell tool execution on host", () => {
 
     await rm(dir, { recursive: true, force: true });
   });
+
+  it("executes PowerShell script file with -ExecutionPolicy Bypass -File", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "ironbot-powershell-"));
+    const permissionsFile = join(dir, "permissions.yaml");
+    await writeFile(permissionsFile, buildConfig(["run_powershell"]));
+
+    initPermissionManager(permissionsFile);
+    const executor = new ToolExecutor();
+
+    const result = await executor.executeTool("run_powershell", { command: join(process.cwd(), "test_script.ps1") });
+    expect(result.success).toBe(true);
+    expect(typeof result.result).toBe("string");
+    expect(result.result).toContain("Hello from test script!");
+
+    await rm(dir, { recursive: true, force: true });
+  });
 });
