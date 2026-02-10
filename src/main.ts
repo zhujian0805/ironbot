@@ -30,6 +30,64 @@ const toSlackLogLevel = (level: string): SlackLogLevel => {
   }
 };
 
+// Add connection heartbeat to keep connection alive during long idle periods
+let connectionHeartbeat: NodeJS.Timeout | null = null;
+let lastSuccessfulCommunication = Date.now();
+
+const setupConnectionHeartbeat = (socketModeClient: SocketModeClient) => {
+  // Clear any existing heartbeat
+  if (connectionHeartbeat) {
+    clearInterval(connectionHeartbeat);
+  }
+
+  // Set up a periodic heartbeat to maintain connection during long idle periods
+  connectionHeartbeat = setInterval(() => {
+    try {
+      const currentState = socketModeClient.stateMachine?.getCurrentState?.();
+      if (currentState === "ready") {
+        // Track the time of last successful communication
+        const timeSinceLastCommunication = Date.now() - lastSuccessfulCommunication;
+
+        // If we haven't had communication in a while, try to send a light ping
+        if (timeSinceLastCommunication > 60000) { // More than 1 minute
+          logger.debug({ timeSinceLastCommunication }, "Connection inactive, checking connectivity");
+
+          // Attempt to ping the WebSocket directly if possible
+          const ws = (socketModeClient as any)?.webSocket;
+          if (ws && ws.readyState === ws.OPEN) {
+            ws.ping?.();
+            logger.debug("Sent ping to maintain connection");
+          }
+        } else {
+          logger.trace("Connection is active, no ping needed");
+        }
+      }
+    } catch (error) {
+      logger.warn({ error }, "Error during connection heartbeat");
+    }
+  }, 30000); // Check every 30 seconds
+
+  // Clean up on exit
+  process.once('SIGINT', () => {
+    if (connectionHeartbeat) {
+      clearInterval(connectionHeartbeat);
+      connectionHeartbeat = null;
+    }
+  });
+
+  process.once('SIGTERM', () => {
+    if (connectionHeartbeat) {
+      clearInterval(connectionHeartbeat);
+      connectionHeartbeat = null;
+    }
+  });
+};
+
+// Function to update the last communication time
+const updateLastCommunication = () => {
+  lastSuccessfulCommunication = Date.now();
+};
+
 const checkSlackConnection = async (app: SlackApp, supervisor: SlackConnectionSupervisor): Promise<boolean> => {
   try {
     const probeResult = await supervisor.runProbe(
@@ -67,6 +125,14 @@ const patchSocketModeDisconnectDuringConnect = (() => {
             return;
           }
         }
+
+        // Handle pong responses to pings
+        if (typeof payload.data === 'string') {
+          const parsed = JSON.parse(payload.data);
+          if (parsed?.type === "pong") {
+            this.logger.debug("Received pong response, connection is healthy");
+          }
+        }
       } catch {
         // ignore parsing errors and fall back to the original handler
       }
@@ -77,14 +143,28 @@ const patchSocketModeDisconnectDuringConnect = (() => {
     const originalHandleDisconnect = SocketModeClient.prototype.handleDisconnect;
     SocketModeClient.prototype.handleDisconnect = async function () {
       try {
-        // Log the disconnection and add a small delay to prevent rapid reconnects
+        // Log the disconnection and add a longer delay to prevent rapid reconnects
         this.logger.debug("Handling disconnection, preparing for reconnect...");
-        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay before attempting to reconnect
+        await new Promise(resolve => setTimeout(resolve, 5000)); // 5 second delay before attempting to reconnect (was 2s)
         return originalHandleDisconnect.apply(this, arguments);
       } catch (error) {
         this.logger.error({ error }, "Error in handleDisconnect patch");
         return originalHandleDisconnect.apply(this, arguments);
       }
+    };
+
+    // Patch to handle ping messages if needed
+    const originalSend = SocketModeClient.prototype.send;
+    SocketModeClient.prototype.send = function(message) {
+      try {
+        const parsed = typeof message === 'string' ? JSON.parse(message) : message;
+        if (parsed?.type === "ping") {
+          this.logger.debug("Sending ping to maintain connection");
+        }
+      } catch {
+        // ignore parsing errors
+      }
+      return originalSend.call(this, message);
     };
   };
 })();
@@ -169,10 +249,10 @@ const main = async (): Promise<void> => {
     appToken: config.slackAppToken!,
     logLevel: toSlackLogLevel(config.logLevel),
     logger: undefined, // Use default logger
-    // Increase ping timeout to avoid premature disconnections
-    pingTimeoutMilliseconds: 30000, // 30 seconds instead of default
+    // Significantly increase ping timeout to avoid premature disconnections during long idle periods
+    pingTimeoutMilliseconds: 90000, // 90 seconds instead of default (was 30s)
     // Add event handlers to better monitor connection state
-    clientPingTimeoutMilliseconds: 30000, // 30 seconds
+    clientPingTimeoutMilliseconds: 90000, // 90 seconds instead of default (was 30s)
   });
 
   const app = new App({
@@ -193,10 +273,17 @@ const main = async (): Promise<void> => {
   // Add event listeners to monitor connection state
   socketModeClient.on("web_client_connected", () => {
     logger.info("Socket Mode web client connected");
+    // Set up connection heartbeat after successful connection
+    setupConnectionHeartbeat(socketModeClient);
   });
 
   socketModeClient.on("web_client_disconnected", () => {
     logger.info("Socket Mode web client disconnected");
+    // Clear heartbeat when disconnected
+    if (connectionHeartbeat) {
+      clearInterval(connectionHeartbeat);
+      connectionHeartbeat = null;
+    }
   });
 
   socketModeClient.on("authenticated", (info) => {
@@ -227,9 +314,10 @@ const main = async (): Promise<void> => {
   });
   const slackRetryManager = new RetryManager(config.retry);
   const slackSupervisor = new SlackConnectionSupervisor(slackOptimizer, slackRateLimiter, slackRetryManager, {
-    idleThresholdMs: 60000,      // 60 seconds (increased from 30s to reduce unnecessary activity probes)
-    cooldownWindowMs: 120000,    // 120 seconds (increased from 60s to reduce API pressure)
-    maxCooldownExpiryMs: 300000  // 5 minutes max
+    idleThresholdMs: 120000,     // 120 seconds (increased from 60s to reduce unnecessary activity probes)
+    cooldownWindowMs: 180000,    // 180 seconds (increased from 120s to reduce API pressure during reconnects)
+    maxCooldownExpiryMs: 600000, // 10 minutes max (increased from 5 minutes)
+    onActivityCallback: updateLastCommunication // Pass the communication update function
   });
   const router = new MessageRouter(
     claude,
@@ -296,6 +384,12 @@ const main = async (): Promise<void> => {
   // Handle graceful shutdown
   const gracefulShutdown = async () => {
     logger.info("Received shutdown signal, cleaning up...");
+
+    // Clear connection heartbeat
+    if (connectionHeartbeat) {
+      clearInterval(connectionHeartbeat);
+      connectionHeartbeat = null;
+    }
 
     try {
       await cronService.stop();

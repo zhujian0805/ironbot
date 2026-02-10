@@ -8,6 +8,12 @@ import { computeJobNextRunAtMs, nextWakeAtMs, isJobDue } from "./jobs.ts";
 const formatMsIso = (ms?: number) =>
   typeof ms === "number" ? new Date(ms).toISOString() : undefined;
 
+// Helper function to find job with a specific nextRunAtMs value
+const findJobWithNextRunAt = (state: CronServiceState, targetTime: number) => {
+  if (!state.store) return null;
+  return state.store.jobs.find(job => job.state.nextRunAtMs === targetTime) || null;
+};
+
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
 export function armTimer(state: CronServiceState) {
@@ -29,8 +35,9 @@ export function armTimer(state: CronServiceState) {
     const delay = Math.max(nextAt - state.deps.nowMs(), 0);
     const clampedDelay = Math.min(delay, REGULAR_CHECK_INTERVAL_MS);
     const nextRunTime = new Date(nextAt).toISOString();
+    const targetJob = findJobWithNextRunAt(state, nextAt);
     state.deps.log.info(
-      { nextRunAt: nextRunTime, delayMs: delay, clampedDelayMs: clampedDelay },
+      { nextRunAt: nextRunTime, delayMs: delay, clampedDelayMs: clampedDelay, jobId: targetJob?.id, jobName: targetJob?.name },
       "cron: arming timer for next specific job (sooner than regular check)"
     );
     state.timer = setTimeout(() => {
@@ -124,7 +131,13 @@ export async function runDueJobs(state: CronServiceState) {
   }
 
   if (due.length > 0) {
-    state.deps.log.info({ executedJobs: due.length }, "cron: completed execution of due jobs");
+    // Log details about which specific jobs were executed
+    const executedJobDetails = due.map(job => ({
+      id: job.id,
+      name: job.name,
+      schedule: job.schedule.kind
+    }));
+    state.deps.log.info({ executedJobs: executedJobDetails }, "cron: completed execution of due jobs");
   } else {
     state.deps.log.debug("cron: no jobs were due for execution");
   }
@@ -321,7 +334,24 @@ export async function executeJob(
         throw new Error('Direct execution is not supported - executeTool dependency not provided');
       }
 
-      await state.deps.executeTool(job.payload.toolName, job.payload.toolParams);
+      // Execute the tool and capture the result
+      const result = await state.deps.executeTool(job.payload.toolName, job.payload.toolParams);
+      state.deps.log.info(
+        { jobId: job.id, toolName: job.payload.toolName },
+        "cron: tool execution completed successfully"
+      );
+
+      // Log more details for debugging
+      state.deps.log.debug(
+        {
+          jobId: job.id,
+          jobName: job.name,
+          toolName: job.payload.toolName,
+          command: job.payload.toolParams.command
+        },
+        "cron: direct execution job details"
+      );
+
       await finish("ok", undefined, `executed tool: ${job.payload.toolName}`);
     } else {
       // Slack message mode (existing behavior)

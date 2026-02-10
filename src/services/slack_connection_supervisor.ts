@@ -7,6 +7,7 @@ export type SlackConnectionSupervisorOptions = {
   idleThresholdMs?: number;
   cooldownWindowMs?: number;
   maxCooldownExpiryMs?: number; // Added to prevent extremely long cooldowns
+  onActivityCallback?: () => void; // Optional callback to notify of activity
 };
 
 export type SlackProbeResult<T> =
@@ -20,6 +21,7 @@ export class SlackConnectionSupervisor {
   private idleThresholdMs: number;
   private cooldownWindowMs: number;
   private maxCooldownExpiryMs: number; // Added to cap maximum cooldown time
+  private onActivityCallback?: () => void;
 
   constructor(
     private optimizer: SlackApiOptimizer,
@@ -30,6 +32,7 @@ export class SlackConnectionSupervisor {
     this.idleThresholdMs = options.idleThresholdMs ?? 30_000;
     this.cooldownWindowMs = options.cooldownWindowMs ?? 60_000;
     this.maxCooldownExpiryMs = options.maxCooldownExpiryMs ?? 300_000; // 5 minutes maximum
+    this.onActivityCallback = options.onActivityCallback;
   }
 
   recordActivity(): void {
@@ -37,6 +40,8 @@ export class SlackConnectionSupervisor {
     if (this.isCooldownExpired()) {
       this.cooldownExpiresAt = 0;
     }
+    // Call the activity callback if provided
+    this.onActivityCallback?.();
   }
 
   async runProbe<T>(
