@@ -329,16 +329,34 @@ export const buildCronAddArgs = (
   text: string | null,    // Text is optional for direct execution
   schedule: { kind: string; value: string },
   extras?: CronAddExtras,
-  directExec?: { toolName: string; command: string } // Optional direct execution parameters
+  directExec?: { toolName: string; command: string }, // Optional direct execution parameters
+  storePath?: string
 ): string[] => {
-  let args: string[];
+  const args: string[] = ["run", "cron", "--"];
+  if (storePath) {
+    args.push("--store", storePath);
+  }
 
   if (directExec) {
-    // Direct execution job
-    args = ["run", "cron", "--", "add", "--name", jobName, "--tool", directExec.toolName, "--tool-param", `command=${directExec.command}`];
+    args.push(
+      "add",
+      "--name",
+      jobName,
+      "--tool",
+      directExec.toolName,
+      "--tool-param",
+      `command=${directExec.command}`
+    );
   } else {
-    // Traditional Slack message job
-    args = ["run", "cron", "--", "add", "--name", jobName, "--channel", channel!, "--text", text!];
+    args.push(
+      "add",
+      "--name",
+      jobName,
+      "--channel",
+      channel!,
+      "--text",
+      text!
+    );
   }
 
   if (extras?.threadTs) {
@@ -366,9 +384,10 @@ const runCronAddCommand = async (
   text: string | null,    // Can be null for direct execution
   schedule: { kind: string; value: string },
   extras?: CronAddExtras,
-  directExec?: { toolName: string; command: string } // Optional direct execution parameters
+  directExec?: { toolName: string; command: string }, // Optional direct execution parameters
+  storePath?: string
 ) => {
-  const args = buildCronAddArgs(jobName, channel, text, schedule, extras, directExec);
+  const args = buildCronAddArgs(jobName, channel, text, schedule, extras, directExec, storePath);
   const child = spawn("npm", args, { cwd: repoRoot, env: process.env });
   let stdout = "";
   let stderr = "";
@@ -444,13 +463,16 @@ export const executeSkill = async (input: string, context?: SkillContext): Promi
                        (directExec ? slugifyJobName(directExec.toolName + "-" + directExec.command) :
                         slugifyJobName(parsedText!));
 
+  const storePath = resolveCronStorePath(process.env.IRONBOT_CRON_STORE_PATH);
+
   const { success, stdout, stderr } = await runCronAddCommand(
     inferredName,
     channel,
     parsedText,
     schedule,
     extras,
-    directExec && directExec.isDirect ? { toolName: directExec.toolName!, command: directExec.command! } : undefined
+    directExec && directExec.isDirect ? { toolName: directExec.toolName!, command: directExec.command! } : undefined,
+    storePath
   );
 
   if (!success) {
@@ -464,7 +486,6 @@ export const executeSkill = async (input: string, context?: SkillContext): Promi
     return "✅ The cron job seems to have been created, but I could not parse the job ID.";
   }
 
-  const storePath = resolveCronStorePath(process.env.IRONBOT_CRON_STORE_PATH);
   const store = await loadCronStore(storePath);
   const job = store.jobs.find((entry) => entry.id === jobId);
   if (!job) {

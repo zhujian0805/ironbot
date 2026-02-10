@@ -70,4 +70,20 @@ describe("cron-scheduler helper utilities", () => {
     expect(metadata.threadTs).toBe("1700000000.000300");
     expect(metadata.description).toContain("<#C12345>");
   });
+
+  it("honors an explicit cron store override when building args", () => {
+    const customStore = "/tmp/custom/jobs.json";
+    const args = buildCronAddArgs(
+      "standup",
+      "C12345678",
+      "Standup check-in",
+      { kind: "at", value: "2026-02-06T16:00:00.000Z" },
+      undefined,
+      undefined,
+      customStore
+    );
+    expect(args[3]).toBe("--store");
+    expect(args[4]).toBe(customStore);
+    expect(args[5]).toBe("add");
+  });
 });
