@@ -205,16 +205,26 @@ describe("Realistic Slack Bot Interaction Flow Test", () => {
     // Step 2: Send the message to the bot (this triggers Claude processing)
     console.log("🤖 Step 2: Bot processing message with Claude AI");
 
-    // Create a mock say function to capture responses
-    let botResponse: string | null = null;
-    const mockSay = async (message: any) => {
-      botResponse = typeof message === 'string' ? message : JSON.stringify(message);
-      console.log("💬 Bot response:", botResponse);
+    // Track the Slack client response since the message router will send it there
+    let slackResponse: any = null;
+    const originalPostMessage = mockSlackClient.chat.postMessage;
+    mockSlackClient.chat.postMessage = async (params: any) => {
+      slackResponse = params;
+      console.log("💬 Bot response via Slack client:", params.text);
 
       // Verify the response contains expected elements right away
-      if (botResponse && botResponse.includes('Scheduled') && botResponse.includes('job')) {
+      if (params.text && params.text.includes('Scheduled') && params.text.includes('job')) {
         console.log("✅ Bot response contains job scheduling confirmation");
       }
+
+      return originalPostMessage.call(mockSlackClient.chat, params);
+    };
+
+    // Create a mock say function to capture responses as backup
+    let sayResponse: string | null = null;
+    const mockSay = async (message: any) => {
+      sayResponse = typeof message === 'string' ? message : JSON.stringify(message);
+      console.log("💬 Bot response via say():", sayResponse);
     };
 
     // This is where the complete flow happens:
@@ -275,9 +285,15 @@ describe("Realistic Slack Bot Interaction Flow Test", () => {
     console.log("📋 Command length:", job.payload.toolParams?.command?.length || 0, "characters");
 
     // Step 5: Verify bot responded appropriately
+    // The response could come through either the Slack client or the say callback
+    const hasValidResponse = (slackResponse && slackResponse.text && slackResponse.text.includes('Scheduled') && slackResponse.text.includes('job')) ||
+                           (sayResponse && sayResponse.includes('Scheduled') && sayResponse.includes('job'));
+
+    console.log(`💬 Response via Slack: ${!!slackResponse}, Response via say: ${!!sayResponse}`);
+
     assert.ok(
-      botResponse && botResponse.includes('Scheduled') && botResponse.includes('job'),
-      `Bot should have responded with job scheduling confirmation, got: ${botResponse || 'null'}`
+      hasValidResponse,
+      `Bot should have responded with job scheduling confirmation via Slack (${!!slackResponse}) or say (${!!sayResponse}). Slack response: ${slackResponse?.text || 'none'}, Say response: ${sayResponse || 'none'}`
     );
 
     console.log("✅ Step 5: All verifications passed!");
