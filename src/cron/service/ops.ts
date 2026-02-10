@@ -88,6 +88,18 @@ export async function add(state: CronServiceState, input: CronJobCreate) {
     const job = createJob(inputWithUniqueName, now);
     state.store.jobs.push(job);
     await persist(state);
+
+    // Verify the job was actually saved to storage
+    await ensureLoaded(state, { forceReload: true }); // Reload to confirm persistence
+    const savedJob = state.store?.jobs.find(j => j.id === job.id);
+    if (!savedJob) {
+      state.deps.log.error(
+        { jobId: job.id, jobName: job.name },
+        "cron: job was not found after persistence - potential save issue"
+      );
+      throw new Error(`Job ${job.id} was not persisted correctly`);
+    }
+
     state.deps.log.info(
       {
         jobId: job.id,
@@ -95,7 +107,7 @@ export async function add(state: CronServiceState, input: CronJobCreate) {
         scheduleKind: job.schedule.kind,
         nextRunAt: formatNextRunAt(job.state.nextRunAtMs),
       },
-      "cron: job added and persisted"
+      "cron: job added and verified in persisted store"
     );
     armTimer(state);
     emit(state, { jobId: job.id, action: "added", nextRunAtMs: job.state.nextRunAtMs });
@@ -115,18 +127,30 @@ export async function update(state: CronServiceState, id: string, patch: CronJob
     const now = state.deps.nowMs();
     applyJobPatch(job, patch, now);
     await persist(state);
+
+    // Verify the job was actually updated in storage
+    await ensureLoaded(state, { forceReload: true }); // Reload to confirm persistence
+    const updatedJob = state.store?.jobs.find(j => j.id === id);
+    if (!updatedJob) {
+      state.deps.log.error(
+        { jobId: id, jobName: job.name },
+        "cron: job was not found after update persistence - potential save issue"
+      );
+      throw new Error(`Job ${id} was not persisted correctly after update`);
+    }
+
     state.deps.log.info(
       {
         jobId: id,
-        jobName: job.name,
-        scheduleKind: job.schedule.kind,
-        nextRunAt: formatNextRunAt(job.state.nextRunAtMs),
+        jobName: updatedJob.name,
+        scheduleKind: updatedJob.schedule.kind,
+        nextRunAt: formatNextRunAt(updatedJob.state.nextRunAtMs),
       },
-      "cron: job updated and persisted"
+      "cron: job updated and verified in persisted store"
     );
     armTimer(state);
-    emit(state, { jobId: job.id, action: "updated", nextRunAtMs: job.state.nextRunAtMs });
-    return job;
+    emit(state, { jobId: updatedJob.id, action: "updated", nextRunAtMs: updatedJob.state.nextRunAtMs });
+    return updatedJob;
   });
 }
 
@@ -146,22 +170,29 @@ export async function remove(state: CronServiceState, id: string) {
     state.store.jobs = state.store.jobs.filter((job) => job.id !== id);
     const removed = state.store.jobs.length < before;
     await persist(state);
-    if (removed) {
+
+    // Verify the job was actually removed from storage
+    await ensureLoaded(state, { forceReload: true }); // Reload to confirm removal
+    const jobStillExists = state.store?.jobs.some(j => j.id === id);
+    const actualRemoved = removed && !jobStillExists;
+
+    if (actualRemoved) {
       state.deps.log.info(
         { jobId: id },
-        "cron: job removed and persisted"
+        "cron: job removed and verified from persisted store"
       );
     } else {
       state.deps.log.warn(
         { jobId: id },
-        "cron: attempted to remove non-existent job"
+        "cron: job removal may not have persisted correctly"
       );
     }
+
     armTimer(state);
-    if (removed) {
+    if (actualRemoved) {
       emit(state, { jobId: id, action: "removed" });
     }
-    return { ok: true, removed } as const;
+    return { ok: true, removed: actualRemoved } as const;
   });
 }
 
@@ -187,12 +218,16 @@ export async function run(state: CronServiceState, id: string, forced = false) {
       "cron: executing job now"
     );
     await executeJob(state, job, now, { forced });
+
+    // After job execution, persist the changes and verify
     await persist(state);
-    armTimer(state);
+    await ensureLoaded(state, { forceReload: true }); // Reload to confirm persistence
+
     state.deps.log.info(
       { jobId: id, jobName: job.name },
-      "cron: job execution completed and persisted"
+      "cron: job execution completed and verified in persisted store"
     );
+    armTimer(state);
     return { ok: true, ran: true } as const;
   });
 }
