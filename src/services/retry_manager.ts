@@ -101,7 +101,11 @@ export class RetryManager {
    * Sleep for the specified number of milliseconds
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    const delay = Number.isFinite(ms) && ms >= 0 ? ms : this.config.baseDelayMs;
+    if (delay !== ms) {
+      console.warn(`TimeoutNaNWarning: ${ms} is not a valid number. Defaulting to ${delay}ms.`);
+    }
+    return new Promise(resolve => setTimeout(resolve, delay));
   }
 
   /**
