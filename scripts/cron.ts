@@ -235,6 +235,7 @@ program
   .option("--tz <iana>", "Timezone for cron expressions")
   .option("--disabled", "Create the job disabled", false)
   .option("--delete-after-run", "Remove one-shot job after it succeeds", false)
+  .option("--immediate", "Run the job immediately when first scheduled", false)
   .action(async (opts) => {
     const schedule = buildSchedule({ at: opts.at, every: opts.every, cron: opts.cron, tz: opts.tz });
 
@@ -246,10 +247,31 @@ program
       } else {
         console.log(`Creating direct execution job with tool '${opts.tool}' (no Slack notification)`);
       }
+
+      // Process tool parameters and convert relative paths to absolute paths for PowerShell on Windows
+      let processedToolParams = opts.toolParam || {};
+      if (opts.tool === "run_powershell" && processedToolParams.command) {
+        const path = await import("path");
+        const process = await import("process");
+
+        // If command is a relative path, convert it to absolute
+        if (typeof processedToolParams.command === "string" &&
+            (processedToolParams.command.startsWith("./") ||
+             processedToolParams.command.startsWith("../") ||
+             !processedToolParams.command.includes(":"))) {
+          // Convert relative path to absolute path
+          processedToolParams = {
+            ...processedToolParams,
+            command: path.resolve(process.cwd(), processedToolParams.command).replace(/\\/g, '/')
+          };
+          console.log(`Converted relative path to absolute: ${processedToolParams.command}`);
+        }
+      }
+
       payload = {
         type: "direct-execution" as const,
         toolName: opts.tool,
-        toolParams: opts.toolParam || {}
+        toolParams: processedToolParams
       };
     } else {
       // Slack message payload (requires channel and text)
@@ -298,8 +320,14 @@ program
     const job = createJob(jobInput, Date.now());
     store.jobs.push(job);
     await saveStore(store);
+
     const persistedJob = await ensureJobInStore(storePath, job.id);
     console.log(`Created job ${persistedJob.id} (${persistedJob.name})`);
+
+    // Optionally log a message about the --immediate flag if used
+    if (opts.immediate) {
+      console.log("Note: This job will run according to its schedule. Immediate execution is handled by the running cron service.");
+    }
   });
 
 const toggleJob = async (id: string, enabled: boolean) => {

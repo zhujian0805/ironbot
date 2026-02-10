@@ -18,16 +18,14 @@ describe("cron-scheduler parsing helpers", () => {
     vi.useRealTimers();
   });
 
-  it("parses an 'at' schedule into an ISO timestamp", () => {
+  it("returns null for natural-language schedules", () => {
     const parsed = parseSchedule("Please send a reminder at 4:29 PM today");
-    expect(parsed?.kind).toBe("at");
-    expect(parsed?.value).toBe("2026-02-06T16:29:00.000Z");
+    expect(parsed).toBeNull();
   });
 
-  it("parses an interval schedule expressed in natural language", () => {
+  it("returns null for interval schedules", () => {
     const parsed = parseSchedule("Run every 10 minutes to keep the team posted");
-    expect(parsed?.kind).toBe("every");
-    expect(parsed?.value).toBe("10m");
+    expect(parsed).toBeNull();
   });
 
   it("recognizes cron expressions", () => {
@@ -53,7 +51,7 @@ describe("cron-scheduler helper utilities", () => {
       "standup",
       "C12345678",
       "Standup check-in",
-      { kind: "at", value: "2026-02-06T16:00:00.000Z" },
+      { kind: "cron", value: "0 16 * * *" },
       extras
     );
     expect(args).toContain("--thread-ts");
@@ -77,7 +75,7 @@ describe("cron-scheduler helper utilities", () => {
       "standup",
       "C12345678",
       "Standup check-in",
-      { kind: "at", value: "2026-02-06T16:00:00.000Z" },
+      { kind: "cron", value: "0 16 * * *" },
       undefined,
       undefined,
       customStore

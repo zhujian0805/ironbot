@@ -34,7 +34,7 @@ export class CronService {
       await fs.mkdir(storeDir, { recursive: true });
 
       this.fileWatcher = chokidar.watch(storeDir, {
-        ignored: /(^|[\/\\])\../, // ignore dotfiles
+        ignored: (watchedPath) => path.basename(watchedPath).startsWith("."), // ignore dotfiles without skipping the store directory itself
         persistent: true,
         ignoreInitial: true // don't trigger on initial scan
       });

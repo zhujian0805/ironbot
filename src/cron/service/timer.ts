@@ -76,6 +76,7 @@ export async function onTimer(state: CronServiceState) {
       await ensureLoaded(state, { forceReload: true });
 
       // Check for and run any past-due jobs that may have been missed
+      state.deps.log.debug("cron: checking for past-due jobs");
       await runPastDueJobs(state);
 
       state.deps.log.debug("cron: checking for due jobs");
@@ -127,6 +128,19 @@ export async function runDueJobs(state: CronServiceState) {
       },
       "cron: executing due job"
     );
+
+    // Additional debug log before execution
+    state.deps.log.debug(
+      {
+        jobId: job.id,
+        jobName: job.name,
+        enabled: job.enabled,
+        schedule: job.schedule,
+        payloadType: 'type' in job.payload ? job.payload.type : 'slack-message'
+      },
+      "cron: job execution starting"
+    );
+
     await executeJob(state, job, now, { forced: false });
   }
 
@@ -219,6 +233,20 @@ export async function executeJob(
     "cron: starting job execution"
   );
 
+  // Additional debug log for job details
+  state.deps.log.debug(
+    {
+      jobId: job.id,
+      jobName: job.name,
+      enabled: job.enabled,
+      schedule: job.schedule,
+      payload: job.payload,
+      deleteAfterRun: job.deleteAfterRun,
+      state: job.state,
+    },
+    "cron: job execution details"
+  );
+
   job.state.runningAtMs = startedAt;
   job.state.lastError = undefined;
   emit(state, { jobId: job.id, action: "started", runAtMs: startedAt });
@@ -245,6 +273,22 @@ export async function executeJob(
         executionType: 'type' in job.payload && job.payload.type === 'direct-execution' ? 'direct-tool-execution' : 'slack-message'
       },
       "cron: job execution completed"
+    );
+
+    // Additional debug log for completion details
+    state.deps.log.debug(
+      {
+        jobId: job.id,
+        jobName: job.name,
+        status,
+        durationMs: job.state.lastDurationMs,
+        error: err,
+        summary,
+        nextRunAtMs: job.state.nextRunAtMs,
+        enabled: job.enabled,
+        deleteAfterRun: job.deleteAfterRun
+      },
+      "cron: job completion details"
     );
 
     const shouldDelete =
@@ -334,11 +378,23 @@ export async function executeJob(
         throw new Error('Direct execution is not supported - executeTool dependency not provided');
       }
 
+      // Log tool execution start
+      state.deps.log.debug(
+        { jobId: job.id, toolName: job.payload.toolName, command: job.payload.toolParams.command },
+        "cron: starting direct tool execution"
+      );
+
       // Execute the tool and capture the result
       const result = await state.deps.executeTool(job.payload.toolName, job.payload.toolParams);
       state.deps.log.info(
         { jobId: job.id, toolName: job.payload.toolName },
         "cron: tool execution completed successfully"
+      );
+
+      // Log result details
+      state.deps.log.debug(
+        { jobId: job.id, toolName: job.payload.toolName, resultLength: result ? result.length : 0 },
+        "cron: tool execution result details"
       );
 
       // Log more details for debugging
@@ -360,7 +416,18 @@ export async function executeJob(
         "cron: sending scheduled message to Slack"
       );
 
+      // Log message sending start
+      state.deps.log.debug(
+        { jobId: job.id, channel: job.payload.channel, textLength: job.payload.text.length },
+        "cron: starting Slack message send"
+      );
+
       await state.deps.sendMessage(job.payload);
+      state.deps.log.info(
+        { jobId: job.id, channel: job.payload.channel },
+        "cron: Slack message sent successfully"
+      );
+
       await finish("ok", undefined, job.payload.text);
     }
   } catch (err) {

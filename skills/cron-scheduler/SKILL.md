@@ -11,16 +11,14 @@ This skill creates **internal cron jobs only**. It never creates Windows schedul
 ## Trigger signals
 - The user explicitly says "schedule", "remind", "cron", or "wake" in a Slack thread or DM.
 - They ask the bot to send a message at a future time (once or repeating) in a specific channel/thread.
-- They describe a schedule (one-off ISO time, duration, `cron` expression, or "every X minutes/hours"), the destination channel, and the reminder text.
+- They describe a schedule and can provide (or are willing to provide) a `cron` expression for it.
 
 ## Step-by-step workflow
 1. **Gather the required fields.**
    - **Job name** (short descriptive name, e.g., `standup-reminder`). Ask if missing.
    - **Slack channel** (channel ID like `C12345678` or DM `D87654321`). Accept channel names only if you can map to the ID; otherwise prompt for the canonical ID.
    - **Message text** (the reminder to send; trim whitespace).
-   - **Schedule** — collect exactly one of:
-     - `--at`: ISO timestamp (2025-06-01T09:00:00Z) or human duration (`20m`, `2h`).
-     - `--every`: interval like `5m`, `1h`, `1d`.
+   - **Schedule** — collect:
      - `--cron`: five-field cron expression plus an optional `--tz`.
    - **Optional flags**: timezone (`--tz`), thread ts (`--thread-ts`), delete-after-run (for one-shots), disabled (if they want to save without running), and whether to keep job after run.
    - Confirm whether the job should be enabled immediately.
@@ -31,11 +29,7 @@ This skill creates **internal cron jobs only**. It never creates Windows schedul
    - Compose the command with the collected options:
      ```
      npm run cron -- add --name "<name>" --channel "<channel>" --text "<text>" \
-       --cron "<expr>" --tz "<tz>"             # for cron jobs
-     npm run cron -- add --name "<name>" --channel "<channel>" --text "<text>" \
-       --every "10m"                           # for interval jobs
-     npm run cron -- add --name "<name>" --channel "<channel>" --text "<text>" \
-       --at "2025-03-01T09:00:00Z"
+       --cron "<expr>" --tz "<tz>"
      ```
    - Quote arguments containing spaces. Include `--thread-ts` if the reminder should stay inside a thread.
    - If the user wanted the job disabled initially, add `--disabled`.
@@ -79,6 +73,6 @@ npm run cron -- add --name "python-job" --tool run_bash --tool-param "command=py
 ## Edge cases
 - If the user does not know the channel ID, ask for the workspace link (`https://app.slack.com/client/T00000000/C12345678`) and extract the `C…`.
 - If the user asks for a timezone, validate against IANA names (e.g., `America/Los_Angeles`) when adding `--tz`.
-- For duration schedules, confirm they meant repeating (`--every`) rather than one-off (`--at`).
+- If the user gives a natural-language time or interval, ask them for the equivalent five-field cron expression (and `--tz` if needed).
 - For jobs involving external tools or scripts, ensure all context and parameters are fully contained within the job definition rather than relying on external state or context.
 - For scripts, **always validate that absolute paths are used** instead of relative paths to ensure successful execution.

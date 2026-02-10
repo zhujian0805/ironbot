@@ -260,18 +260,10 @@ const parseAtSchedule = (input: string): string | null => {
 
 const parseSchedule = (
   input: string
-): { kind: "at"; value: string } | { kind: "every"; value: string } | { kind: "cron"; value: string } | null => {
-  const every = parseEverySchedule(input);
-  if (every) {
-    return { kind: "every", value: every };
-  }
+): { kind: "cron"; value: string } | null => {
   const cron = parseCronExpression(input);
   if (cron) {
     return { kind: "cron", value: cron };
-  }
-  const at = parseAtSchedule(input);
-  if (at) {
-    return { kind: "at", value: at };
   }
   return null;
 };
@@ -368,11 +360,7 @@ export const buildCronAddArgs = (
   if (extras?.details) {
     args.push("--details", extras.details);
   }
-  if (schedule.kind === "at") {
-    args.push("--at", schedule.value);
-  } else if (schedule.kind === "every") {
-    args.push("--every", schedule.value);
-  } else if (schedule.kind === "cron") {
+  if (schedule.kind === "cron") {
     args.push("--cron", schedule.value);
   }
   return args;
@@ -405,12 +393,6 @@ const runCronAddCommand = async (
 };
 
 const describeSchedule = (schedule: { kind: string; value: string }): string => {
-  if (schedule.kind === "at") {
-    return `at ${schedule.value}`;
-  }
-  if (schedule.kind === "every") {
-    return `every ${schedule.value}`;
-  }
   return `cron expression ${schedule.value}`;
 };
 
@@ -427,6 +409,8 @@ export const executeSkill = async (input: string, context?: SkillContext): Promi
     return "Please tell me what reminder you want to schedule.";
   }
 
+  console.log(`[DEBUG] cron-scheduler: processing input: "${cleanedInput}"`);
+
   // Check if user wants direct execution (like PowerShell scripts)
   const directExec = detectDirectExecution(cleanedInput);
   // Enforce absolute paths for direct-execution commands per SKILL.md
@@ -441,6 +425,8 @@ export const executeSkill = async (input: string, context?: SkillContext): Promi
       directExec.command = parts.join(" ");
     }
   }
+
+  console.log(`[DEBUG] cron-scheduler: direct execution detected: ${directExec ? 'yes' : 'no'}`);
 
   let channel: string | null = null;
   let parsedText: string | null = null;
@@ -458,10 +444,14 @@ export const executeSkill = async (input: string, context?: SkillContext): Promi
     }
   }
 
+  console.log(`[DEBUG] cron-scheduler: channel: ${channel}, text: ${parsedText}`);
+
   const schedule = parseSchedule(cleanedInput);
   if (!schedule) {
-    return "I need a schedule (e.g., 'at 4:29 PM today', 'every 10 minutes', or a cron expression).";
+    return "I need a cron schedule (five-field cron expression, plus optional --tz).";
   }
+
+  console.log(`[DEBUG] cron-scheduler: schedule parsed: ${JSON.stringify(schedule)}`);
 
   const metadata = buildSlackMetadata(context, cleanedInput);
   const extras: CronAddExtras = {
@@ -475,7 +465,11 @@ export const executeSkill = async (input: string, context?: SkillContext): Promi
                        (directExec ? slugifyJobName(directExec.toolName + "-" + directExec.command) :
                         slugifyJobName(parsedText!));
 
+  console.log(`[DEBUG] cron-scheduler: inferred job name: ${inferredName}`);
+
   const storePath = resolveCronStorePath(process.env.IRONBOT_CRON_STORE_PATH);
+
+  console.log(`[DEBUG] cron-scheduler: running cron add command`);
 
   const { success, stdout, stderr } = await runCronAddCommand(
     inferredName,
@@ -486,6 +480,8 @@ export const executeSkill = async (input: string, context?: SkillContext): Promi
     directExec && directExec.isDirect ? { toolName: directExec.toolName!, command: directExec.command! } : undefined,
     storePath
   );
+
+  console.log(`[DEBUG] cron-scheduler: command result - success: ${success}, stdout length: ${stdout.length}, stderr length: ${stderr.length}`);
 
   if (!success) {
     const message = stderr || stdout || "Cron command failed to run.";
@@ -498,11 +494,15 @@ export const executeSkill = async (input: string, context?: SkillContext): Promi
     return "✅ The cron job seems to have been created, but I could not parse the job ID.";
   }
 
+  console.log(`[DEBUG] cron-scheduler: job created with ID: ${jobId}`);
+
   const store = await loadCronStore(storePath);
   const job = store.jobs.find((entry) => entry.id === jobId);
   if (!job) {
     return `✅ Cron job ${inferredName} created (ID ${jobId}), but I could not find it in ${storePath}.`;
   }
+
+  console.log(`[DEBUG] cron-scheduler: job found in store: ${job.name}`);
 
   const threadLine = metadata.threadTs ? `- Thread: ${metadata.threadTs}` : "- Thread: main conversation";
   const scheduledByLine = `- Scheduled by: ${metadata.scheduledBy}`;

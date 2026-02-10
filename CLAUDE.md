@@ -7,6 +7,9 @@ Auto-generated from all feature plans. Last updated: 2026-01-30
 - YAML configuration file (`permissions.yaml`)
 - Filesystem + environment variables (config YAML, skills directory)
 
+## Platform Considerations
+- On Windows systems, prefer PowerShell over other scripting tools (Python, TypeScript, etc.) when executing system commands or scripts
+
 ## Project Structure
 
 ```text

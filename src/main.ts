@@ -329,6 +329,7 @@ const main = async (): Promise<void> => {
   handler.registerHandlers();
 
   const sendCronMessage = async (payload: CronMessagePayload) => {
+    logger.debug({ channel: payload.channel, textLength: payload.text.length, threadTs: payload.threadTs }, "cron: sending message to Slack");
     const formatted = formatForSlack(payload.text);
     const postPayload = {
       channel: payload.channel,
@@ -345,11 +346,13 @@ const main = async (): Promise<void> => {
     );
     if (probe.status === "executed") {
       slackSupervisor.recordActivity();
+      logger.debug({ channel: payload.channel }, "cron: message sent successfully to Slack");
       return probe.value;
     }
     const cooldownUntil = probe.cooldownUntil
       ? new Date(probe.cooldownUntil).toISOString()
       : "unknown";
+    logger.warn({ cooldownUntil }, "cron: Slack probe cooling down, message not sent");
     throw new Error(`Slack probe is cooling down until ${cooldownUntil}`);
   };
 
@@ -362,7 +365,10 @@ const main = async (): Promise<void> => {
       logger.info({ toolName, params }, "cron: executing tool directly");
 
       // Execute the tool using the ToolExecutor's executeTool method
-      return await claude.toolExecutor.executeTool(toolName, params);
+      logger.debug({ toolName }, "cron: starting tool execution");
+      const result = await claude.toolExecutor.executeTool(toolName, params);
+      logger.debug({ toolName, resultLength: result ? result.length : 0 }, "cron: tool execution completed");
+      return result;
     }
   });
 
@@ -375,7 +381,9 @@ const main = async (): Promise<void> => {
   logger.info("Launching Slack Bolt app (Socket Mode)...");
   await app.start();
   try {
+    logger.info("Starting cron service...");
     await cronService.start();
+    logger.info("Cron service started successfully");
   } catch (error) {
     logger.error({ error }, "cron: failed to start");
   }
@@ -392,8 +400,9 @@ const main = async (): Promise<void> => {
     }
 
     try {
+      logger.info("Stopping cron service...");
       await cronService.stop();
-      logger.info("Cron service stopped");
+      logger.info("Cron service stopped successfully");
     } catch (error) {
       logger.error({ error }, "Error stopping cron service");
     }
