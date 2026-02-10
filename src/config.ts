@@ -188,7 +188,7 @@ const loadBaseConfig = (): AppConfig => {
     skillsDir: baseSkillsDir,
     stateSkillsDir,
     skillDirs: dedupedSkillDirs,
-    permissionsFile: process.env.PERMISSIONS_FILE ?? "./permissions.yaml",
+    permissionsFile: process.env.PERMISSIONS_FILE ? path.resolve(process.env.PERMISSIONS_FILE) : path.resolve("./permissions.yaml"),
     debug: parseBoolean(process.env.DEBUG),
     logLevel: process.env.LOG_LEVEL ?? "INFO",
     logFile: process.env.LOG_FILE,

@@ -23,7 +23,7 @@ export const runReleaseCheck = (permissionsFile: string): boolean => {
 
 const main = () => {
   const program = new Command();
-  program.option("--permissions-file <path>", "Path to permissions.yaml", "./permissions.yaml");
+  program.option("--permissions-file <path>", "Path to permissions.yaml", path.resolve("./permissions.yaml"));
   program.parse(process.argv);
   const options = program.opts();
 
