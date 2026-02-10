@@ -429,6 +429,18 @@ export const executeSkill = async (input: string, context?: SkillContext): Promi
 
   // Check if user wants direct execution (like PowerShell scripts)
   const directExec = detectDirectExecution(cleanedInput);
+  // Enforce absolute paths for direct-execution commands per SKILL.md
+  if (directExec?.isDirect && directExec.command) {
+    const parts = directExec.command.split(/\s+/);
+    // Check if the first part (executable/script) looks like a file that needs to be resolved to absolute path
+    const firstPart = parts[0];
+    if (firstPart && !path.isAbsolute(firstPart) &&
+        (firstPart.includes('./') || firstPart.includes('../') || firstPart.includes('.\\') ||
+         ['.ts', '.js', '.ps1', '.sh', '.bat', '.exe'].some(ext => firstPart.toLowerCase().endsWith(ext)))) {
+      parts[0] = path.resolve(repoRoot, firstPart).replace(/\\/g, "/");
+      directExec.command = parts.join(" ");
+    }
+  }
 
   let channel: string | null = null;
   let parsedText: string | null = null;
