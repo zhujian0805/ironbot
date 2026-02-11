@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun src/main.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "bun build src/main.ts --outdir dist --target node --format esm --external @slack/bolt --external @slack/socket-mode --external @anthropic-ai/sdk",
     "start": "bun dist/main.js",
     "cron": "npx tsx scripts/cron.ts",
     "test": "bunx vitest run",
