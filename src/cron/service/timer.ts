@@ -81,7 +81,6 @@ export async function onTimer(state: CronServiceState) {
 
       // Recompute nextRunAtMs for future runs
       state.deps.log.debug("cron: recomputing next run timestamps");
-      recomputeNextRuns(state);
       state.deps.log.debug("cron: persisting updated store state");
       await persist(state);
       state.deps.log.debug("cron: rearming timer");
