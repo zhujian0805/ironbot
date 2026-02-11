@@ -1,6 +1,6 @@
 import type { CronServiceState } from "./state.ts";
 import { loadCronStore, saveCronStore } from "../store.ts";
-import { recomputeNextRuns } from "./jobs.ts";
+// Removed recomputeNextRuns: scheduling now based solely on schedule expressions
 
 export async function ensureLoaded(state: CronServiceState, opts?: { forceReload?: boolean }) {
   if (state.store && !opts?.forceReload) {
@@ -16,7 +16,7 @@ export async function ensureLoaded(state: CronServiceState, opts?: { forceReload
     { jobCount: loaded.jobs.length, storePath: state.deps.storePath },
     "cron: loaded store from disk"
   );
-  recomputeNextRuns(state);
+  // recomputeNextRuns(state); // no longer needed
 }
 
 export async function persist(state: CronServiceState) {
