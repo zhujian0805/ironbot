@@ -188,8 +188,8 @@ export class SkillLoader {
     };
   }
 
-  private buildTriggerConfig(skillName: string, metadata?: SkillMetadata): SkillTriggerConfig {
-    const explicitConfig = this.extractExplicitTriggerConfig(metadata);
+  private buildTriggerConfig(skillName: string, metadata?: SkillMetadata | null): SkillTriggerConfig {
+    const explicitConfig = this.extractExplicitTriggerConfig(metadata ?? undefined);
     if (explicitConfig) return explicitConfig;
 
     const derivedTriggers = [
@@ -272,7 +272,7 @@ export class SkillLoader {
       this.skills[skillName] = {
         name: skillName,
         handler: directoryHandler,
-        metadata,
+        metadata: metadata || undefined,
         triggers,
         triggerConfig,
         documentation: formattedDocumentation,
@@ -310,7 +310,7 @@ export class SkillLoader {
     this.skills[skillName] = {
       name: skillName,
       handler,
-      metadata,
+      metadata: metadata || undefined,
       triggers,
       triggerConfig,
       isDocumentationSkill: true,

@@ -37,15 +37,15 @@ export const registerSlackHandlers = (app: SlackAppLike, router: MessageRouter):
   }
 
   if (router.handleSlashCommand) {
-    (app as any).command("/clear", async ({ command, ack, respond }) => {
+    (app as any).command("/clear", async ({ command, ack, respond }: { command: any; ack: any; respond: any }) => {
       logger.debug({ command: command.command }, "Handling Slack slash command");
       await router.handleSlashCommand?.(command, ack, respond);
     });
-    (app as any).command("/remember", async ({ command, ack, respond }) => {
+    (app as any).command("/remember", async ({ command, ack, respond }: { command: any; ack: any; respond: any }) => {
       logger.debug({ command: command.command }, "Handling Slack slash command");
       await router.handleSlashCommand?.(command, ack, respond);
     });
-    (app as any).command("/forget_all", async ({ command, ack, respond }) => {
+    (app as any).command("/forget_all", async ({ command, ack, respond }: { command: any; ack: any; respond: any }) => {
       logger.debug({ command: command.command }, "Handling Slack slash command");
       await router.handleSlashCommand?.(command, ack, respond);
     });

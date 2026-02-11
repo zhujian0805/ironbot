@@ -1,9 +1,10 @@
-import type { CronJob } from "../types.ts";
+import type { CronJob, CronMessagePayload } from "../types.ts";
 import type { CronServiceState, CronEvent } from "./state.ts";
 import { appendCronRunLog, resolveCronRunLogPath, type CronRunLogEntry } from "../run-log.ts";
 import { locked } from "./locked.ts";
 import { ensureLoaded, persist } from "./store.ts";
 import { computeJobNextRunAtMs, nextWakeAtMs, isJobDue } from "./jobs.ts";
+import { computeNextRunAtMs } from "../schedule.ts";
 
 const formatMsIso = (ms?: number) =>
   typeof ms === "number" ? new Date(ms).toISOString() : undefined;
@@ -115,7 +116,7 @@ export async function runDueJobs(state: CronServiceState) {
   );
 
   for (const job of due) {
-    const scheduledFor = formatMsIso(computeJobNextRunAtMs(job.schedule, now));
+    const scheduledFor = formatMsIso(computeNextRunAtMs(job.schedule, now));
     const triggeredAt = new Date(now).toISOString();
     state.deps.log.info(
       {
@@ -183,17 +184,17 @@ export async function runPastDueJobs(state: CronServiceState) {
   const now = state.deps.nowMs();
   state.deps.log.debug("cron: checking for past-due jobs");
 
-  // Find "at" jobs that were scheduled in the past but have no nextRunAtMs
+  // Find jobs that were scheduled in the past but have no nextRunAtMs
   // (meaning their time has passed according to computeNextRunAtMs)
-  const pastDueAtJobs = state.store.jobs.filter((job) => {
-    // Look for enabled "at" jobs that would have run in the past but weren't executed
+  const pastDueJobs = state.store.jobs.filter((job) => {
+    // Look for enabled jobs that would have run in the past but weren't executed
     if (!job.enabled || job.state.runningAtMs) {
       return false;
     }
 
-    // If it's an "at" job and its scheduled time has passed but nextRunAtMs is undefined
-    if (job.schedule.kind === "at") {
-      const scheduledTime = new Date(job.schedule.at).getTime();
+    // If it's a job and its scheduled time has passed but nextRunAtMs is undefined
+    const scheduledTime = computeNextRunAtMs(job.schedule, 0); // Get the next run time from epoch
+    if (scheduledTime !== undefined) {
       const isPastDue = scheduledTime <= now;
       const hasNoFutureRun = job.state.nextRunAtMs === undefined;
 
@@ -205,7 +206,7 @@ export async function runPastDueJobs(state: CronServiceState) {
             scheduledAt: new Date(scheduledTime).toISOString(),
             now: new Date(now).toISOString()
           },
-          "cron: detected past-due 'at' job"
+          "cron: detected past-due job"
         );
         return true;
       }
@@ -214,16 +215,16 @@ export async function runPastDueJobs(state: CronServiceState) {
     return false;
   });
 
-  for (const job of pastDueAtJobs) {
+  for (const job of pastDueJobs) {
     state.deps.log.info(
       { jobId: job.id, jobName: job.name },
-      "cron: executing past-due 'at' job"
+      "cron: executing past-due job"
     );
     await executeJob(state, job, now, { forced: false });
   }
 
-  if (pastDueAtJobs.length > 0) {
-    state.deps.log.info({ executedJobs: pastDueAtJobs.length }, "cron: completed execution of past-due jobs");
+  if (pastDueJobs.length > 0) {
+    state.deps.log.info({ executedJobs: pastDueJobs.length }, "cron: completed execution of past-due jobs");
   } else {
     state.deps.log.debug("cron: no past-due jobs found");
   }
@@ -241,7 +242,7 @@ export async function executeJob(
     {
       jobId: job.id,
       jobName: job.name,
-      channel: job.payload.channel,
+      channel: 'channel' in job.payload ? job.payload.channel : undefined,
       scheduleKind: job.schedule.kind,
       executionType: 'type' in job.payload && job.payload.type === 'direct-execution' ? 'direct-tool-execution' : 'slack-message',
       scheduledFor,
@@ -309,15 +310,15 @@ export async function executeJob(
     );
 
     const shouldDelete =
-      job.schedule.kind === "at" && status === "ok" && job.deleteAfterRun === true;
+      job.deleteAfterRun === true;
 
     if (!shouldDelete) {
-      if (job.schedule.kind === "at" && status === "ok") {
+      if (status === "ok" && job.deleteAfterRun === true) {
         job.enabled = false;
         job.state.nextRunAtMs = undefined;
         state.deps.log.info(
           { jobId: job.id, jobName: job.name },
-          "cron: disabling one-time job after successful execution"
+          "cron: disabling job after successful execution"
         );
       } else if (job.enabled) {
         job.state.nextRunAtMs = computeJobNextRunAtMs(job, endedAt);
@@ -410,7 +411,7 @@ export async function executeJob(
 
       // Log result details
       state.deps.log.debug(
-        { jobId: job.id, toolName: job.payload.toolName, resultLength: result ? result.length : 0 },
+        { jobId: job.id, toolName: job.payload.toolName, resultLength: typeof result === 'string' ? result.length : 0 },
         "cron: tool execution result details"
       );
 
@@ -429,23 +430,23 @@ export async function executeJob(
     } else {
       // Slack message mode (existing behavior)
       state.deps.log.info(
-        { jobId: job.id, channel: job.payload.channel, message: job.payload.text },
+        { jobId: job.id, channel: 'channel' in job.payload ? job.payload.channel : undefined, message: 'text' in job.payload ? job.payload.text : undefined },
         "cron: sending scheduled message to Slack"
       );
 
       // Log message sending start
       state.deps.log.debug(
-        { jobId: job.id, channel: job.payload.channel, textLength: job.payload.text.length },
+        { jobId: job.id, channel: 'channel' in job.payload ? job.payload.channel : undefined, textLength: 'text' in job.payload ? job.payload.text.length : 0 },
         "cron: starting Slack message send"
       );
 
-      await state.deps.sendMessage(job.payload);
+      await state.deps.sendMessage(job.payload as CronMessagePayload);
       state.deps.log.info(
-        { jobId: job.id, channel: job.payload.channel },
+        { jobId: job.id, channel: 'channel' in job.payload ? job.payload.channel : undefined },
         "cron: Slack message sent successfully"
       );
 
-      await finish("ok", undefined, job.payload.text);
+      await finish("ok", undefined, 'text' in job.payload ? job.payload.text : undefined);
     }
   } catch (err) {
     state.deps.log.error(
@@ -488,7 +489,7 @@ async function reportJobRunStatus(
   status: "ok" | "error" | "skipped",
   detail?: string,
 ) {
-  const channel = job.payload.channel;
+  const channel = 'channel' in job.payload ? job.payload.channel : undefined;
   if (!channel) {
     return;
   }
@@ -507,8 +508,8 @@ async function reportJobRunStatus(
   const payload = {
     channel,
     text: message,
-    threadTs: job.payload.threadTs,
-    replyBroadcast: job.payload.replyBroadcast ?? false,
+    threadTs: 'threadTs' in job.payload ? job.payload.threadTs : undefined,
+    replyBroadcast: 'replyBroadcast' in job.payload ? job.payload.replyBroadcast ?? false : false,
   };
   try {
     state.deps.log.debug(

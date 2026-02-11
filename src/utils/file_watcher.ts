@@ -24,8 +24,8 @@ export const watchFile = (
   const watcher = chokidar.watch(filePath, {
     ignoreInitial: true,
     awaitWriteFinish: options.awaitWriteFinish === false ? false : {
-      stabilityThreshold: options.awaitWriteFinish?.stabilityThreshold ?? 200,
-      pollInterval: options.awaitWriteFinish?.pollInterval ?? 50
+      stabilityThreshold: typeof options.awaitWriteFinish === 'object' && options.awaitWriteFinish?.stabilityThreshold ? options.awaitWriteFinish.stabilityThreshold : 200,
+      pollInterval: typeof options.awaitWriteFinish === 'object' && options.awaitWriteFinish?.pollInterval ? options.awaitWriteFinish.pollInterval : 50
     }
   });
 

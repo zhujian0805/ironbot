@@ -1,4 +1,4 @@
-import { describe, it, beforeEach, afterEach } from "node:test";
+import { describe, it, beforeEach, afterEach } from "vitest";
 import assert from "node:assert";
 import { CronService } from "../../src/cron/service.ts";
 import { resolveCronStorePath } from "../../src/cron/store.ts";

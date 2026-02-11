@@ -74,8 +74,8 @@ A sophisticated TypeScript-based AI agent that integrates with Slack to provide 
    ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
 
    # Optional: Memory Configuration
-   IRONBOT_MEMORY_CROSS_SESSION=false
-   IRONBOT_MEMORY_SESSION_INDEXING=true
+   IRONBOT_MEMORY_CROSS_SESSION=true
+   IRONBOT_MEMORY_SESSION_INDEXING=false
 
    # Optional: Custom Paths
    SKILLS_DIR=./skills
@@ -178,8 +178,13 @@ IronBot includes a sophisticated memory system for maintaining context across co
 - `IRONBOT_MEMORY_WORKSPACE_DIR` - Directory for memory files (default: ~/.ironbot/workspace)
 
 #### Memory Configuration
-- `IRONBOT_MEMORY_CROSS_SESSION` - Enable cross-session memory by default (default: false)
+- `IRONBOT_MEMORY_SEARCH_ENABLED` - Enable memory search (default: true)
+- `IRONBOT_MEMORY_CROSS_SESSION` - Enable cross-session memory by default (default: true)
 - `IRONBOT_MEMORY_SESSION_INDEXING` - Index conversations for memory search (default: false)
+- `IRONBOT_MEMORY_SOURCES` - Comma-separated list of memory sources ("memory", "sessions") (default: memory)
+- `IRONBOT_MEMORY_CANDIDATE_MULTIPLIER` - Multiplier for memory search candidate generation (default: 4)
+- `IRONBOT_MEMORY_MAX_RESULTS` - Maximum number of memory search results (default: 6)
+- `IRONBOT_MEMORY_MIN_SCORE` - Minimum similarity score threshold for memory results (default: 0.35)
 - `IRONBOT_MEMORY_INDEX_PATH` - Custom path for memory database
 - `IRONBOT_MEMORY_VECTOR_WEIGHT` - Weight for vector search (default: 0.7)
 - `IRONBOT_MEMORY_TEXT_WEIGHT` - Weight for text search (default: 0.3)
@@ -202,10 +207,33 @@ IronBot includes a sophisticated memory system for maintaining context across co
 - `CLAUDE_AUTO_ROUTE_OPTOUT` - Comma-separated list of skill names to block from auto-routing even if they match (default: empty)
 
 #### Retry & Timeout
+
 - `IRONBOT_RETRY_MAX_ATTEMPTS` - Maximum retry attempts (default: 3)
-- `IRONBOT_SLACK_RETRY_MAX_ATTEMPTS` - Slack-specific retry attempts (default: 3)
-- `IRONBOT_SLACK_RETRY_BASE_DELAY_MS` - Base delay for Slack retries (default: 1000)
-- `IRONBOT_SLACK_RETRY_MAX_DELAY_MS` - Max delay for Slack retries (default: 30000)
+- `IRONBOT_RETRY_BASE_DELAY_MS` - Base delay for tool retry backoff (default: 2000)
+- `IRONBOT_RETRY_MAX_DELAY_MS` - Maximum delay for tool retry backoff (default: 60000)
+- `IRONBOT_SLACK_RETRY_MAX_ATTEMPTS` - Slack-specific retry attempts (default: 5)
+- `IRONBOT_SLACK_RETRY_BASE_DELAY_MS` - Base delay for Slack retries (default: 15000)
+- `IRONBOT_SLACK_RETRY_MAX_DELAY_MS` - Max delay for Slack retries (default: 300000)
+
+#### Slack Rate Limiting
+
+- `SLACK_RATE_LIMIT_ENABLED` - Enable client-side rate limiting for Slack API (default: true)
+- `SLACK_RATE_LIMIT_RPS` - Allowed requests per second (default: 2)
+- `SLACK_RATE_LIMIT_BURST` - Burst capacity for rate limiter (default: 5)
+- `SLACK_RATE_LIMIT_QUEUE_SIZE` - Maximum queued Slack requests (default: 20)
+
+#### Cron Configuration
+
+- `IRONBOT_SKIP_CRON` - Skip loading and executing cron jobs on startup (default: false)
+- `IRONBOT_CRON_STORE_PATH` - Custom path for cron job store JSON
+
+#### Tool Iterations
+
+- `CLAUDE_MAX_TOOL_ITERATIONS` - Maximum number of Claude tool/AI loop iterations (default: 10)
+
+#### Anthropic Timeout
+
+- `ANTHROPIC_TIMEOUT_MS` - Timeout for Anthropic Claude API requests in milliseconds (default: 60000)
 
 ### CLI Options
 
@@ -225,10 +253,13 @@ Options:
 
 - **Session cache integrity**: Tests now cover `loadSessionStore`, cache invalidation, entry creation, and route updates to ensure session metadata stays consistent when files are missing or change while cached.
 - **Cron store verification**: Added unit coverage for the helper that reloads `jobs.json` after `cron` jobs are added so the CLI reports only verified entries when it confirms schedules.
+- **Memory search tuning**: Added tests for memory-search parameters (vector/text weighting, candidate multiplier, result filtering) to validate retrieval behavior.
 - **Key validation suites**:
   ```bash
   npx vitest run tests/unit/sessions/store.test.ts
   npx vitest run tests/unit/cron/store_verification.test.ts
+  npx vitest run tests/unit/memory/search.test.ts
+  npx vitest run tests/unit/memory/embeddings.test.ts
   ```
 
 ## Permission System

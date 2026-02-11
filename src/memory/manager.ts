@@ -11,6 +11,7 @@ import { resolveEmbeddingClient, type EmbeddingClient } from "./embeddings.ts";
 import { ensureMemorySchema } from "./memory_schema.ts";
 import { hybridSearch, type MemoryChunk, type HybridSearchConfig, tokenize } from "./search.ts";
 import type { TranscriptMessage } from "../sessions/types.ts";
+import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 
 export type MemorySource = "memory" | "sessions";
 
@@ -59,16 +60,12 @@ const readFileIfExists = async (filePath: string): Promise<string | null> => {
   }
 };
 
-const extractTranscriptText = (content: TranscriptMessage["content"]): string | null => {
+const extractTranscriptText = (content: MessageParam["content"]): string | null => {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
     return content
-      .map((part) => {
-        if (part.type === "text") return part.text;
-        if (part.type === "tool_use") return `[Tool: ${(part as any).name}]`;
-        if (part.type === "tool_result") return `[Tool Result: ${(part as any).tool_call_id}]`;
-        return "";
-      })
+      .filter((part): part is { type: "text"; text: string } => part.type === "text")
+      .map((part) => part.text)
       .join(" ");
   }
   return null;

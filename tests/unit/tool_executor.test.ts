@@ -7,10 +7,12 @@ import { initPermissionManager } from "../../src/services/permission_manager.ts"
 import { RetryManager } from "../../src/services/retry_manager.ts";
 import { ToolExecutor } from "../../src/services/tools.ts";
 
-const spawnMock = vi.fn();
 vi.mock("node:child_process", () => ({
-  spawn: spawnMock
+  spawn: vi.fn()
 }));
+
+// Import the mocked spawn after the mock is set up
+import { spawn as spawnMock } from "node:child_process";
 
 type PermissionOptions = {
   toolRules?: Array<{ priority: number; name: string; desc: string }>;

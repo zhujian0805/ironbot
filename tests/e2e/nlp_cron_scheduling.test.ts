@@ -1,4 +1,4 @@
-import { describe, it, beforeEach, afterEach } from "node:test";
+import { describe, it, beforeEach, afterEach } from "vitest";
 import assert from "node:assert";
 import { ClaudeProcessor } from "../../src/services/claude_processor.ts";
 import { resolveConfig } from "../../src/config.ts";

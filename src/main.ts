@@ -43,7 +43,7 @@ const setupConnectionHeartbeat = (socketModeClient: SocketModeClient) => {
   // Set up a periodic heartbeat to maintain connection during long idle periods
   connectionHeartbeat = setInterval(() => {
     try {
-      const currentState = socketModeClient.stateMachine?.getCurrentState?.();
+      const currentState = (socketModeClient as any).stateMachine?.getCurrentState?.();
       if (currentState === "ready") {
         // Track the time of last successful communication
         const timeSinceLastCommunication = Date.now() - lastSuccessfulCommunication;
@@ -107,69 +107,6 @@ const checkSlackConnection = async (app: SlackApp, supervisor: SlackConnectionSu
   }
 };
 
-const patchSocketModeDisconnectDuringConnect = (() => {
-  let applied = false;
-  return () => {
-    if (applied) {
-      return;
-    }
-    applied = true;
-    const original = SocketModeClient.prototype.onWebSocketMessage;
-    SocketModeClient.prototype.onWebSocketMessage = async function (payload) {
-      try {
-        const currentState = this.stateMachine?.getCurrentState?.();
-        if (currentState === "connecting") {
-          const parsed = JSON.parse(String(payload.data));
-          if (parsed?.type === "disconnect") {
-            this.logger.debug("Ignoring server explicit disconnect while still connecting");
-            return;
-          }
-        }
-
-        // Handle pong responses to pings
-        if (typeof payload.data === 'string') {
-          const parsed = JSON.parse(payload.data);
-          if (parsed?.type === "pong") {
-            this.logger.debug("Received pong response, connection is healthy");
-          }
-        }
-      } catch {
-        // ignore parsing errors and fall back to the original handler
-      }
-      return original.call(this, payload);
-    };
-
-    // Additionally patch the disconnect handling to add delays
-    const originalHandleDisconnect = SocketModeClient.prototype.handleDisconnect;
-    SocketModeClient.prototype.handleDisconnect = async function () {
-      try {
-        // Log the disconnection and add a longer delay to prevent rapid reconnects
-        this.logger.debug("Handling disconnection, preparing for reconnect...");
-        await new Promise(resolve => setTimeout(resolve, 5000)); // 5 second delay before attempting to reconnect (was 2s)
-        return originalHandleDisconnect.apply(this, arguments);
-      } catch (error) {
-        this.logger.error({ error }, "Error in handleDisconnect patch");
-        return originalHandleDisconnect.apply(this, arguments);
-      }
-    };
-
-    // Patch to handle ping messages if needed
-    const originalSend = SocketModeClient.prototype.send;
-    SocketModeClient.prototype.send = function(message) {
-      try {
-        const parsed = typeof message === 'string' ? JSON.parse(message) : message;
-        if (parsed?.type === "ping") {
-          this.logger.debug("Sending ping to maintain connection");
-        }
-      } catch {
-        // ignore parsing errors
-      }
-      return originalSend.call(this, message);
-    };
-  };
-})();
-
-patchSocketModeDisconnectDuringConnect();
 
 
 const checkLlmConnection = async (claude: ClaudeProcessor): Promise<boolean> => {
@@ -244,30 +181,18 @@ const main = async (): Promise<void> => {
   }
   logger.debug({ permissionsFile: config.permissionsFile, permissionsWatcher: true }, "Permission manager ready");
 
-  // Create a custom SocketModeClient with additional patches
+  // Create a custom SocketModeClient
   const socketModeClient = new SocketModeClient({
     appToken: config.slackAppToken!,
     logLevel: toSlackLogLevel(config.logLevel),
     logger: undefined, // Use default logger
-    // Significantly increase ping timeout to avoid premature disconnections during long idle periods
-    pingTimeoutMilliseconds: 90000, // 90 seconds instead of default (was 30s)
-    // Add event handlers to better monitor connection state
-    clientPingTimeoutMilliseconds: 90000, // 90 seconds instead of default (was 30s)
   });
 
   const app = new App({
     token: config.slackBotToken,
     appToken: config.slackAppToken,  // Still pass appToken as it's required for Socket Mode
     socketMode: true,
-    // Use our custom socket mode client
-    socketModeClient: socketModeClient,
-    logLevel: toSlackLogLevel(config.logLevel),
-    retryConfig: {
-      retries: config.slackRetry.maxAttempts,
-      factor: 2, // backoff multiplier
-      minTimeout: config.slackRetry.baseDelayMs,
-      maxTimeout: config.slackRetry.maxDelayMs
-    }
+    logLevel: toSlackLogLevel(config.logLevel)
   });
 
   // Add event listeners to monitor connection state
@@ -328,7 +253,7 @@ const main = async (): Promise<void> => {
   const handler = new SlackMessageHandler(app, router);
   handler.registerHandlers();
 
-  const sendCronMessage = async (payload: CronMessagePayload) => {
+  const sendCronMessage = async (payload: CronMessagePayload): Promise<void> => {
     logger.debug({ channel: payload.channel, textLength: payload.text.length, threadTs: payload.threadTs }, "cron: sending message to Slack");
     const formatted = formatForSlack(payload.text);
     const postPayload = {
@@ -347,10 +272,10 @@ const main = async (): Promise<void> => {
     if (probe.status === "executed") {
       slackSupervisor.recordActivity();
       logger.debug({ channel: payload.channel }, "cron: message sent successfully to Slack");
-      return probe.value;
+      // Don't return anything, just void
     }
-    const cooldownUntil = probe.cooldownUntil
-      ? new Date(probe.cooldownUntil).toISOString()
+    const cooldownUntil = (probe as any).cooldownUntil
+      ? new Date((probe as any).cooldownUntil).toISOString()
       : "unknown";
     logger.warn({ cooldownUntil }, "cron: Slack probe cooling down, message not sent");
     throw new Error(`Slack probe is cooling down until ${cooldownUntil}`);
@@ -364,10 +289,10 @@ const main = async (): Promise<void> => {
     executeTool: async (toolName: string, params: Record<string, unknown>) => {
       logger.info({ toolName, params }, "cron: executing tool directly");
 
-      // Execute the tool using the ToolExecutor's executeTool method
+      // Execute the tool using the ClaudeProcessor's executeTool method
       logger.debug({ toolName }, "cron: starting tool execution");
-      const result = await claude.toolExecutor.executeTool(toolName, params);
-      logger.debug({ toolName, resultLength: result ? result.length : 0 }, "cron: tool execution completed");
+      const result = await claude.executeTool(toolName, params);
+      logger.debug({ toolName, resultLength: result ? String(result).length : 0 }, "cron: tool execution completed");
       return result;
     }
   });

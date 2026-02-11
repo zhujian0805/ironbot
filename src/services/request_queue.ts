@@ -1,5 +1,5 @@
 import { logger } from "../utils/logging.ts";
-import type { ApiMethod } from "./rate_limiter.jss";
+import type { ApiMethod } from "./rate_limiter.ts";
 
 export type QueuePriority = "high" | "medium" | "low";
 

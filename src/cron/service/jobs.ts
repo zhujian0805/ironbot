@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import type { CronJob, CronJobCreate, CronJobPatch } from "../types.ts";
+import type { CronJob, CronJobCreate, CronJobPatch, CronJobPayload } from "../types.ts";
 import type { CronServiceState } from "./state.ts";
 import { computeNextRunAtMs } from "../schedule.ts";
 
@@ -19,7 +19,7 @@ const normalizeOptionalDescription = (value: string | undefined): string | undef
   return trimmed || undefined;
 };
 
-const normalizePayload = (payload: CronJobPayload) => {
+const normalizePayload = (payload: any) => {
   if ('type' in payload && payload.type === 'direct-execution') {
     // Validate direct execution payload
     if (!payload.toolName) {
@@ -57,7 +57,7 @@ export const computeJobNextRunAtMs = (job: CronJob, nowMs: number): number | und
   job.enabled ? computeNextRunAtMs(job.schedule, nowMs) : undefined;
 
 const summarizeDetails = (input: CronJobCreate): string | undefined =>
-  input.details?.trim() || input.payload.text?.trim();
+  input.details?.trim() || ('text' in input.payload ? input.payload.text?.trim() : undefined);
 
 export const createJob = (input: CronJobCreate, nowMs: number): CronJob => {
   const job: CronJob = {

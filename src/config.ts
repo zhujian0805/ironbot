@@ -123,6 +123,8 @@ export type RetryConfig = {
   maxAttempts: number;
   baseDelayMs: number;
   maxDelayMs: number;
+  backoffMultiplier: number;
+  jitterMax: number; // Maximum jitter as fraction of delay (0.1 = 10%)
 };
 
 export type AppConfig = {
@@ -236,7 +238,9 @@ const loadBaseConfig = (): AppConfig => {
     retry: {
       maxAttempts: parseInteger(process.env.IRONBOT_RETRY_MAX_ATTEMPTS, 3),
       baseDelayMs: parseInteger(process.env.IRONBOT_RETRY_BASE_DELAY_MS, 2000), // Increased from 1000 to 2000ms
-      maxDelayMs: parseInteger(process.env.IRONBOT_RETRY_MAX_DELAY_MS, 60000)  // Increased from 30000 to 60000ms
+      maxDelayMs: parseInteger(process.env.IRONBOT_RETRY_MAX_DELAY_MS, 60000),  // Increased from 30000 to 60000ms
+      backoffMultiplier: parseNumber(process.env.IRONBOT_RETRY_BACKOFF_MULTIPLIER, 2.0),
+      jitterMax: parseNumber(process.env.IRONBOT_RETRY_JITTER_MAX, 0.1)
     },
     slackRateLimit: {
       enabled: parseBoolean(process.env.SLACK_RATE_LIMIT_ENABLED, true),

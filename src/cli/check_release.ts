@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import fs from "node:fs";
+import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import { validatePermissionPolicy } from "../validation/permission_policy.ts";
 import { logger } from "../utils/logging.ts";

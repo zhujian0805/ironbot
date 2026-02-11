@@ -653,6 +653,10 @@ export class ClaudeProcessor {
     }
   }
 
+  async executeTool(toolName: string, params: Record<string, unknown>): Promise<unknown> {
+    return await this.toolExecutor.executeTool(toolName, params);
+  }
+
   private extractText(content: Array<{ type: string; text?: string }>): string {
     if (!content) return "";
     const parts = content
@@ -708,7 +712,7 @@ export class ClaudeProcessor {
         max_tokens: 512,
         system: systemPrompt,
         tools: getAllowedTools() as Tool[],
-        messages: retryMessages
+        messages: retryMessages as MessageParam[]
       });
       const text = this.extractText(response.content);
       if (text) {
@@ -745,8 +749,8 @@ export class ClaudeProcessor {
     return response;
   }
 
-  private extractOperationOutput(result: ToolResult): string | null {
-    if (!result) return null;
+  private extractOperationOutput(result: ToolResult): string | undefined {
+    if (!result) return undefined;
     if (result.stdout && result.stdout.trim()) {
       return result.stdout.trim();
     }
@@ -757,10 +761,10 @@ export class ClaudeProcessor {
       return result.stderr.trim();
     }
     const serialized = JSON.stringify(result.result ?? result, null, 2);
-    return serialized.length ? serialized : null;
+    return serialized.length ? serialized : undefined;
   }
 
-  private truncateForDisplay(text: string | null, maxLength = 800): string | null {
+  private truncateForDisplay(text: string | null | undefined, maxLength = 800): string | null {
     if (!text) return null;
     if (text.length <= maxLength) return text;
     return `${text.slice(0, maxLength)}\n... (truncated ${text.length - maxLength} chars)`;

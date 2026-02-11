@@ -195,6 +195,8 @@ export class SlackApiOptimizer {
   getStats(): {
     activeDebouncedOperations: number;
     activeTypingIndicators: number;
+    activeCooldowns: number;
+    cooldownEntries: Array<{ key: string; expiresAt: number }>;
   } {
     this.cleanupCooldowns();
     return {
