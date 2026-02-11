@@ -13,6 +13,5 @@ export function computeNextRunAtMs(schedule: CronSchedule, nowMs: number): numbe
   });
   const next = cron.nextRun(new Date(nowMs));
   const result = next ? next.getTime() : undefined;
-  console.log(`Computed next run for cron schedule '${expr}'${schedule.tz ? ` @ ${schedule.tz}` : ''}: ${result ? new Date(result).toISOString() : 'none'}`);
   return result;
 }

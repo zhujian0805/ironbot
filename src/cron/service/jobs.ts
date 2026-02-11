@@ -156,6 +156,7 @@ export const ensureUniqueJobName = (state: CronServiceState, baseName: string): 
 
 export const isJobDue = (job: CronJob, nowMs: number, opts: { forced: boolean }) => {
   if (opts.forced) return true;
-  const next = computeJobNextRunAtMs(job, nowMs);
+  // Use the stored nextRunAtMs instead of recomputing to avoid timing issues
+  const next = job.state.nextRunAtMs;
   return job.enabled && typeof next === "number" && nowMs >= next;
 };

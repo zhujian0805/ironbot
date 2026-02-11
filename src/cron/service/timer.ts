@@ -104,7 +104,8 @@ export async function runDueJobs(state: CronServiceState) {
     if (!job.enabled || job.state.runningAtMs) {
       return false;
     }
-    const next = computeJobNextRunAtMs(job.schedule, now);
+    // Use the stored nextRunAtMs instead of recomputing to avoid timing issues
+    const next = job.state.nextRunAtMs;
     return typeof next === "number" && now >= next;
   });
 

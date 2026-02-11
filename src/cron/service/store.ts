@@ -1,6 +1,6 @@
 import type { CronServiceState } from "./state.ts";
 import { loadCronStore, saveCronStore } from "../store.ts";
-// Removed recomputeNextRuns: scheduling now based solely on schedule expressions
+import { computeJobNextRunAtMs } from "./jobs.ts";
 
 export async function ensureLoaded(state: CronServiceState, opts?: { forceReload?: boolean }) {
   if (state.store && !opts?.forceReload) {
@@ -12,6 +12,27 @@ export async function ensureLoaded(state: CronServiceState, opts?: { forceReload
   );
   const loaded = await loadCronStore(state.deps.storePath);
   state.store = loaded;
+
+  // Recompute nextRunAtMs for jobs that don't have it set
+  const now = state.deps.nowMs();
+  let needsPersist = false;
+  for (const job of loaded.jobs) {
+    if (job.enabled && job.state.nextRunAtMs === undefined) {
+      job.state.nextRunAtMs = computeJobNextRunAtMs(job, now);
+      needsPersist = true;
+      state.deps.log.info(
+        { jobId: job.id, jobName: job.name, nextRunAtMs: job.state.nextRunAtMs },
+        "cron: recomputed nextRunAtMs for job loaded from disk"
+      );
+    }
+  }
+
+  // Persist if we recomputed any nextRunAtMs values, but not if this is a force reload
+  // (force reloads are typically from file watcher, so we don't want to persist back)
+  if (needsPersist && !opts?.forceReload) {
+    await persist(state);
+  }
+
   state.deps.log.info(
     { jobCount: loaded.jobs.length, storePath: state.deps.storePath },
     "cron: loaded store from disk"

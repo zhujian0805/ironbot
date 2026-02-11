@@ -8,7 +8,6 @@ import {
   findJobOrThrow,
   isJobDue,
   nextWakeAtMs,
-  recomputeNextRuns,
 } from "./jobs.ts";
 import { locked } from "./locked.ts";
 import { ensureLoaded, persist, warnIfDisabled } from "./store.ts";
@@ -31,10 +30,6 @@ export async function start(state: CronServiceState) {
     await runPastDueJobs(state);
     await persist(state); // Persist any changes made during past-due job processing
 
-    // Recompute schedules so nextRunAtMs is correct for cron jobs at startup
-    state.deps.log.debug("cron: recomputing next run timestamps at startup");
-    recomputeNextRuns(state);
-    await persist(state);
 
     armTimer(state);
     state.deps.log.info(
