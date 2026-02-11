@@ -188,22 +188,6 @@ const detectDirectExecution = (input: string): { isDirect: boolean; toolName?: s
   return null;
 };
 
-const parseEverySchedule = (input: string): string | null => {
-  const match = input.match(/every\s+(\d+(?:\.\d+)?)\s*(seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d)\b/i);
-  if (!match) return null;
-  const amount = match[1];
-  const unit = match[2].toLowerCase();
-  const mappedUnit = unit.startsWith("s")
-    ? "s"
-    : unit.startsWith("m")
-      ? "m"
-      : unit.startsWith("h")
-        ? "h"
-        : unit.startsWith("d")
-          ? "d"
-          : "m";
-  return `${amount}${mappedUnit}`;
-};
 
 const parseCronExpression = (input: string): string | null => {
   const cronTrigger = input.match(/cron(?: expression)?/i);
@@ -230,33 +214,6 @@ const parseCronExpression = (input: string): string | null => {
   return tokens.slice(0, 5).join(" ");
 };
 
-const parseAtSchedule = (input: string): string | null => {
-  const timeMatch = input.match(/at\s+(\d{1,2}(?::\d{2})?\s*(?:[ap]\.?m\.?)?)/i);
-  if (!timeMatch) return null;
-  const timePart = timeMatch[1];
-  const cleanTime = timePart.replace(/\./g, "").toLowerCase();
-  const dateTokens = input.match(/\b(today|tomorrow|tonight|this afternoon|this evening|this morning)\b/i);
-  const now = new Date();
-  const target = new Date(now);
-  const lowerDateToken = dateTokens ? dateTokens[1].toLowerCase() : "";
-  if (lowerDateToken.includes("tomorrow")) {
-    target.setDate(target.getDate() + 1);
-  }
-  const parsedTime = cleanTime.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
-  if (!parsedTime) return null;
-  let hours = Number(parsedTime[1]);
-  const minutes = parsedTime[2] ? Number(parsedTime[2]) : 0;
-  const ampm = parsedTime[3];
-  if (ampm) {
-    if (ampm === "pm" && hours < 12) hours += 12;
-    if (ampm === "am" && hours === 12) hours = 0;
-  }
-  target.setHours(hours, minutes, 0, 0);
-  if (!lowerDateToken && target.getTime() <= now.getTime()) {
-    target.setDate(target.getDate() + 1);
-  }
-  return target.toISOString();
-};
 
 const parseSchedule = (
   input: string

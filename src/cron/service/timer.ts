@@ -3,7 +3,7 @@ import type { CronServiceState, CronEvent } from "./state.ts";
 import { appendCronRunLog, resolveCronRunLogPath, type CronRunLogEntry } from "../run-log.ts";
 import { locked } from "./locked.ts";
 import { ensureLoaded, persist } from "./store.ts";
-import { computeJobNextRunAtMs, nextWakeAtMs, isJobDue } from "./jobs.ts";
+import { computeJobNextRunAtMs, nextWakeAtMs, isJobDue, recomputeNextRuns } from "./jobs.ts";
 
 const formatMsIso = (ms?: number) =>
   typeof ms === "number" ? new Date(ms).toISOString() : undefined;
@@ -75,12 +75,13 @@ export async function onTimer(state: CronServiceState) {
       state.deps.log.debug("cron: loading current store state");
       await ensureLoaded(state, { forceReload: true });
 
-      // Check for and run any past-due jobs that may have been missed
-      state.deps.log.debug("cron: checking for past-due jobs");
-      await runPastDueJobs(state);
 
       state.deps.log.debug("cron: checking for due jobs");
       await runDueJobs(state);
+
+      // Recompute nextRunAtMs for future runs
+      state.deps.log.debug("cron: recomputing next run timestamps");
+      recomputeNextRuns(state);
       state.deps.log.debug("cron: persisting updated store state");
       await persist(state);
       state.deps.log.debug("cron: rearming timer");
@@ -128,6 +129,19 @@ export async function runDueJobs(state: CronServiceState) {
       },
       "cron: executing due job"
     );
+    // Payload details for debugging
+    if ("type" in job.payload && job.payload.type === "direct-execution") {
+      state.deps.log.info(
+        { jobId: job.id, jobName: job.name, command: job.payload.toolParams.command },
+        "cron: running direct-execution command"
+      );
+    } else {
+      const msg = job.payload as { channel: string; text: string };
+      state.deps.log.info(
+        { jobId: job.id, jobName: job.name, channel: msg.channel, text: msg.text },
+        "cron: running Slack message payload"
+      );
+    }
 
     // Additional debug log before execution
     state.deps.log.debug(
@@ -141,7 +155,12 @@ export async function runDueJobs(state: CronServiceState) {
       "cron: job execution starting"
     );
 
-    await executeJob(state, job, now, { forced: false });
+    try {
+      await executeJob(state, job, now, { forced: false });
+      state.deps.log.info({ jobId: job.id, jobName: job.name }, "cron: job executed successfully");
+    } catch (error) {
+      state.deps.log.error({ jobId: job.id, jobName: job.name, error: String(error) }, "cron: job execution failed");
+    }
   }
 
   if (due.length > 0) {

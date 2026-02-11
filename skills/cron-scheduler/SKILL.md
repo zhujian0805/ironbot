@@ -1,6 +1,6 @@
 ---
 name: cron-scheduler
-description: Schedule Slack reminders via the existing cron store. Use when the user asks the bot to "set up a reminder" or "run something every/at/cron" so you can collect the job name, channel, payload text, and schedule, then invoke `npm run cron -- add …` to write the job into `~/.ironbot/cron/jobs.json`. Jobs are self-contained and do not retain original conversation context.
+description: Schedule Slack reminders via the existing cron store. Use when the user asks the bot to "set up a reminder" or "run something via a cron expression" so you can collect the job name, channel, payload text, and schedule, then invoke `npm run cron -- add …` to write the job into `~/.ironbot/cron/jobs.json`. Jobs are self-contained and do not retain original conversation context.
 ---
 
 # Cron Scheduler
@@ -18,7 +18,7 @@ This skill creates **internal cron jobs only**. It never creates Windows schedul
    - **Job name** (short descriptive name, e.g., `standup-reminder`). Ask if missing.
    - **Slack channel** (channel ID like `C12345678` or DM `D87654321`). Accept channel names only if you can map to the ID; otherwise prompt for the canonical ID.
    - **Message text** (the reminder to send; trim whitespace).
-   - **Schedule** — collect:
+   - **Schedule** — collect only a Linux-style cron expression:
      - `--cron`: five-field cron expression plus an optional `--tz`.
    - **Optional flags**: timezone (`--tz`), thread ts (`--thread-ts`), delete-after-run (for one-shots), disabled (if they want to save without running), and whether to keep job after run.
    - Confirm whether the job should be enabled immediately.
@@ -49,13 +49,15 @@ This skill creates **internal cron jobs only**. It never creates Windows schedul
 For jobs that need to execute scripts directly, **prefer PowerShell over TypeScript and Python** on Windows systems:
 
 **PowerShell scripts**: Use the `--tool` parameter with run_powershell
-```
-npm run cron -- add --name "powershell-job" --tool run_powershell --tool-param "command=C:/full/path/to/script.ps1" --at "2025-03-01T09:00:00Z"
+```bash
+npm run cron -- add --name "powershell-job" --tool run_powershell \
+  --tool-param "command=C:/full/path/to/script.ps1" --cron "0 9 1 3 *" --tz "UTC"
 ```
 
 **TypeScript scripts**: Use the `--tool` parameter with run_bash to execute with tsx
-```
-npm run cron -- add --name "typescript-job" --tool run_bash --tool-param "command=npx tsx C:/full/path/to/script.ts" --at "2025-03-01T09:00:00Z"
+```bash
+npm run cron -- add --name "typescript-job" --tool run_bash \
+  --tool-param "command=npx tsx C:/full/path/to/script.ts" --cron "0 9 1 3 *" --tz "UTC"
 ```
 
 **When running scripts, always specify the full path** to ensure reliable execution:
@@ -66,8 +68,9 @@ npm run cron -- add --name "typescript-job" --tool run_bash --tool-param "comman
 - **CRITICAL**: Never use relative paths (e.g., `./script.ts`, `../scripts/job.py`) as they will fail when the cron job executes
 
 **Python scripts**: Use the `--tool` parameter with run_bash
-```
-npm run cron -- add --name "python-job" --tool run_bash --tool-param "command=python3 /full/path/to/script.py" --at "2025-03-01T09:00:00Z"
+```bash
+npm run cron -- add --name "python-job" --tool run_bash \
+  --tool-param "command=python3 /full/path/to/script.py" --cron "0 9 1 3 *" --tz "UTC"
 ```
 
 ## Edge cases

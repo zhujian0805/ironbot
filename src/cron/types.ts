@@ -1,7 +1,4 @@
-export type CronSchedule =
-  | { kind: "at"; at: string }
-  | { kind: "every"; everyMs: number; anchorMs?: number }
-  | { kind: "cron"; expr: string; tz?: string };
+export type CronSchedule = { kind: "cron"; expr: string; tz?: string };
 
 export type CronMessagePayload = {
   channel: string;

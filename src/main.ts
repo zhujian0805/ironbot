@@ -379,6 +379,7 @@ const main = async (): Promise<void> => {
 
   const launchTimestamp = Date.now();
   logger.info("Launching Slack Bolt app (Socket Mode)...");
+  logger.info({ cwd: process.cwd(), execDir: __dirname }, "Bot launch directories");
   await app.start();
   try {
     logger.info("Starting cron service...");
