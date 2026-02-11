@@ -114,32 +114,15 @@ export const applyJobPatch = (job: CronJob, patch: CronJobPatch, nowMs: number) 
   }
 };
 
-export const recomputeNextRuns = (state: CronServiceState) => {
-  if (!state.store) {
-    return;
-  }
-  const now = state.deps.nowMs();
-  for (const job of state.store.jobs) {
-    if (!job.state) {
-      job.state = {};
-    }
-    if (!job.enabled) {
-      job.state.nextRunAtMs = undefined;
-      job.state.runningAtMs = undefined;
-      continue;
-    }
-    job.state.nextRunAtMs = computeJobNextRunAtMs(job, now);
-  }
-};
 
 export const nextWakeAtMs = (state: CronServiceState): number | undefined => {
+  const now = state.deps.nowMs();
   const jobs = state.store?.jobs ?? [];
-  const candidates = jobs.filter((job) => job.enabled && typeof job.state.nextRunAtMs === "number");
-  if (candidates.length === 0) {
-    return undefined;
-  }
-  const nextWake = candidates.reduce((min, job) => Math.min(min, job.state.nextRunAtMs as number), candidates[0].state.nextRunAtMs as number);
-  return nextWake;
+  const nextRuns = jobs
+    .filter((job) => job.enabled)
+    .map((job) => computeJobNextRunAtMs(job, now))
+    .filter((ms): ms is number => typeof ms === "number");
+  return nextRuns.length > 0 ? Math.min(...nextRuns) : undefined;
 };
 
 export const findJobOrThrow = (state: CronServiceState, id: string) => {
@@ -172,8 +155,7 @@ export const ensureUniqueJobName = (state: CronServiceState, baseName: string): 
 };
 
 export const isJobDue = (job: CronJob, nowMs: number, opts: { forced: boolean }) => {
-  if (opts.forced) {
-    return true;
-  }
-  return job.enabled && typeof job.state.nextRunAtMs === "number" && nowMs >= job.state.nextRunAtMs;
+  if (opts.forced) return true;
+  const next = computeJobNextRunAtMs(job, nowMs);
+  return job.enabled && typeof next === "number" && nowMs >= next;
 };

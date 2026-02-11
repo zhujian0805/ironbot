@@ -3,7 +3,7 @@ import type { CronServiceState, CronEvent } from "./state.ts";
 import { appendCronRunLog, resolveCronRunLogPath, type CronRunLogEntry } from "../run-log.ts";
 import { locked } from "./locked.ts";
 import { ensureLoaded, persist } from "./store.ts";
-import { computeJobNextRunAtMs, nextWakeAtMs, isJobDue, recomputeNextRuns } from "./jobs.ts";
+import { computeJobNextRunAtMs, nextWakeAtMs, isJobDue } from "./jobs.ts";
 
 const formatMsIso = (ms?: number) =>
   typeof ms === "number" ? new Date(ms).toISOString() : undefined;
@@ -79,8 +79,6 @@ export async function onTimer(state: CronServiceState) {
       state.deps.log.debug("cron: checking for due jobs");
       await runDueJobs(state);
 
-      // Recompute nextRunAtMs for future runs
-      state.deps.log.debug("cron: recomputing next run timestamps");
       state.deps.log.debug("cron: persisting updated store state");
       await persist(state);
       state.deps.log.debug("cron: rearming timer");
@@ -106,7 +104,7 @@ export async function runDueJobs(state: CronServiceState) {
     if (!job.enabled || job.state.runningAtMs) {
       return false;
     }
-    const next = job.state.nextRunAtMs;
+    const next = computeJobNextRunAtMs(job.schedule, now);
     return typeof next === "number" && now >= next;
   });
 
@@ -116,7 +114,7 @@ export async function runDueJobs(state: CronServiceState) {
   );
 
   for (const job of due) {
-    const scheduledFor = formatMsIso(job.state.nextRunAtMs);
+    const scheduledFor = formatMsIso(computeJobNextRunAtMs(job.schedule, now));
     const triggeredAt = new Date(now).toISOString();
     state.deps.log.info(
       {
