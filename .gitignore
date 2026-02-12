@@ -36,3 +36,5 @@ temp/
 
 # Codex directory
 .codex/
+
+logs/
