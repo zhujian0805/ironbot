@@ -197,6 +197,19 @@ const performHealthChecks = async (
 
 const main = async (): Promise<void> => {
   const args = parseCliArgs();
+
+  // Log environment variables for debugging service deployment
+  const envVars = {
+    SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN ? '***SET***' : 'NOT SET',
+    SLACK_APP_TOKEN: process.env.SLACK_APP_TOKEN ? '***SET***' : 'NOT SET',
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ? '***SET***' : 'NOT SET',
+    NODE_ENV: process.env.NODE_ENV || 'not set',
+    TEMP: process.env.TEMP || 'not set',
+    USERPROFILE: process.env.USERPROFILE || 'not set',
+    USERNAME: process.env.USERNAME || 'not set',
+    COMPUTERNAME: process.env.COMPUTERNAME || 'not set'
+  };
+  logger.debug({ envVars }, "Environment variables available to process");
   const config = resolveConfig(args);
 
   setupLogging({ debug: config.debug, logLevel: config.logLevel, logFile: config.logFile });
