@@ -5,9 +5,9 @@
 
 import { readFileSync, existsSync } from "fs";
 import { logger } from "../../utils/logging.ts";
-import type { LogsResult, LogEntry } from "../types/index.js";
-import { getLogPath, getLogsDirectory } from "../utils/paths.js";
-import { resolveProjectPath } from "../utils/paths.js";
+import type { LogsResult, LogEntry } from "../types/index.ts";
+import { getLogPath, getLogsDirectory } from "../utils/paths.ts";
+import { resolveProjectPath } from "../utils/paths.ts";
 
 /**
  * Exit codes for logs command

@@ -4,7 +4,7 @@
  */
 
 import { execSync } from "child_process";
-import type { ExecOptions, ExecResult } from "../types/index.js";
+import type { ExecOptions, ExecResult } from "../types/index.ts";
 import { logger } from "../../utils/logging.ts";
 
 /**

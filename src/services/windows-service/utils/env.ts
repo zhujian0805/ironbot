@@ -3,7 +3,7 @@
  * Handles validation and retrieval of environment variables for service context
  */
 
-import type { ValidationResult, ValidationCheck } from "../types/index.js";
+import type { ValidationResult, ValidationCheck } from "../types/index.ts";
 import { logger } from "../../utils/logging.ts";
 
 /**

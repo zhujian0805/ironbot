@@ -4,13 +4,13 @@
  */
 
 import { logger } from "../../utils/logging.ts";
-import type { InstallOptions, InstallResult } from "../types/index.js";
+import type { InstallOptions, InstallResult } from "../types/index.ts";
 import {
   buildServiceConfig,
   validateServiceConfig,
   formatValidationReport,
   validateEnvironmentVariableAccess
-} from "../config/service-config.js";
+} from "../config/service-config.ts";
 import {
   installService as nssmInstall,
   setServiceAppDirectory,
@@ -19,9 +19,9 @@ import {
   setServiceStartupType,
   setServiceAutoRestart,
   removeService as nssmRemove
-} from "../config/nssm.js";
-import { getLogsDirectory, createLogDirectory } from "../utils/paths.js";
-import { hasAdminPrivileges } from "../utils/process.js";
+} from "../config/nssm.ts";
+import { getLogsDirectory, createLogDirectory } from "../utils/paths.ts";
+import { hasAdminPrivileges } from "../utils/process.ts";
 
 /**
  * Exit codes for install command

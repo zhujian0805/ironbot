@@ -4,9 +4,9 @@
  */
 
 import { logger } from "../../utils/logging.ts";
-import type { UninstallResult } from "../types/index.js";
-import { removeService } from "../config/nssm.js";
-import { serviceExists } from "../utils/process.js";
+import type { UninstallResult } from "../types/index.ts";
+import { removeService } from "../config/nssm.ts";
+import { serviceExists } from "../utils/process.ts";
 
 /**
  * Exit codes for uninstall command

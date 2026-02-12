@@ -4,8 +4,8 @@
  */
 
 import { logger } from "../../utils/logging.ts";
-import type { ServiceStatus } from "../types/index.js";
-import { getServiceStatus as nssmGetStatus } from "../config/nssm.js";
+import type { ServiceStatus } from "../types/index.ts";
+import { getServiceStatus as nssmGetStatus } from "../config/nssm.ts";
 
 /**
  * Exit codes for status command
