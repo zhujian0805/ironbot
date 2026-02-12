@@ -158,6 +158,23 @@ const formatJobRow = (job: CronJob) => {
   return `${idLabel}\t${job.name}\t${formatSchedule(job.schedule)}\t${next}\t${status}\t${job.payload.channel}`;
 };
 
+const resolveJobByIdInput = (store: CronStoreFile, idInput: string): CronJob => {
+  const id = idInput.trim();
+  const exact = store.jobs.find((entry) => entry.id === id);
+  if (exact) {
+    return exact;
+  }
+  const prefixMatches = store.jobs.filter((entry) => entry.id.startsWith(id));
+  if (prefixMatches.length === 1) {
+    return prefixMatches[0]!;
+  }
+  if (prefixMatches.length > 1) {
+    const candidates = prefixMatches.map((entry) => entry.id.slice(0, 8)).join(", ");
+    error(`ambiguous job id prefix '${id}'; matches: ${candidates}`);
+  }
+  error(`job not found: ${idInput}`);
+};
+
 program
   .command("status")
   .description("Show cron store metadata")
@@ -332,10 +349,7 @@ program
 
 const toggleJob = async (id: string, enabled: boolean) => {
   const store = await loadStore();
-  const job = store.jobs.find((entry) => entry.id === id);
-  if (!job) {
-    error(`job not found: ${id}`);
-  }
+  const job = resolveJobByIdInput(store, id);
   job.enabled = enabled;
   if (enabled) {
     job.state.nextRunAtMs = computeJobNextRunAtMs(job, Date.now());
@@ -375,7 +389,8 @@ program
       store.jobs = store.jobs.filter((job) => job.name !== opts.name);
     } else if (id) {
       // Remove by ID (default behavior)
-      store.jobs = store.jobs.filter((job) => job.id !== id);
+      const job = resolveJobByIdInput(store, id);
+      store.jobs = store.jobs.filter((entry) => entry.id !== job.id);
     } else {
       error("Either provide a job ID as an argument or use the --name option");
     }
@@ -388,6 +403,25 @@ program
     await saveStore(store);
     const identifier = opts.name || id;
     console.log(`Removed job ${identifier}`);
+  });
+
+program
+  .command("fire <id>")
+  .description("Fire a cron job immediately so that the running service sees it due")
+  .action(async (id) => {
+    const storePath = resolveStorePath();
+    const store = await loadStore();
+    const job = resolveJobByIdInput(store, id);
+    if (!job.enabled) {
+      error(`job ${job.id} is disabled; enable it before firing`);
+    }
+    const now = Date.now();
+    job.state.nextRunAtMs = now;
+    job.state.runningAtMs = undefined;
+    job.updatedAtMs = now;
+    await saveStore(store);
+    await ensureJobInStore(storePath, job.id);
+    console.log(`Job ${job.id} (${job.name}) will run immediately (${new Date(now).toISOString()})`);
   });
 
 program.parseAsync(process.argv).catch((err) => {
