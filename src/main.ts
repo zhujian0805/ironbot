@@ -185,13 +185,31 @@ const performHealthChecks = async (
   }
 
   logger.info("Performing startup health checks...");
+
+  // Check Slack connection
+  logger.info("Checking Slack connection...");
   const slackOk = await checkSlackConnection(app, supervisor);
+  if (slackOk) {
+    logger.info("✓ Slack health check passed");
+  } else {
+    logger.error("✗ Slack health check failed");
+  }
+
+  // Check LLM connection
+  logger.info("Checking LLM connection...");
   const llmOk = await checkLlmConnection(claude);
+  if (llmOk) {
+    logger.info("✓ LLM health check passed");
+  } else {
+    logger.error("✗ LLM health check failed");
+  }
+
   if (!slackOk || !llmOk) {
-    logger.error("Health checks failed - application may not function correctly");
+    logger.error({ slackOk, llmOk }, "Health checks failed - application may not function correctly");
     return false;
   }
-  logger.info("All health checks passed");
+
+  logger.info({ slackOk, llmOk }, "All health checks passed");
   return true;
 };
 

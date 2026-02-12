@@ -840,3 +840,318 @@ Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.
 {"level":30,"time":"2026-02-12T13:21:43.833Z","pid":95572,"hostname":"CN-JZHU-WD","msg":"Cron service started successfully"}
 {"level":30,"time":"2026-02-12T13:21:43.833Z","pid":95572,"hostname":"CN-JZHU-WD","durationMs":219,"msg":"Slack Bolt app started with Socket Mode"}
 [INFO]  socket-mode:SocketModeClient:0 Now connected to Slack
+{"level":30,"time":"2026-02-12T13:22:13.823Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: regular check timer triggered, processing due jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:22:13.824Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:22:13.824Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","dueJobs":0,"totalJobs":0,"msg":"cron: identified due jobs for execution"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:22:13.830Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:22:13.831Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:22:13.834Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","changedFile":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: jobs.json file changed externally, reloading jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:22:13.836Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:22:13.836Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:22:13.836Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","jobCount":0,"msg":"cron: jobs reloaded from file"}
+{"level":30,"time":"2026-02-12T13:22:43.823Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: regular check timer triggered, processing due jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:22:43.824Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:22:43.824Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","dueJobs":0,"totalJobs":0,"msg":"cron: identified due jobs for execution"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:22:43.833Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:22:43.834Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:22:43.836Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","changedFile":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: jobs.json file changed externally, reloading jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:22:43.838Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:22:43.838Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:22:43.838Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","jobCount":0,"msg":"cron: jobs reloaded from file"}
+{"level":30,"time":"2026-02-12T13:22:54.700Z","pid":95572,"hostname":"CN-JZHU-WD","msg":"Received shutdown signal, cleaning up..."}
+{"level":30,"time":"2026-02-12T13:22:54.700Z","pid":95572,"hostname":"CN-JZHU-WD","msg":"Stopping cron service..."}
+Stopping cron service...
+{"level":30,"time":"2026-02-12T13:22:54.705Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: stopping timer"}
+{"level":30,"time":"2026-02-12T13:22:54.705Z","pid":95572,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: timer stopped"}
+{"level":30,"time":"2026-02-12T13:22:54.705Z","pid":95572,"hostname":"CN-JZHU-WD","msg":"Cron service stopped successfully"}
+{"level":30,"time":"2026-02-12T13:22:54.705Z","pid":95572,"hostname":"CN-JZHU-WD","msg":"Slack API optimizer shutdown complete"}
+{"level":30,"time":"2026-02-12T13:22:54.705Z","pid":95572,"hostname":"CN-JZHU-WD","msg":"Slack API optimizer shut down"}
+[INFO]  socket-mode:SocketModeClient:0 Disconnecting ...
+[INFO]  socket-mode:SocketModeClient:0 Disconnected from Slack
+{"level":30,"time":"2026-02-12T13:22:54.706Z","pid":95572,"hostname":"CN-JZHU-WD","msg":"Slack app stopped"}
+{"level":30,"time":"2026-02-12T13:22:59.981Z","pid":81124,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+{"level":30,"time":"2026-02-12T13:22:59.987Z","pid":81124,"hostname":"CN-JZHU-WD","slackBotTokenConfigured":true,"slackAppTokenConfigured":true,"msg":"Starting Slack AI Agent"}
+{"level":30,"time":"2026-02-12T13:23:00.005Z","pid":81124,"hostname":"CN-JZHU-WD","tools":1,"skills":1,"mcps":1,"commands":1,"resurces":1,"msg":"Loaded permission config"}
+{"level":30,"time":"2026-02-12T13:23:00.005Z","pid":81124,"hostname":"CN-JZHU-WD","tools":[".*"],"toolCount":1,"skills":1,"mcps":1,"msg":"Loaded capabilities"}
+{"level":30,"time":"2026-02-12T13:23:00.008Z","pid":81124,"hostname":"CN-JZHU-WD","directory":"D:\\repos\\ironbot","msg":"Permission config watcher started"}
+{"level":30,"time":"2026-02-12T13:23:00.008Z","pid":81124,"hostname":"CN-JZHU-WD","msg":"Permission config hot-reload enabled"}
+{"level":40,"time":"2026-02-12T13:23:00.025Z","pid":81124,"hostname":"CN-JZHU-WD","msg":"Socket Mode state machine not available for patching"}
+{"level":30,"time":"2026-02-12T13:23:00.027Z","pid":81124,"hostname":"CN-JZHU-WD","provider":"local","model":"hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf","memorySearchEnabled":true,"sessionIndexing":true,"msg":"Memory manager initialized"}
+{"level":30,"time":"2026-02-12T13:23:00.027Z","pid":81124,"hostname":"CN-JZHU-WD","skillsDir":"D:\\repos\\ironbot\\skills","msg":"[INIT] Creating ClaudeProcessor"}
+{"level":30,"time":"2026-02-12T13:23:00.029Z","pid":81124,"hostname":"CN-JZHU-WD","model":"grok-code-fast-1","skillDirs":["D:\\repos\\ironbot\\skills","C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\skills"],"hasMemoryManager":true,"msg":"[INIT] ClaudeProcessor initialized"}
+{"level":30,"time":"2026-02-12T13:23:00.030Z","pid":81124,"hostname":"CN-JZHU-WD","msg":"Performing startup health checks..."}
+{"level":30,"time":"2026-02-12T13:23:07.759Z","pid":81124,"hostname":"CN-JZHU-WD","msg":"All health checks passed"}
+{"level":30,"time":"2026-02-12T13:23:07.759Z","pid":81124,"hostname":"CN-JZHU-WD","msg":"Launching Slack Bolt app (Socket Mode)..."}
+{"level":30,"time":"2026-02-12T13:23:07.759Z","pid":81124,"hostname":"CN-JZHU-WD","cwd":"D:\\repos\\ironbot","execDir":"D:\\repos\\ironbot\\src","msg":"Bot launch directories"}
+[INFO]  socket-mode:SocketModeClient:0 Going to establish a new connection to Slack ...
+{"level":30,"time":"2026-02-12T13:23:07.970Z","pid":81124,"hostname":"CN-JZHU-WD","info":{"ok":true,"url":"wss://wss-primary.slack.com/link/?ticket=825bb0d0-11cc-47fb-9a09-aa34cd1d83e3&app_id=5cc486748ecd5a1ac700d4cecbfeb78f59fee3baaddbab594941e1f979d72f27","response_metadata":{"scopes":["connections:write"],"acceptedScopes":["connections:write"]}},"msg":"Socket Mode authentication successful"}
+{"level":30,"time":"2026-02-12T13:23:07.970Z","pid":81124,"hostname":"CN-JZHU-WD","msg":"Starting cron service..."}
+Starting cron service...
+{"level":30,"time":"2026-02-12T13:23:07.971Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: starting scheduler service"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:23:07.972Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:23:07.972Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: checking for past-due jobs at startup"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:23:07.980Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:23:07.980Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:23:07.980Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","enabled":true,"jobs":0,"nextWakeAtMs":null,"msg":"cron: started scheduler service"}
+{"level":30,"time":"2026-02-12T13:23:07.981Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","watchedPath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron","msg":"cron: file watcher set up for jobs.json monitoring"}
+{"level":30,"time":"2026-02-12T13:23:07.981Z","pid":81124,"hostname":"CN-JZHU-WD","msg":"Cron service started successfully"}
+{"level":30,"time":"2026-02-12T13:23:07.981Z","pid":81124,"hostname":"CN-JZHU-WD","durationMs":222,"msg":"Slack Bolt app started with Socket Mode"}
+[INFO]  socket-mode:SocketModeClient:0 Now connected to Slack
+{"level":30,"time":"2026-02-12T13:23:37.983Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: regular check timer triggered, processing due jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:23:37.983Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:23:37.984Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","dueJobs":0,"totalJobs":0,"msg":"cron: identified due jobs for execution"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:23:37.991Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:23:37.991Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:23:37.994Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","changedFile":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: jobs.json file changed externally, reloading jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:23:37.996Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:23:37.996Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:23:37.996Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","jobCount":0,"msg":"cron: jobs reloaded from file"}
+{"level":30,"time":"2026-02-12T13:24:03.921Z","pid":81124,"hostname":"CN-JZHU-WD","channel":"D0AC1TXM54L","threadTs":"1770902642.746219","sessionKey":"agent:default:dm:D0AC1TXM54L","msg":"Loaded conversation history"}
+{"level":30,"time":"2026-02-12T13:24:03.929Z","pid":81124,"hostname":"CN-JZHU-WD","channel":"D0AC1TXM54L","threadTs":"1770902642.746219","msg":"Response sent to user"}
+{"level":30,"time":"2026-02-12T13:24:04.174Z","pid":81124,"hostname":"CN-JZHU-WD","skillName":"cron-scheduler","skillDir":"D:\\repos\\ironbot\\skills\\cron-scheduler","hasDocumentation":true,"triggerCount":1,"msg":"[SKILL-FLOW] Successfully loaded executable skill from directory"}
+{"level":30,"time":"2026-02-12T13:24:04.175Z","pid":81124,"hostname":"CN-JZHU-WD","skillName":"cron-scheduler-remove","skillDir":"D:\\repos\\ironbot\\skills\\cron-scheduler-remove","hasDocumentation":true,"triggerCount":1,"msg":"[SKILL-FLOW] Successfully loaded executable skill from directory"}
+{"level":30,"time":"2026-02-12T13:24:04.176Z","pid":81124,"hostname":"CN-JZHU-WD","skillName":"email-to-calendar","skillDir":"D:\\repos\\ironbot\\skills\\email-to-calendar","triggerCount":2,"msg":"[SKILL-FLOW] Successfully loaded SKILL.md-based documentation skill from directory"}
+{"level":30,"time":"2026-02-12T13:24:04.177Z","pid":81124,"hostname":"CN-JZHU-WD","skillName":"pdf-qdoog","skillDir":"D:\\repos\\ironbot\\skills\\pdf-qdoog","triggerCount":1,"msg":"[SKILL-FLOW] Successfully loaded SKILL.md-based documentation skill from directory"}
+{"level":30,"time":"2026-02-12T13:24:04.183Z","pid":81124,"hostname":"CN-JZHU-WD","skillName":"permission_check","skillDir":"D:\\repos\\ironbot\\skills\\permission_check","hasDocumentation":true,"triggerCount":7,"msg":"[SKILL-FLOW] Successfully loaded executable skill from directory"}
+{"level":30,"time":"2026-02-12T13:24:04.190Z","pid":81124,"hostname":"CN-JZHU-WD","skillName":"skill_installer","skillDir":"D:\\repos\\ironbot\\skills\\skill_installer","hasDocumentation":true,"triggerCount":17,"msg":"[SKILL-FLOW] Successfully loaded executable skill from directory"}
+{"level":30,"time":"2026-02-12T13:24:04.191Z","pid":81124,"hostname":"CN-JZHU-WD","skillName":"smtp-send","skillDir":"D:\\repos\\ironbot\\skills\\smtp-send","triggerCount":1,"msg":"[SKILL-FLOW] Successfully loaded SKILL.md-based documentation skill from directory"}
+{"level":30,"time":"2026-02-12T13:24:04.192Z","pid":81124,"hostname":"CN-JZHU-WD","skillName":"weather-2","skillDir":"D:\\repos\\ironbot\\skills\\weather-2","triggerCount":3,"msg":"[SKILL-FLOW] Successfully loaded SKILL.md-based documentation skill from directory"}
+{"level":30,"time":"2026-02-12T13:24:04.193Z","pid":81124,"hostname":"CN-JZHU-WD","skillName":"yahoo-finance-clksb","skillDir":"D:\\repos\\ironbot\\skills\\yahoo-finance-clksb","triggerCount":4,"msg":"[SKILL-FLOW] Successfully loaded SKILL.md-based documentation skill from directory"}
+{"level":30,"time":"2026-02-12T13:24:04.193Z","pid":81124,"hostname":"CN-JZHU-WD","loadedSkills":["cron-scheduler","cron-scheduler-remove","email-to-calendar","pdf-qdoog","permission_check","skill_installer","smtp-send","weather-2","yahoo-finance-clksb"],"totalCount":9,"msg":"[SKILL-FLOW] Skill loading process completed"}
+{"level":30,"time":"2026-02-12T13:24:04.194Z","pid":81124,"hostname":"CN-JZHU-WD","loadedSkillCount":9,"skillNames":["cron-scheduler","cron-scheduler-remove","email-to-calendar","pdf-qdoog","permission_check","skill_installer","smtp-send","weather-2","yahoo-finance-clksb"],"msg":"[SKILL-FLOW] Skills loaded and cached"}
+{"level":30,"time":"2026-02-12T13:24:04.195Z","pid":81124,"hostname":"CN-JZHU-WD","model":"grok-code-fast-1","msg":"LLM call initiated"}
+{"level":30,"time":"2026-02-12T13:24:07.993Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: regular check timer triggered, processing due jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:24:07.993Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:24:07.993Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","dueJobs":0,"totalJobs":0,"msg":"cron: identified due jobs for execution"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:24:08.001Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:24:08.001Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:24:08.001Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","changedFile":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: jobs.json file changed externally, reloading jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:24:08.002Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:24:08.002Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:24:08.002Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","jobCount":0,"msg":"cron: jobs reloaded from file"}
+{"level":30,"time":"2026-02-12T13:24:16.696Z","pid":81124,"hostname":"CN-JZHU-WD","model":"grok-code-fast-1","msg":"LLM response received"}
+{"level":30,"time":"2026-02-12T13:24:16.704Z","pid":81124,"hostname":"CN-JZHU-WD","channel":"D0AC1TXM54L","threadTs":"1770902642.746219","msg":"Response sent to user"}
+{"level":30,"time":"2026-02-12T13:24:37.997Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: regular check timer triggered, processing due jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:24:37.998Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:24:37.998Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","dueJobs":0,"totalJobs":0,"msg":"cron: identified due jobs for execution"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:24:38.004Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:24:38.004Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:24:38.009Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","changedFile":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: jobs.json file changed externally, reloading jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:24:38.010Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:24:38.010Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:24:38.010Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","jobCount":0,"msg":"cron: jobs reloaded from file"}
+{"level":30,"time":"2026-02-12T13:25:08.017Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: regular check timer triggered, processing due jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:25:08.018Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:25:08.018Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","dueJobs":0,"totalJobs":0,"msg":"cron: identified due jobs for execution"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:25:08.040Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:25:08.040Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:25:08.068Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","changedFile":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: jobs.json file changed externally, reloading jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:25:08.070Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:25:08.070Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:25:08.070Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","jobCount":0,"msg":"cron: jobs reloaded from file"}
+{"level":30,"time":"2026-02-12T13:25:38.065Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: regular check timer triggered, processing due jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:25:38.066Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:25:38.066Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","dueJobs":0,"totalJobs":0,"msg":"cron: identified due jobs for execution"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:25:38.077Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:25:38.077Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:25:38.082Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","changedFile":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: jobs.json file changed externally, reloading jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:25:38.083Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:25:38.083Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:25:38.083Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","jobCount":0,"msg":"cron: jobs reloaded from file"}
+{"level":30,"time":"2026-02-12T13:26:08.097Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: regular check timer triggered, processing due jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:26:08.103Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:26:08.103Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","dueJobs":0,"totalJobs":0,"msg":"cron: identified due jobs for execution"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:26:08.113Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:26:08.113Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:26:08.120Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","changedFile":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: jobs.json file changed externally, reloading jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:26:08.120Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:26:08.121Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:26:08.121Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","jobCount":0,"msg":"cron: jobs reloaded from file"}
+{"level":30,"time":"2026-02-12T13:26:38.119Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: regular check timer triggered, processing due jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:26:38.120Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:26:38.120Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","dueJobs":0,"totalJobs":0,"msg":"cron: identified due jobs for execution"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:26:38.130Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:26:38.130Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:26:38.133Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","changedFile":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: jobs.json file changed externally, reloading jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:26:38.139Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:26:38.139Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:26:38.139Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","jobCount":0,"msg":"cron: jobs reloaded from file"}
+{"level":30,"time":"2026-02-12T13:26:42.786Z","pid":81124,"hostname":"CN-JZHU-WD","msg":"Received shutdown signal, cleaning up..."}
+{"level":30,"time":"2026-02-12T13:26:42.786Z","pid":81124,"hostname":"CN-JZHU-WD","msg":"Stopping cron service..."}
+Stopping cron service...
+{"level":30,"time":"2026-02-12T13:26:42.790Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: stopping timer"}
+{"level":30,"time":"2026-02-12T13:26:42.790Z","pid":81124,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: timer stopped"}
+{"level":30,"time":"2026-02-12T13:26:42.790Z","pid":81124,"hostname":"CN-JZHU-WD","msg":"Cron service stopped successfully"}
+{"level":30,"time":"2026-02-12T13:26:42.790Z","pid":81124,"hostname":"CN-JZHU-WD","msg":"Slack API optimizer shutdown complete"}
+{"level":30,"time":"2026-02-12T13:26:42.790Z","pid":81124,"hostname":"CN-JZHU-WD","msg":"Slack API optimizer shut down"}
+[INFO]  socket-mode:SocketModeClient:0 Disconnecting ...
+[INFO]  socket-mode:SocketModeClient:0 Disconnected from Slack
+{"level":30,"time":"2026-02-12T13:26:42.791Z","pid":81124,"hostname":"CN-JZHU-WD","msg":"Slack app stopped"}
+{"level":30,"time":"2026-02-12T13:26:48.067Z","pid":22940,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+{"level":30,"time":"2026-02-12T13:26:48.072Z","pid":22940,"hostname":"CN-JZHU-WD","slackBotTokenConfigured":true,"slackAppTokenConfigured":true,"msg":"Starting Slack AI Agent"}
+{"level":30,"time":"2026-02-12T13:26:48.090Z","pid":22940,"hostname":"CN-JZHU-WD","tools":1,"skills":1,"mcps":1,"commands":1,"resurces":1,"msg":"Loaded permission config"}
+{"level":30,"time":"2026-02-12T13:26:48.090Z","pid":22940,"hostname":"CN-JZHU-WD","tools":[".*"],"toolCount":1,"skills":1,"mcps":1,"msg":"Loaded capabilities"}
+{"level":30,"time":"2026-02-12T13:26:48.093Z","pid":22940,"hostname":"CN-JZHU-WD","directory":"D:\\repos\\ironbot","msg":"Permission config watcher started"}
+{"level":30,"time":"2026-02-12T13:26:48.093Z","pid":22940,"hostname":"CN-JZHU-WD","msg":"Permission config hot-reload enabled"}
+{"level":40,"time":"2026-02-12T13:26:48.110Z","pid":22940,"hostname":"CN-JZHU-WD","msg":"Socket Mode state machine not available for patching"}
+{"level":30,"time":"2026-02-12T13:26:48.113Z","pid":22940,"hostname":"CN-JZHU-WD","provider":"local","model":"hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf","memorySearchEnabled":true,"sessionIndexing":true,"msg":"Memory manager initialized"}
+{"level":30,"time":"2026-02-12T13:26:48.114Z","pid":22940,"hostname":"CN-JZHU-WD","skillsDir":"D:\\repos\\ironbot\\skills","msg":"[INIT] Creating ClaudeProcessor"}
+{"level":30,"time":"2026-02-12T13:26:48.115Z","pid":22940,"hostname":"CN-JZHU-WD","model":"grok-code-fast-1","skillDirs":["D:\\repos\\ironbot\\skills","C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\skills"],"hasMemoryManager":true,"msg":"[INIT] ClaudeProcessor initialized"}
+{"level":30,"time":"2026-02-12T13:26:48.116Z","pid":22940,"hostname":"CN-JZHU-WD","msg":"Performing startup health checks..."}
+{"level":30,"time":"2026-02-12T13:26:56.132Z","pid":22940,"hostname":"CN-JZHU-WD","msg":"All health checks passed"}
+{"level":30,"time":"2026-02-12T13:26:56.132Z","pid":22940,"hostname":"CN-JZHU-WD","msg":"Launching Slack Bolt app (Socket Mode)..."}
+{"level":30,"time":"2026-02-12T13:26:56.132Z","pid":22940,"hostname":"CN-JZHU-WD","cwd":"D:\\repos\\ironbot","execDir":"D:\\repos\\ironbot\\src","msg":"Bot launch directories"}
+[INFO]  socket-mode:SocketModeClient:0 Going to establish a new connection to Slack ...
+{"level":30,"time":"2026-02-12T13:26:56.347Z","pid":22940,"hostname":"CN-JZHU-WD","info":{"ok":true,"url":"wss://wss-primary.slack.com/link/?ticket=89018055-a433-4b8c-94cf-2d0116b4fa5c&app_id=5cc486748ecd5a1ac700d4cecbfeb78f59fee3baaddbab594941e1f979d72f27","response_metadata":{"scopes":["connections:write"],"acceptedScopes":["connections:write"]}},"msg":"Socket Mode authentication successful"}
+{"level":30,"time":"2026-02-12T13:26:56.348Z","pid":22940,"hostname":"CN-JZHU-WD","msg":"Starting cron service..."}
+Starting cron service...
+{"level":30,"time":"2026-02-12T13:26:56.351Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: starting scheduler service"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:26:56.353Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:26:56.353Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: checking for past-due jobs at startup"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:26:56.363Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:26:56.363Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:26:56.363Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","enabled":true,"jobs":0,"nextWakeAtMs":null,"msg":"cron: started scheduler service"}
+{"level":30,"time":"2026-02-12T13:26:56.365Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","watchedPath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron","msg":"cron: file watcher set up for jobs.json monitoring"}
+{"level":30,"time":"2026-02-12T13:26:56.365Z","pid":22940,"hostname":"CN-JZHU-WD","msg":"Cron service started successfully"}
+{"level":30,"time":"2026-02-12T13:26:56.365Z","pid":22940,"hostname":"CN-JZHU-WD","durationMs":233,"msg":"Slack Bolt app started with Socket Mode"}
+[INFO]  socket-mode:SocketModeClient:0 Now connected to Slack
+{"level":30,"time":"2026-02-12T13:27:09.254Z","pid":22940,"hostname":"CN-JZHU-WD","channel":"D0AC1TXM54L","threadTs":"1770902828.325269","sessionKey":"agent:default:dm:D0AC1TXM54L","msg":"Loaded conversation history"}
+{"level":30,"time":"2026-02-12T13:27:09.265Z","pid":22940,"hostname":"CN-JZHU-WD","channel":"D0AC1TXM54L","threadTs":"1770902828.325269","msg":"Response sent to user"}
+{"level":30,"time":"2026-02-12T13:27:09.494Z","pid":22940,"hostname":"CN-JZHU-WD","skillName":"cron-scheduler","skillDir":"D:\\repos\\ironbot\\skills\\cron-scheduler","hasDocumentation":true,"triggerCount":1,"msg":"[SKILL-FLOW] Successfully loaded executable skill from directory"}
+{"level":30,"time":"2026-02-12T13:27:09.495Z","pid":22940,"hostname":"CN-JZHU-WD","skillName":"cron-scheduler-remove","skillDir":"D:\\repos\\ironbot\\skills\\cron-scheduler-remove","hasDocumentation":true,"triggerCount":1,"msg":"[SKILL-FLOW] Successfully loaded executable skill from directory"}
+{"level":30,"time":"2026-02-12T13:27:09.496Z","pid":22940,"hostname":"CN-JZHU-WD","skillName":"email-to-calendar","skillDir":"D:\\repos\\ironbot\\skills\\email-to-calendar","triggerCount":2,"msg":"[SKILL-FLOW] Successfully loaded SKILL.md-based documentation skill from directory"}
+{"level":30,"time":"2026-02-12T13:27:09.496Z","pid":22940,"hostname":"CN-JZHU-WD","skillName":"pdf-qdoog","skillDir":"D:\\repos\\ironbot\\skills\\pdf-qdoog","triggerCount":1,"msg":"[SKILL-FLOW] Successfully loaded SKILL.md-based documentation skill from directory"}
+{"level":30,"time":"2026-02-12T13:27:09.502Z","pid":22940,"hostname":"CN-JZHU-WD","skillName":"permission_check","skillDir":"D:\\repos\\ironbot\\skills\\permission_check","hasDocumentation":true,"triggerCount":7,"msg":"[SKILL-FLOW] Successfully loaded executable skill from directory"}
+{"level":30,"time":"2026-02-12T13:27:09.508Z","pid":22940,"hostname":"CN-JZHU-WD","skillName":"skill_installer","skillDir":"D:\\repos\\ironbot\\skills\\skill_installer","hasDocumentation":true,"triggerCount":17,"msg":"[SKILL-FLOW] Successfully loaded executable skill from directory"}
+{"level":30,"time":"2026-02-12T13:27:09.510Z","pid":22940,"hostname":"CN-JZHU-WD","skillName":"smtp-send","skillDir":"D:\\repos\\ironbot\\skills\\smtp-send","triggerCount":1,"msg":"[SKILL-FLOW] Successfully loaded SKILL.md-based documentation skill from directory"}
+{"level":30,"time":"2026-02-12T13:27:09.511Z","pid":22940,"hostname":"CN-JZHU-WD","skillName":"weather-2","skillDir":"D:\\repos\\ironbot\\skills\\weather-2","triggerCount":3,"msg":"[SKILL-FLOW] Successfully loaded SKILL.md-based documentation skill from directory"}
+{"level":30,"time":"2026-02-12T13:27:09.511Z","pid":22940,"hostname":"CN-JZHU-WD","skillName":"yahoo-finance-clksb","skillDir":"D:\\repos\\ironbot\\skills\\yahoo-finance-clksb","triggerCount":4,"msg":"[SKILL-FLOW] Successfully loaded SKILL.md-based documentation skill from directory"}
+{"level":30,"time":"2026-02-12T13:27:09.512Z","pid":22940,"hostname":"CN-JZHU-WD","loadedSkills":["cron-scheduler","cron-scheduler-remove","email-to-calendar","pdf-qdoog","permission_check","skill_installer","smtp-send","weather-2","yahoo-finance-clksb"],"totalCount":9,"msg":"[SKILL-FLOW] Skill loading process completed"}
+{"level":30,"time":"2026-02-12T13:27:09.513Z","pid":22940,"hostname":"CN-JZHU-WD","loadedSkillCount":9,"skillNames":["cron-scheduler","cron-scheduler-remove","email-to-calendar","pdf-qdoog","permission_check","skill_installer","smtp-send","weather-2","yahoo-finance-clksb"],"msg":"[SKILL-FLOW] Skills loaded and cached"}
+{"level":30,"time":"2026-02-12T13:27:09.514Z","pid":22940,"hostname":"CN-JZHU-WD","model":"grok-code-fast-1","msg":"LLM call initiated"}
+{"level":30,"time":"2026-02-12T13:27:26.361Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: regular check timer triggered, processing due jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:27:26.363Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:27:26.363Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","dueJobs":0,"totalJobs":0,"msg":"cron: identified due jobs for execution"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:27:26.374Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:27:26.375Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:27:26.383Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","changedFile":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: jobs.json file changed externally, reloading jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:27:26.386Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:27:26.386Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:27:26.386Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","jobCount":0,"msg":"cron: jobs reloaded from file"}
+{"level":30,"time":"2026-02-12T13:27:26.473Z","pid":22940,"hostname":"CN-JZHU-WD","model":"grok-code-fast-1","msg":"LLM response received"}
+{"level":30,"time":"2026-02-12T13:27:26.479Z","pid":22940,"hostname":"CN-JZHU-WD","channel":"D0AC1TXM54L","threadTs":"1770902828.325269","msg":"Response sent to user"}
+{"level":30,"time":"2026-02-12T13:27:56.383Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: regular check timer triggered, processing due jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:27:56.384Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:27:56.384Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","dueJobs":0,"totalJobs":0,"msg":"cron: identified due jobs for execution"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:27:56.401Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:27:56.401Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:27:56.411Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","changedFile":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: jobs.json file changed externally, reloading jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:27:56.414Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:27:56.414Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:27:56.414Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","jobCount":0,"msg":"cron: jobs reloaded from file"}
+{"level":30,"time":"2026-02-12T13:28:26.428Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: regular check timer triggered, processing due jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:28:26.428Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:28:26.428Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","dueJobs":0,"totalJobs":0,"msg":"cron: identified due jobs for execution"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:28:26.443Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:28:26.443Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:28:26.450Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","changedFile":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: jobs.json file changed externally, reloading jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:28:26.452Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:28:26.453Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:28:26.453Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","jobCount":0,"msg":"cron: jobs reloaded from file"}
+{"level":30,"time":"2026-02-12T13:28:56.467Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: regular check timer triggered, processing due jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:28:56.468Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:28:56.468Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","dueJobs":0,"totalJobs":0,"msg":"cron: identified due jobs for execution"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:28:56.481Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:28:56.481Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:28:56.489Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","changedFile":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: jobs.json file changed externally, reloading jobs"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:28:56.492Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:28:56.492Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:28:56.492Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","jobCount":0,"msg":"cron: jobs reloaded from file"}
+{"level":30,"time":"2026-02-12T13:28:56.832Z","pid":22940,"hostname":"CN-JZHU-WD","msg":"Received shutdown signal, cleaning up..."}
+{"level":30,"time":"2026-02-12T13:28:56.832Z","pid":22940,"hostname":"CN-JZHU-WD","msg":"Stopping cron service..."}
+Stopping cron service...
+{"level":30,"time":"2026-02-12T13:28:56.835Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: stopping timer"}
+{"level":30,"time":"2026-02-12T13:28:56.835Z","pid":22940,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: timer stopped"}
+{"level":30,"time":"2026-02-12T13:28:56.835Z","pid":22940,"hostname":"CN-JZHU-WD","msg":"Cron service stopped successfully"}
+{"level":30,"time":"2026-02-12T13:28:56.835Z","pid":22940,"hostname":"CN-JZHU-WD","msg":"Slack API optimizer shutdown complete"}
+{"level":30,"time":"2026-02-12T13:28:56.835Z","pid":22940,"hostname":"CN-JZHU-WD","msg":"Slack API optimizer shut down"}
+[INFO]  socket-mode:SocketModeClient:0 Disconnecting ...
+[INFO]  socket-mode:SocketModeClient:0 Disconnected from Slack
+{"level":30,"time":"2026-02-12T13:28:56.837Z","pid":22940,"hostname":"CN-JZHU-WD","msg":"Slack app stopped"}
+{"level":30,"time":"2026-02-12T13:29:02.152Z","pid":10596,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+{"level":30,"time":"2026-02-12T13:29:02.157Z","pid":10596,"hostname":"CN-JZHU-WD","slackBotTokenConfigured":true,"slackAppTokenConfigured":true,"msg":"Starting Slack AI Agent"}
+{"level":30,"time":"2026-02-12T13:29:02.174Z","pid":10596,"hostname":"CN-JZHU-WD","tools":1,"skills":1,"mcps":1,"commands":1,"resurces":1,"msg":"Loaded permission config"}
+{"level":30,"time":"2026-02-12T13:29:02.174Z","pid":10596,"hostname":"CN-JZHU-WD","tools":[".*"],"toolCount":1,"skills":1,"mcps":1,"msg":"Loaded capabilities"}
+{"level":30,"time":"2026-02-12T13:29:02.176Z","pid":10596,"hostname":"CN-JZHU-WD","directory":"D:\\repos\\ironbot","msg":"Permission config watcher started"}
+{"level":30,"time":"2026-02-12T13:29:02.176Z","pid":10596,"hostname":"CN-JZHU-WD","msg":"Permission config hot-reload enabled"}
+{"level":40,"time":"2026-02-12T13:29:02.194Z","pid":10596,"hostname":"CN-JZHU-WD","msg":"Socket Mode state machine not available for patching"}
+{"level":30,"time":"2026-02-12T13:29:02.197Z","pid":10596,"hostname":"CN-JZHU-WD","provider":"local","model":"hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf","memorySearchEnabled":true,"sessionIndexing":true,"msg":"Memory manager initialized"}
+{"level":30,"time":"2026-02-12T13:29:02.197Z","pid":10596,"hostname":"CN-JZHU-WD","skillsDir":"D:\\repos\\ironbot\\skills","msg":"[INIT] Creating ClaudeProcessor"}
+{"level":30,"time":"2026-02-12T13:29:02.199Z","pid":10596,"hostname":"CN-JZHU-WD","model":"grok-code-fast-1","skillDirs":["D:\\repos\\ironbot\\skills","C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\skills"],"hasMemoryManager":true,"msg":"[INIT] ClaudeProcessor initialized"}
+{"level":30,"time":"2026-02-12T13:29:02.200Z","pid":10596,"hostname":"CN-JZHU-WD","msg":"Performing startup health checks..."}
+{"level":30,"time":"2026-02-12T13:29:02.200Z","pid":10596,"hostname":"CN-JZHU-WD","msg":"Checking Slack connection..."}
+{"level":30,"time":"2026-02-12T13:29:02.988Z","pid":10596,"hostname":"CN-JZHU-WD","msg":"✓ Slack health check passed"}
+{"level":30,"time":"2026-02-12T13:29:02.988Z","pid":10596,"hostname":"CN-JZHU-WD","msg":"Checking LLM connection..."}
+{"level":30,"time":"2026-02-12T13:29:10.415Z","pid":10596,"hostname":"CN-JZHU-WD","msg":"✓ LLM health check passed"}
+{"level":30,"time":"2026-02-12T13:29:10.415Z","pid":10596,"hostname":"CN-JZHU-WD","slackOk":true,"llmOk":true,"msg":"All health checks passed"}
+{"level":30,"time":"2026-02-12T13:29:10.415Z","pid":10596,"hostname":"CN-JZHU-WD","msg":"Launching Slack Bolt app (Socket Mode)..."}
+{"level":30,"time":"2026-02-12T13:29:10.415Z","pid":10596,"hostname":"CN-JZHU-WD","cwd":"D:\\repos\\ironbot","execDir":"D:\\repos\\ironbot\\src","msg":"Bot launch directories"}
+[INFO]  socket-mode:SocketModeClient:0 Going to establish a new connection to Slack ...
+{"level":30,"time":"2026-02-12T13:29:10.618Z","pid":10596,"hostname":"CN-JZHU-WD","info":{"ok":true,"url":"wss://wss-primary.slack.com/link/?ticket=3360a910-e282-4458-b723-675da69b0141&app_id=5cc486748ecd5a1ac700d4cecbfeb78f59fee3baaddbab594941e1f979d72f27","response_metadata":{"scopes":["connections:write"],"acceptedScopes":["connections:write"]}},"msg":"Socket Mode authentication successful"}
+{"level":30,"time":"2026-02-12T13:29:10.618Z","pid":10596,"hostname":"CN-JZHU-WD","msg":"Starting cron service..."}
+Starting cron service...
+{"level":30,"time":"2026-02-12T13:29:10.619Z","pid":10596,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: starting scheduler service"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:29:10.620Z","pid":10596,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:29:10.620Z","pid":10596,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: checking for past-due jobs at startup"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:29:10.631Z","pid":10596,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:29:10.632Z","pid":10596,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:29:10.632Z","pid":10596,"hostname":"CN-JZHU-WD","subsystem":"cron","enabled":true,"jobs":0,"nextWakeAtMs":null,"msg":"cron: started scheduler service"}
+{"level":30,"time":"2026-02-12T13:29:10.633Z","pid":10596,"hostname":"CN-JZHU-WD","subsystem":"cron","watchedPath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron","msg":"cron: file watcher set up for jobs.json monitoring"}
+{"level":30,"time":"2026-02-12T13:29:10.633Z","pid":10596,"hostname":"CN-JZHU-WD","msg":"Cron service started successfully"}
+{"level":30,"time":"2026-02-12T13:29:10.633Z","pid":10596,"hostname":"CN-JZHU-WD","durationMs":218,"msg":"Slack Bolt app started with Socket Mode"}
+[INFO]  socket-mode:SocketModeClient:0 Now connected to Slack
