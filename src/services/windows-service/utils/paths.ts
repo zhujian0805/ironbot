@@ -5,7 +5,7 @@
 
 import { existsSync, accessSync, constants } from "fs";
 import { resolve, isAbsolute } from "path";
-import { logger } from "../../utils/logging";
+import { logger } from "../../utils/logging.js";
 
 /**
  * Resolve the absolute path to IronBot project folder

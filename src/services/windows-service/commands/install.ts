@@ -3,14 +3,14 @@
  * Handles installation of IronBot as a Windows service
  */
 
-import { logger } from "../../utils/logging";
-import type { InstallOptions, InstallResult } from "../types/index";
+import { logger } from "../../utils/logging.js";
+import type { InstallOptions, InstallResult } from "../types/index.js";
 import {
   buildServiceConfig,
   validateServiceConfig,
   formatValidationReport,
   validateEnvironmentVariableAccess
-} from "../config/service-config";
+} from "../config/service-config.js";
 import {
   installService as nssmInstall,
   setServiceAppDirectory,
@@ -19,9 +19,9 @@ import {
   setServiceStartupType,
   setServiceAutoRestart,
   removeService as nssmRemove
-} from "../config/nssm";
-import { getLogsDirectory, createLogDirectory } from "../utils/paths";
-import { hasAdminPrivileges } from "../utils/process";
+} from "../config/nssm.js";
+import { getLogsDirectory, createLogDirectory } from "../utils/paths.js";
+import { hasAdminPrivileges } from "../utils/process.js";
 
 /**
  * Exit codes for install command
@@ -81,7 +81,7 @@ export async function installService(options: InstallOptions): Promise<InstallRe
     if (validation.warnings.length > 0) {
       logger.warn({ warnings: validation.warnings }, "Configuration warnings");
       console.warn("⚠ Warnings during validation:");
-      validation.warnings.forEach(w => console.warn(`  • ${w}`));
+      validation.warnings.forEach((w: string) => console.warn(`  • ${w}`));
     }
 
     // Validate user context and environment variables
@@ -92,13 +92,13 @@ export async function installService(options: InstallOptions): Promise<InstallRe
       if (!envValidation.valid && !options.skipValidation) {
         logger.error({ errors: envValidation.errors }, "User environment validation failed");
         console.error("\n✗ User Environment Validation Failed");
-        envValidation.errors.forEach(e => console.error(`  • ${e}`));
+        envValidation.errors.forEach((e: string) => console.error(`  • ${e}`));
       } else if (envValidation.warnings.length > 0) {
         logger.warn({ warnings: envValidation.warnings }, "User environment warnings");
         console.warn("\n⚠ User Environment Warnings:");
-        envValidation.warnings.forEach(w => console.warn(`  • ${w}`));
+        envValidation.warnings.forEach((w: string) => console.warn(`  • ${w}`));
         console.warn(`\nEnsure the following variables are set in ${config.username}'s environment:`);
-        envValidation.warnings.forEach(w => {
+        envValidation.warnings.forEach((w: string) => {
           const varName = w.split(" ")[0];
           console.warn(`  • ${varName}`);
         });
@@ -115,7 +115,7 @@ export async function installService(options: InstallOptions): Promise<InstallRe
     }
 
     // If service already exists and --force is not set, fail
-    const serviceExists = validation.checks.find(c => c.name === 'service-name-unique');
+    const serviceExists = validation.checks.find((c: any) => c.name === 'service-name-unique');
     if (serviceExists?.status === 'warn' && !options.force) {
       logger.error({ serviceName: config.serviceName }, "Service already exists, use --force to replace");
       throw {

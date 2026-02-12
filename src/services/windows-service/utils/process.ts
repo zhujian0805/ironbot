@@ -4,8 +4,8 @@
  */
 
 import { execSync } from "child_process";
-import type { ExecOptions, ExecResult } from "../types/index";
-import { logger } from "../../utils/logging";
+import type { ExecOptions, ExecResult } from "../types/index.js";
+import { logger } from "../../utils/logging.js";
 
 /**
  * Execute a command safely

@@ -3,9 +3,9 @@
  * Handles querying service status
  */
 
-import { logger } from "../../utils/logging";
-import type { ServiceStatus } from "../types/index";
-import { getServiceStatus as nssmGetStatus } from "../config/nssm";
+import { logger } from "../../utils/logging.js";
+import type { ServiceStatus } from "../types/index.js";
+import { getServiceStatus as nssmGetStatus } from "../config/nssm.js";
 
 /**
  * Exit codes for status command

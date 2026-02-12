@@ -3,10 +3,10 @@
  * Handles removal of IronBot Windows service
  */
 
-import { logger } from "../../utils/logging";
-import type { UninstallResult } from "../types/index";
-import { removeService } from "../config/nssm";
-import { serviceExists } from "../utils/process";
+import { logger } from "../../utils/logging.js";
+import type { UninstallResult } from "../types/index.js";
+import { removeService } from "../config/nssm.js";
+import { serviceExists } from "../utils/process.js";
 
 /**
  * Exit codes for uninstall command

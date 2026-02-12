@@ -4,10 +4,10 @@
  */
 
 import { readFileSync, existsSync } from "fs";
-import { logger } from "../../utils/logging";
-import type { LogsResult, LogEntry } from "../types/index";
-import { getLogPath, getLogsDirectory } from "../utils/paths";
-import { resolveProjectPath } from "../utils/paths";
+import { logger } from "../../utils/logging.js";
+import type { LogsResult, LogEntry } from "../types/index.js";
+import { getLogPath, getLogsDirectory } from "../utils/paths.js";
+import { resolveProjectPath } from "../utils/paths.js";
 
 /**
  * Exit codes for logs command
@@ -148,7 +148,7 @@ export function formatLogsOutput(logs: LogsResult): string {
   lines.push(`Log file: ${logs.logFile}`);
   lines.push(`\n--- Last ${logs.lines.length} log entries ---\n`);
 
-  logs.lines.forEach(entry => {
+  logs.lines.forEach((entry: LogEntry) => {
     const timestamp = entry.timestamp.toISOString();
     const level = entry.level.toUpperCase().padEnd(5);
     lines.push(`[${timestamp}] ${level}: ${entry.message}`);

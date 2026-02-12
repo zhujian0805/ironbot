@@ -4,13 +4,13 @@
  */
 
 // Re-export all types
-export * from './types/index';
+export * from './types/index.js';
 
 // Export command functions
-export { installService, handleInstallCommand } from './commands/install';
-export { uninstallService, handleUninstallCommand } from './commands/uninstall';
-export { getServiceStatus, handleStatusCommand, formatStatusOutput } from './commands/status';
-export { getServiceLogs, handleLogsCommand, readServiceLogs, parseLogEntries, filterLogsByLevel, filterLogsByTimestamp } from './commands/logs';
+export { installService, handleInstallCommand } from './commands/install.js';
+export { uninstallService, handleUninstallCommand } from './commands/uninstall.js';
+export { getServiceStatus, handleStatusCommand, formatStatusOutput } from './commands/status.js';
+export { getServiceLogs, handleLogsCommand, readServiceLogs, parseLogEntries, filterLogsByLevel, filterLogsByTimestamp } from './commands/logs.js';
 
 // Export utility functions
 export {
@@ -22,7 +22,7 @@ export {
   validateProjectStructure,
   resolveConfigFilePath,
   configFileExists
-} from './utils/paths';
+} from './utils/paths.js';
 export {
   validateEnvironmentVariables,
   getEnvironmentFromUser,
@@ -30,7 +30,7 @@ export {
   getEnvironmentSummary,
   isEnvironmentVariableSet,
   getCriticalEnvironmentVariables
-} from './utils/env';
+} from './utils/env.js';
 export {
   executeCommand,
   executeWithCredentials,
@@ -40,7 +40,7 @@ export {
   userAccountExists,
   serviceExists,
   getUserAccountInfo
-} from './utils/process';
+} from './utils/process.js';
 
 // Export NSSM operations
 export {
@@ -58,16 +58,15 @@ export {
   stopService,
   restartService,
   removeService,
-  getServiceStatus,
   isNssmAvailable,
   getNssmVersion
-} from './config/nssm';
+} from './config/nssm.js';
 
 export {
   buildServiceConfig,
   validateServiceConfig,
   validateEnvironmentVariableAccess,
   formatValidationReport
-} from './config/service-config';
+} from './config/service-config.js';
 
 

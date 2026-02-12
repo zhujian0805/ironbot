@@ -3,8 +3,8 @@
  * Handles validation and retrieval of environment variables for service context
  */
 
-import type { ValidationResult, ValidationCheck } from "../types/index";
-import { logger } from "../../utils/logging";
+import type { ValidationResult, ValidationCheck } from "../types/index.js";
+import { logger } from "../../utils/logging.js";
 
 /**
  * Critical environment variables that should be present for IronBot

@@ -8,27 +8,27 @@ import type {
   InstallOptions,
   ValidationResult,
   ValidationCheck
-} from "../types/index";
+} from "../types/index.js";
 import {
   resolveProjectPath,
   validatePathAccessibility,
   getLogPath,
   getLogsDirectory,
   validateProjectStructure
-} from "../utils/paths";
+} from "../utils/paths.js";
 import {
   validateEnvironmentVariables,
   getEnvironmentSummary
-} from "../utils/env";
+} from "../utils/env.js";
 import {
   hasAdminPrivileges,
   userAccountExists,
   serviceExists,
   getCurrentWindowsUser,
   getUserAccountInfo
-} from "../utils/process";
-import { logger } from "../../utils/logging";
-import { isNssmAvailable } from "./nssm";
+} from "../utils/process.js";
+import { logger } from "../../utils/logging.js";
+import { isNssmAvailable } from "./nssm.js";
 
 /**
  * Build service configuration from options
@@ -238,10 +238,10 @@ export function formatValidationReport(validation: ValidationResult): string {
   lines.push('\n=== Service Configuration Validation ===\n');
 
   // Passed checks
-  const passedChecks = validation.checks.filter(c => c.status === 'pass');
+  const passedChecks = validation.checks.filter((c: ValidationCheck) => c.status === 'pass');
   if (passedChecks.length > 0) {
     lines.push('✓ PASSED:');
-    passedChecks.forEach(check => {
+    passedChecks.forEach((check: ValidationCheck) => {
       lines.push(`  • ${check.message}`);
     });
     lines.push('');
@@ -250,7 +250,7 @@ export function formatValidationReport(validation: ValidationResult): string {
   // Warnings
   if (validation.warnings.length > 0) {
     lines.push('⚠ WARNINGS:');
-    validation.warnings.forEach(warning => {
+    validation.warnings.forEach((warning: string) => {
       lines.push(`  • ${warning}`);
     });
     lines.push('');
@@ -259,7 +259,7 @@ export function formatValidationReport(validation: ValidationResult): string {
   // Errors
   if (validation.errors.length > 0) {
     lines.push('✗ ERRORS:');
-    validation.errors.forEach(error => {
+    validation.errors.forEach((error: string) => {
       lines.push(`  • ${error}`);
     });
     lines.push('');
