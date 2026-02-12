@@ -232,3 +232,46 @@ export async function serviceExists(serviceName: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Get Windows user account information
+ * Returns domain and username in proper format
+ */
+export async function getUserAccountInfo(username: string): Promise<{
+  domain: string;
+  username: string;
+  fullName: string;
+}> {
+  try {
+    // Parse username to extract domain if present
+    let domain = ".";  // Local account by default
+    let user = username;
+
+    if (username.includes("\\")) {
+      const parts = username.split("\\");
+      domain = parts[0];
+      user = parts[1];
+    }
+
+    // Verify user exists
+    const exists = await userAccountExists(username);
+    if (!exists) {
+      throw new Error(`User account '${username}' not found`);
+    }
+
+    logger.debug(
+      { username, domain, user },
+      "User account info retrieved"
+    );
+
+    return {
+      domain,
+      username: user,
+      fullName: `${domain}\\${user}`
+    };
+  } catch (error) {
+    logger.error({ username, error }, "Failed to get user account info");
+    throw error;
+  }
+}
+

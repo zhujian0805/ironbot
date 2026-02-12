@@ -8,7 +8,8 @@ import type { InstallOptions, InstallResult } from "../types/index";
 import {
   buildServiceConfig,
   validateServiceConfig,
-  formatValidationReport
+  formatValidationReport,
+  validateEnvironmentVariableAccess
 } from "../config/service-config";
 import {
   installService as nssmInstall,
@@ -81,6 +82,36 @@ export async function installService(options: InstallOptions): Promise<InstallRe
       logger.warn({ warnings: validation.warnings }, "Configuration warnings");
       console.warn("⚠ Warnings during validation:");
       validation.warnings.forEach(w => console.warn(`  • ${w}`));
+    }
+
+    // Validate user context and environment variables
+    if (config.username) {
+      logger.info({ username: config.username }, "Validating user context and environment");
+      const envValidation = await validateEnvironmentVariableAccess(config.username);
+
+      if (!envValidation.valid && !options.skipValidation) {
+        logger.error({ errors: envValidation.errors }, "User environment validation failed");
+        console.error("\n✗ User Environment Validation Failed");
+        envValidation.errors.forEach(e => console.error(`  • ${e}`));
+      } else if (envValidation.warnings.length > 0) {
+        logger.warn({ warnings: envValidation.warnings }, "User environment warnings");
+        console.warn("\n⚠ User Environment Warnings:");
+        envValidation.warnings.forEach(w => console.warn(`  • ${w}`));
+        console.warn(`\nEnsure the following variables are set in ${config.username}'s environment:`);
+        envValidation.warnings.forEach(w => {
+          const varName = w.split(" ")[0];
+          console.warn(`  • ${varName}`);
+        });
+      }
+
+      logger.info(
+        {
+          username: config.username,
+          checksPerformed: envValidation.checks.length,
+          warningsFound: envValidation.warnings.length
+        },
+        "User context and environment validation complete"
+      );
     }
 
     // If service already exists and --force is not set, fail

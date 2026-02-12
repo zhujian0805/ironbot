@@ -301,8 +301,8 @@ export async function removeService(
  */
 export async function isNssmAvailable(): Promise<boolean> {
   try {
-    const result = await execa("nssm", ["--version"]);
-    return result.exitCode === 0;
+    const result = await executeNssmCommand("--version");
+    return result.success;
   } catch {
     logger.warn("NSSM not found in PATH");
     return false;
@@ -314,12 +314,60 @@ export async function isNssmAvailable(): Promise<boolean> {
  */
 export async function getNssmVersion(): Promise<string | null> {
   try {
-    const result = await execa("nssm", ["--version"]);
-    if (result.exitCode === 0) {
+    const result = await executeNssmCommand("--version");
+    if (result.success) {
       return result.stdout.trim();
     }
   } catch {
     logger.warn("Failed to get NSSM version");
   }
   return null;
+}
+
+/**
+ * Set service user (ObjectName) with credentials
+ * Usage: nssm set <serviceName> ObjectName <domain>\<user> <password>
+ * Alias for setServiceUser with explicit naming
+ */
+export async function setServiceObjectName(
+  serviceName: string,
+  username: string,
+  password: string
+): Promise<boolean> {
+  return setServiceUser(serviceName, username, password);
+}
+
+/**
+ * Store and apply credentials for service user
+ * This wrapper function handles both storage and application of credentials
+ */
+export async function storeAndApplyCredentials(
+  serviceName: string,
+  username: string,
+  password: string
+): Promise<boolean> {
+  try {
+    // Apply credentials to service via NSSM
+    const result = await setServiceUser(serviceName, username, password);
+
+    if (result) {
+      logger.info(
+        { serviceName, username },
+        "Credentials stored and applied to service"
+      );
+      return true;
+    } else {
+      logger.error(
+        { serviceName, username },
+        "Failed to apply credentials to service"
+      );
+      return false;
+    }
+  } catch (error) {
+    logger.error(
+      { serviceName, username, error },
+      "Error storing and applying credentials"
+    );
+    return false;
+  }
 }

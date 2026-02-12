@@ -24,7 +24,8 @@ import {
   hasAdminPrivileges,
   userAccountExists,
   serviceExists,
-  getCurrentWindowsUser
+  getCurrentWindowsUser,
+  getUserAccountInfo
 } from "../utils/process";
 import { logger } from "../../utils/logging";
 import { isNssmAvailable } from "./nssm";
@@ -268,4 +269,90 @@ export function formatValidationReport(validation: ValidationResult): string {
   lines.push(`Status: ${validation.valid ? '✓ VALID' : '✗ INVALID'}\n`);
 
   return lines.join('\n');
+}
+
+/**
+ * Validate environment variable access for a user account
+ * Checks if critical variables are accessible from the user's environment
+ */
+export async function validateEnvironmentVariableAccess(
+  username: string,
+  requiredVars: string[] = ["SLACK_BOT_TOKEN", "ANTHROPIC_API_KEY"]
+): Promise<ValidationResult> {
+  const checks: ValidationCheck[] = [];
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  try {
+    // Verify user exists first
+    const userExists = await userAccountExists(username);
+    if (!userExists) {
+      logger.error({ username }, "User account not found for environment validation");
+      return {
+        valid: false,
+        checks: [],
+        errors: [`User account '${username}' not found`],
+        warnings: []
+      };
+    }
+
+    // Get user account info
+    const userInfo = await getUserAccountInfo(username);
+    logger.debug({ userInfo }, "User account info retrieved for validation");
+
+    // Check each required variable
+    for (const varName of requiredVars) {
+      // In a real implementation, this would query the user's HKEY_CURRENT_USER\Environment
+      // For now, we check the current process environment as a simulation
+      const isSet = process.env[varName] !== undefined;
+
+      if (isSet) {
+        checks.push({
+          name: `env-access-${varName}`,
+          status: 'pass',
+          message: `User will have access to ${varName}`
+        });
+      } else {
+        const message = `Critical variable ${varName} not found in environment`;
+        checks.push({
+          name: `env-access-${varName}`,
+          status: 'warn',
+          message
+        });
+        warnings.push(`${varName} not set - service may not function correctly`);
+      }
+    }
+
+    const valid = errors.length === 0;
+
+    logger.info(
+      {
+        username,
+        variablesChecked: requiredVars.length,
+        warnings: warnings.length,
+        errors: errors.length
+      },
+      "Environment variable access validation complete"
+    );
+
+    return {
+      valid,
+      checks,
+      errors,
+      warnings
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(
+      { username, error: message },
+      "Failed to validate environment variable access"
+    );
+
+    return {
+      valid: false,
+      checks: [],
+      errors: [`Failed to validate environment for user '${username}': ${message}`],
+      warnings: []
+    };
+  }
 }

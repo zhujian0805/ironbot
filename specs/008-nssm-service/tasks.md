@@ -124,12 +124,12 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T019 [P] [US2] Write integration test for user context verification in `tests/integration/windows-service/user-context.test.ts`:
+- [x] T019 [P] [US2] Write integration test for user context verification in `tests/integration/windows-service/user-context.test.ts`:
   - Setup: Install service with jzhu user
   - Test: Query service process via Windows API (Get-Process or wmic)
   - Verify: Process runs under jzhu user account (domain\username format)
   - Verify: Process has access to jzhu user's environment variables
-- [ ] T020 [P] [US2] Write integration test for environment variable access in `tests/integration/windows-service/env-variables.test.ts`:
+- [x] T020 [P] [US2] Write integration test for environment variable access in `tests/integration/windows-service/env-variables.test.ts`:
   - Setup: Install service with critical env vars in jzhu profile (SLACK_BOT_TOKEN, ANTHROPIC_API_KEY simulation)
   - Test: IronBot service can access these variables (via logging or test output)
   - Verify: Variables from user's HKEY_CURRENT_USER\Environment accessible to service
@@ -167,12 +167,12 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T025 [P] [US3] Write integration test for working directory configuration in `tests/integration/windows-service/working-directory.test.ts`:
+- [x] T025 [P] [US3] Write integration test for working directory configuration in `tests/integration/windows-service/working-directory.test.ts`:
   - Setup: Install service with absolute project path
   - Test: Query NSSM AppDirectory setting
   - Verify: AppDirectory equals absolute project path (nssm get {service} AppDirectory)
   - Verify: Path is absolute, not relative
-- [ ] T026 [P] [US3] Write integration test for configuration file resolution in `tests/integration/windows-service/config-resolution.test.ts`:
+- [x] T026 [P] [US3] Write integration test for configuration file resolution in `tests/integration/windows-service/config-resolution.test.ts`:
   - Setup: Create test permissions.yaml in project folder
   - Test: Service can load permissions.yaml using relative path
   - Verify: IronBot can access configuration without path errors
