@@ -124,3 +124,497 @@ Options:
 Commands:
   windows-service|service    Manage IronBot as a Windows service
   help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:08:49.618Z","pid":73600,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:09:06.320Z","pid":65912,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:09:39.032Z","pid":77816,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:10:14.429Z","pid":45556,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:10:18.112Z","pid":66136,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:10:22.881Z","pid":104644,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:10:31.643Z","pid":95900,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:10:41.430Z","pid":31844,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:10:45.172Z","pid":25924,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:10:49.983Z","pid":103964,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:10:58.719Z","pid":83940,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:11:15.380Z","pid":101652,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:11:48.090Z","pid":107544,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:12:39.790Z","pid":76340,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:12:43.587Z","pid":109708,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:12:48.295Z","pid":113608,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:12:57.028Z","pid":95868,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:13:13.832Z","pid":35708,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:13:36.469Z","pid":95744,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:13:40.189Z","pid":79976,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:13:44.885Z","pid":51140,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:13:53.572Z","pid":47248,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:14:10.307Z","pid":109784,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:14:15.042Z","pid":18672,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:14:18.841Z","pid":103716,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:14:23.532Z","pid":29492,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:14:32.193Z","pid":91052,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:14:45.042Z","pid":64424,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:14:48.839Z","pid":66508,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:14:53.608Z","pid":83320,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:15:02.417Z","pid":86108,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:15:19.097Z","pid":2840,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:15:51.854Z","pid":95388,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+Usage: program [options] [command]
+
+Options:
+  --debug                    Enable debug logging
+  --log-level <level>        Override log level (DEBUG, INFO, WARNING, ERROR)
+  --log-file <path>          Optional file to write logs to
+  --skip-health-checks       Skip startup health checks
+  --permissions-file <path>  Path to permissions.yaml configuration file
+  -h, --help                 display help for command
+
+Commands:
+  windows-service|service    Manage IronBot as a Windows service
+  help [command]             display help for command
+{"level":30,"time":"2026-02-12T13:16:50.861Z","pid":36972,"hostname":"CN-JZHU-WD","path":"D:\\repos\\ironbot\\system_prompt.txt","msg":"Loaded system prompt from default location"}
+{"level":30,"time":"2026-02-12T13:16:50.866Z","pid":36972,"hostname":"CN-JZHU-WD","slackBotTokenConfigured":true,"slackAppTokenConfigured":true,"msg":"Starting Slack AI Agent"}
+{"level":30,"time":"2026-02-12T13:16:50.883Z","pid":36972,"hostname":"CN-JZHU-WD","tools":1,"skills":1,"mcps":1,"commands":1,"resurces":1,"msg":"Loaded permission config"}
+{"level":30,"time":"2026-02-12T13:16:50.883Z","pid":36972,"hostname":"CN-JZHU-WD","tools":[".*"],"toolCount":1,"skills":1,"mcps":1,"msg":"Loaded capabilities"}
+{"level":30,"time":"2026-02-12T13:16:50.886Z","pid":36972,"hostname":"CN-JZHU-WD","directory":"D:\\repos\\ironbot","msg":"Permission config watcher started"}
+{"level":30,"time":"2026-02-12T13:16:50.886Z","pid":36972,"hostname":"CN-JZHU-WD","msg":"Permission config hot-reload enabled"}
+{"level":40,"time":"2026-02-12T13:16:50.905Z","pid":36972,"hostname":"CN-JZHU-WD","msg":"Socket Mode state machine not available for patching"}
+{"level":30,"time":"2026-02-12T13:16:50.910Z","pid":36972,"hostname":"CN-JZHU-WD","provider":"local","model":"hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf","memorySearchEnabled":true,"sessionIndexing":true,"msg":"Memory manager initialized"}
+{"level":30,"time":"2026-02-12T13:16:50.910Z","pid":36972,"hostname":"CN-JZHU-WD","skillsDir":"D:\\repos\\ironbot\\skills","msg":"[INIT] Creating ClaudeProcessor"}
+{"level":30,"time":"2026-02-12T13:16:50.911Z","pid":36972,"hostname":"CN-JZHU-WD","model":"grok-code-fast-1","skillDirs":["D:\\repos\\ironbot\\skills","C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\skills"],"hasMemoryManager":true,"msg":"[INIT] ClaudeProcessor initialized"}
+{"level":30,"time":"2026-02-12T13:16:50.912Z","pid":36972,"hostname":"CN-JZHU-WD","msg":"Performing startup health checks..."}
+{"level":30,"time":"2026-02-12T13:16:58.524Z","pid":36972,"hostname":"CN-JZHU-WD","msg":"All health checks passed"}
+{"level":30,"time":"2026-02-12T13:16:58.524Z","pid":36972,"hostname":"CN-JZHU-WD","msg":"Launching Slack Bolt app (Socket Mode)..."}
+{"level":30,"time":"2026-02-12T13:16:58.524Z","pid":36972,"hostname":"CN-JZHU-WD","cwd":"D:\\repos\\ironbot","execDir":"D:\\repos\\ironbot\\src","msg":"Bot launch directories"}
+[INFO]  socket-mode:SocketModeClient:0 Going to establish a new connection to Slack ...
+{"level":30,"time":"2026-02-12T13:16:58.742Z","pid":36972,"hostname":"CN-JZHU-WD","info":{"ok":true,"url":"wss://wss-primary.slack.com/link/?ticket=4597c89a-efde-4ab8-a8ad-4f0260a25505&app_id=5cc486748ecd5a1ac700d4cecbfeb78f59fee3baaddbab594941e1f979d72f27","response_metadata":{"scopes":["connections:write"],"acceptedScopes":["connections:write"]}},"msg":"Socket Mode authentication successful"}
+{"level":30,"time":"2026-02-12T13:16:58.742Z","pid":36972,"hostname":"CN-JZHU-WD","msg":"Starting cron service..."}
+Starting cron service...
+{"level":30,"time":"2026-02-12T13:16:58.742Z","pid":36972,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: starting scheduler service"}
+Loaded cron store from C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:16:58.744Z","pid":36972,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: loaded store from disk"}
+{"level":30,"time":"2026-02-12T13:16:58.744Z","pid":36972,"hostname":"CN-JZHU-WD","subsystem":"cron","msg":"cron: checking for past-due jobs at startup"}
+Saved cron store to C:\WINDOWS\system32\config\systemprofile\.ironbot\cron\jobs.json with 0 jobs
+{"level":30,"time":"2026-02-12T13:16:58.759Z","pid":36972,"hostname":"CN-JZHU-WD","subsystem":"cron","jobCount":0,"storePath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron\\jobs.json","msg":"cron: store persisted to disk"}
+{"level":30,"time":"2026-02-12T13:16:58.759Z","pid":36972,"hostname":"CN-JZHU-WD","subsystem":"cron","regularCheckIntervalMs":30000,"msg":"cron: arming regular check timer"}
+{"level":30,"time":"2026-02-12T13:16:58.760Z","pid":36972,"hostname":"CN-JZHU-WD","subsystem":"cron","enabled":true,"jobs":0,"nextWakeAtMs":null,"msg":"cron: started scheduler service"}
+{"level":30,"time":"2026-02-12T13:16:58.761Z","pid":36972,"hostname":"CN-JZHU-WD","subsystem":"cron","watchedPath":"C:\\WINDOWS\\system32\\config\\systemprofile\\.ironbot\\cron","msg":"cron: file watcher set up for jobs.json monitoring"}
+{"level":30,"time":"2026-02-12T13:16:58.761Z","pid":36972,"hostname":"CN-JZHU-WD","msg":"Cron service started successfully"}
+{"level":30,"time":"2026-02-12T13:16:58.761Z","pid":36972,"hostname":"CN-JZHU-WD","durationMs":237,"msg":"Slack Bolt app started with Socket Mode"}
+[INFO]  socket-mode:SocketModeClient:0 Now connected to Slack
+{"level":30,"time":"2026-02-12T13:17:26.011Z","pid":36972,"hostname":"CN-JZHU-WD","channel":"D0AC1TXM54L","threadTs":"1770902244.667999","sessionKey":"agent:default:dm:D0AC1TXM54L","msg":"Loaded conversation history"}
+{"level":30,"time":"2026-02-12T13:17:26.022Z","pid":36972,"hostname":"CN-JZHU-WD","channel":"D0AC1TXM54L","threadTs":"1770902244.667999","msg":"Response sent to user"}
