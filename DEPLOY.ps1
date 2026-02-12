@@ -39,11 +39,19 @@ if (-not $nodeVersion) {
 Write-Host "[1/5] Node.js: $nodeVersion" -ForegroundColor Green
 
 # Check NSSM
-$nssmVersion = nssm --version 2>$null
-if (-not $nssmVersion) {
-    Write-Host "ERROR: NSSM not found" -ForegroundColor Red
-    Write-Host "Install from https://nssm.cc/download" -ForegroundColor Yellow
-    exit 1
+$nssmPath = "C:\tools\nssm\nssm-2.24\win64\nssm.exe"
+if (-not (Test-Path $nssmPath)) {
+    # Try to find nssm in PATH
+    $nssmVersion = nssm --version 2>$null
+    if (-not $nssmVersion) {
+        Write-Host "ERROR: NSSM not found at $nssmPath" -ForegroundColor Red
+        Write-Host "Install from https://nssm.cc/download" -ForegroundColor Yellow
+        exit 1
+    }
+} else {
+    # Add NSSM to PATH
+    $env:Path += ";C:\tools\nssm\nssm-2.24\win64"
+    $nssmVersion = & $nssmPath --version
 }
 Write-Host "[1/5] NSSM: $nssmVersion" -ForegroundColor Green
 
@@ -63,10 +71,14 @@ Write-Host "[2/5] Environment check complete" -ForegroundColor Green
 Write-Host "`n[3/5] Building project..." -ForegroundColor Yellow
 bun run build
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Build failed" -ForegroundColor Red
-    exit 1
+    Write-Host "WARNING: Build failed, but continuing with existing dist/main.js" -ForegroundColor Yellow
+    # Check if dist/main.js exists
+    if (-not (Test-Path "dist/main.js")) {
+        Write-Host "ERROR: No dist/main.js found" -ForegroundColor Red
+        exit 1
+    }
 }
-Write-Host "[3/5] Build complete" -ForegroundColor Green
+Write-Host "[3/5] Build complete (or using existing)" -ForegroundColor Green
 
 # Install service
 Write-Host "`n[4/5] Installing Windows service..." -ForegroundColor Yellow

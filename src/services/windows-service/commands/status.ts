@@ -3,7 +3,7 @@
  * Handles querying service status
  */
 
-import { logger } from "../../utils/logging.js";
+import { logger } from "../../utils/logging.ts";
 import type { ServiceStatus } from "../types/index.js";
 import { getServiceStatus as nssmGetStatus } from "../config/nssm.js";
 

@@ -33,7 +33,14 @@ export function createWindowsServiceCommands(parentProgram: Command): void {
     .option('--force', 'Force uninstall existing service first')
     .option('--skip-validation', 'Skip pre-installation checks')
     .option('--json', 'Output as JSON')
-    .action((options: InstallOptions) => handleInstallCommand(options));
+    .action(async (options: InstallOptions) => {
+      try {
+        await handleInstallCommand(options);
+      } catch (error) {
+        logger.error({ error }, 'Install command failed');
+        process.exit(1);
+      }
+    });
 
   // Uninstall command
   serviceGroup
@@ -41,9 +48,14 @@ export function createWindowsServiceCommands(parentProgram: Command): void {
     .description('Uninstall IronBot service')
     .option('--force', 'Force uninstall without confirmation')
     .option('--json', 'Output as JSON')
-    .action((serviceName: string | undefined, options: any) =>
-      handleUninstallCommand(serviceName, options)
-    );
+    .action(async (serviceName: string | undefined, options: any) => {
+      try {
+        await handleUninstallCommand(serviceName, options);
+      } catch (error) {
+        logger.error({ error }, 'Uninstall command failed');
+        process.exit(1);
+      }
+    });
 
   // Start command
   serviceGroup
@@ -186,9 +198,14 @@ export function createWindowsServiceCommands(parentProgram: Command): void {
     .option('--since <time>', 'Show logs since time (e.g., 1h, 30m)')
     .option('--level <level>', 'Filter by log level (error|warn|info|debug)')
     .option('--json', 'Output as JSON')
-    .action((serviceName: string | undefined, options: any) =>
-      handleLogsCommand(serviceName, options)
-    );
+    .action(async (serviceName: string | undefined, options: any) => {
+      try {
+        await handleLogsCommand(serviceName, options);
+      } catch (error) {
+        logger.error({ error }, 'Logs command failed');
+        process.exit(1);
+      }
+    });
 
   // Add service group to parent program
   parentProgram.addCommand(serviceGroup);

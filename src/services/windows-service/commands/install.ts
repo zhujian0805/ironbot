@@ -3,7 +3,7 @@
  * Handles installation of IronBot as a Windows service
  */
 
-import { logger } from "../../utils/logging.js";
+import { logger } from "../../utils/logging.ts";
 import type { InstallOptions, InstallResult } from "../types/index.js";
 import {
   buildServiceConfig,

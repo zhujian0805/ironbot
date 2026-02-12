@@ -27,7 +27,7 @@ import {
   getCurrentWindowsUser,
   getUserAccountInfo
 } from "../utils/process.js";
-import { logger } from "../../utils/logging.js";
+import { logger } from "../../utils/logging.ts";
 import { isNssmAvailable } from "./nssm.js";
 
 /**

@@ -5,7 +5,7 @@
 
 import { execSync } from "child_process";
 import type { CommandResult, ServiceStatus } from "../types/index.js";
-import { logger } from "../../utils/logging.js";
+import { logger } from "../../utils/logging.ts";
 
 /**
  * Execute an NSSM command safely
