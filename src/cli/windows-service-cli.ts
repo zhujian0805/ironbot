@@ -4,13 +4,13 @@
  */
 
 import { Command } from 'commander';
-import type { InstallOptions } from '../services/windows-service/types/index';
-import { handleInstallCommand } from '../services/windows-service/commands/install';
-import { handleUninstallCommand } from '../services/windows-service/commands/uninstall';
-import { handleStatusCommand } from '../services/windows-service/commands/status';
-import { handleLogsCommand } from '../services/windows-service/commands/logs';
-import { startService, stopService, restartService } from '../services/windows-service/config/nssm';
-import { logger } from '../utils/logging';
+import type { InstallOptions } from '../services/windows-service/types/index.js';
+import { handleInstallCommand } from '../services/windows-service/commands/install.js';
+import { handleUninstallCommand } from '../services/windows-service/commands/uninstall.js';
+import { handleStatusCommand } from '../services/windows-service/commands/status.js';
+import { handleLogsCommand } from '../services/windows-service/commands/logs.js';
+import { startService, stopService, restartService } from '../services/windows-service/config/nssm.js';
+import { logger } from '../utils/logging.js';
 
 /**
  * Create windows-service command group
