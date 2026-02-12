@@ -3,7 +3,7 @@
  * Handles viewing service logs
  */
 
-import type { LogsResult } from "../types/index.js";
+import type { LogsResult } from "../types/index";
 
 /**
  * Get service logs

@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { installService, removeService } from "../../src/services/windows-service/config/nssm.js";
-import { executeCommand, userAccountExists } from "../../src/services/windows-service/utils/process.js";
+import { installService, removeService } from "../../src/services/windows-service/config/nssm";
+import { executeCommand, userAccountExists } from "../../src/services/windows-service/utils/process";
 
 describe("Service User Context", { timeout: 60000 }, () => {
   const testServiceName = `IronBot-User-Test-${Date.now()}`;

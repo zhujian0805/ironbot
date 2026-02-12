@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach } from "bun:test";
-import type { ValidationResult, ValidationCheck } from "../../src/services/windows-service/types/index.js";
-import { validateServiceConfig, formatValidationReport } from "../../src/services/windows-service/config/service-config.js";
+import type { ValidationResult, ValidationCheck } from "../../src/services/windows-service/types/index";
+import { validateServiceConfig, formatValidationReport } from "../../src/services/windows-service/config/service-config";
 
 describe("Install Command Validation", () => {
   describe("validateServiceConfig", () => {

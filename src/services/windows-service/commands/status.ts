@@ -3,7 +3,7 @@
  * Handles querying service status
  */
 
-import type { ServiceStatus } from "../types/index.js";
+import type { ServiceStatus } from "../types/index";
 
 /**
  * Get service status

@@ -57,6 +57,7 @@ export interface InstallOptions {
   startupType?: 'auto' | 'manual';  // Startup type (default: "auto")
   username?: string;                // Override username (default: current user)
   password?: string;                // Provide password non-interactively (normally prompted)
+  workingDirectory?: string;        // Project working directory (default: current directory)
   force?: boolean;                  // Force uninstall existing service first
   skipValidation?: boolean;         // Skip pre-installation checks (not recommended)
   json?: boolean;                   // Output as JSON

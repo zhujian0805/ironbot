@@ -3,13 +3,13 @@
  * Handles installation of IronBot as a Windows service
  */
 
-import { logger } from "../../utils/logging.ts";
-import type { InstallOptions, InstallResult } from "../types/index.js";
+import { logger } from "../../utils/logging";
+import type { InstallOptions, InstallResult } from "../types/index";
 import {
   buildServiceConfig,
   validateServiceConfig,
   formatValidationReport
-} from "../config/service-config.js";
+} from "../config/service-config";
 import {
   installService as nssmInstall,
   setServiceAppDirectory,
@@ -18,9 +18,9 @@ import {
   setServiceStartupType,
   setServiceAutoRestart,
   removeService as nssmRemove
-} from "../config/nssm.js";
-import { getLogsDirectory } from "../utils/paths.js";
-import { hasAdminPrivileges } from "../utils/process.js";
+} from "../config/nssm";
+import { getLogsDirectory } from "../utils/paths";
+import { hasAdminPrivileges } from "../utils/process";
 
 /**
  * Exit codes for install command

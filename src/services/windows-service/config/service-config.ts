@@ -8,26 +8,26 @@ import type {
   InstallOptions,
   ValidationResult,
   ValidationCheck
-} from "../types/index.js";
+} from "../types/index";
 import {
   resolveProjectPath,
   validatePathAccessibility,
   getLogPath,
   getLogsDirectory,
   validateProjectStructure
-} from "./paths.js";
+} from "../utils/paths";
 import {
   validateEnvironmentVariables,
   getEnvironmentSummary
-} from "./env.js";
+} from "../utils/env";
 import {
   hasAdminPrivileges,
   userAccountExists,
   serviceExists,
   getCurrentWindowsUser
-} from "./process.js";
-import { logger } from "../../utils/logging.ts";
-import { isNssmAvailable } from "./nssm.js";
+} from "../utils/process";
+import { logger } from "../../utils/logging";
+import { isNssmAvailable } from "./nssm";
 
 /**
  * Build service configuration from options

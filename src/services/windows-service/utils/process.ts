@@ -3,9 +3,9 @@
  * Safe execution of external commands and credential handling
  */
 
-import { execa } from "execa";
-import type { ExecOptions, ExecResult } from "../types/index.js";
-import { logger } from "../../utils/logging.ts";
+import { execSync } from "child_process";
+import type { ExecOptions, ExecResult } from "../types/index";
+import { logger } from "../../utils/logging";
 
 /**
  * Execute a command safely
@@ -21,19 +21,21 @@ export async function executeCommand(
       "Executing command"
     );
 
-    const result = await execa(command, args, {
+    const cmdLine = `${command} ${args.map(arg => `"${arg}"`).join(" ")}`;
+    const stdout = execSync(cmdLine, {
+      encoding: "utf-8",
       timeout: options.timeout || 30000,
-      env: options.env,
       cwd: options.cwd,
-      shell: true
+      env: options.env ? { ...process.env, ...options.env } : process.env,
+      stdio: ["pipe", "pipe", "pipe"]
     });
 
-    logger.debug({ command, exitCode: result.exitCode }, "Command executed successfully");
+    logger.debug({ command, exitCode: 0 }, "Command executed successfully");
 
     return {
-      exitCode: result.exitCode || 0,
-      stdout: result.stdout,
-      stderr: result.stderr,
+      exitCode: 0,
+      stdout: stdout || "",
+      stderr: "",
       success: true
     };
   } catch (error) {
@@ -41,16 +43,16 @@ export async function executeCommand(
     logger.error(
       {
         command,
-        exitCode: err.exitCode,
-        stderr: err.stderr
+        exitCode: err.status,
+        stderr: err.stderr || err.message
       },
       "Command execution failed"
     );
 
     return {
-      exitCode: err.exitCode || 1,
-      stdout: err.stdout || "",
-      stderr: err.stderr || "",
+      exitCode: err.status || 1,
+      stdout: err.stdout ? err.stdout.toString() : "",
+      stderr: err.stderr ? err.stderr.toString() : err.message || "",
       success: false
     };
   }
@@ -79,22 +81,23 @@ export async function executeWithCredentials(
     // But for now, we'll just execute with current user's context
     // and log that credentials would be used
 
-    const result = await execa(command, args, {
+    const cmdLine = `${command} ${args.map(arg => `"${arg}"`).join(" ")}`;
+    const stdout = execSync(cmdLine, {
+      encoding: "utf-8",
       timeout: options.timeout || 30000,
-      env: options.env,
       cwd: options.cwd,
-      shell: true
+      env: options.env ? { ...process.env, ...options.env } : process.env
     });
 
     logger.info(
-      { command, username, exitCode: result.exitCode },
+      { command, username, exitCode: 0 },
       "Command executed with user context"
     );
 
     return {
-      exitCode: result.exitCode || 0,
-      stdout: result.stdout,
-      stderr: result.stderr,
+      exitCode: 0,
+      stdout: stdout || "",
+      stderr: "",
       success: true
     };
   } catch (error) {
@@ -103,16 +106,16 @@ export async function executeWithCredentials(
       {
         command,
         username,
-        exitCode: err.exitCode,
-        stderr: err.stderr
+        exitCode: err.status,
+        stderr: err.stderr || err.message
       },
       "Credential-based command execution failed"
     );
 
     return {
-      exitCode: err.exitCode || 1,
-      stdout: err.stdout || "",
-      stderr: err.stderr || "",
+      exitCode: err.status || 1,
+      stdout: err.stdout ? err.stdout.toString() : "",
+      stderr: err.stderr ? err.stderr.toString() : err.message || "",
       success: false
     };
   }
@@ -131,39 +134,35 @@ export async function executePowerShell(
       "Executing PowerShell script"
     );
 
-    const result = await execa("powershell.exe", [
-      "-NoProfile",
-      "-Command",
-      scriptContent
-    ], {
+    const stdout = execSync(`powershell.exe -NoProfile -Command "${scriptContent.replace(/"/g, '\\"')}"`, {
+      encoding: "utf-8",
       timeout: options.timeout || 30000,
-      env: options.env,
       cwd: options.cwd,
-      shell: false
+      env: options.env ? { ...process.env, ...options.env } : process.env
     });
 
-    logger.debug({ exitCode: result.exitCode }, "PowerShell script executed successfully");
+    logger.debug({ exitCode: 0 }, "PowerShell script executed successfully");
 
     return {
-      exitCode: result.exitCode || 0,
-      stdout: result.stdout,
-      stderr: result.stderr,
+      exitCode: 0,
+      stdout: stdout || "",
+      stderr: "",
       success: true
     };
   } catch (error) {
     const err = error as any;
     logger.error(
       {
-        exitCode: err.exitCode,
-        stderr: err.stderr
+        exitCode: err.status,
+        stderr: err.stderr || err.message
       },
       "PowerShell script execution failed"
     );
 
     return {
-      exitCode: err.exitCode || 1,
-      stdout: err.stdout || "",
-      stderr: err.stderr || "",
+      exitCode: err.status || 1,
+      stdout: err.stdout ? err.stdout.toString() : "",
+      stderr: err.stderr ? err.stderr.toString() : err.message || "",
       success: false
     };
   }

@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { installService, getServiceStatus, removeService } from "../../src/services/windows-service/config/nssm.js";
-import { executeCommand } from "../../src/services/windows-service/utils/process.js";
+import { installService, getServiceStatus, removeService } from "../../src/services/windows-service/config/nssm";
+import { executeCommand } from "../../src/services/windows-service/utils/process";
 
 describe("Windows Service Installation", { timeout: 60000 }, () => {
   const testServiceName = `IronBot-Test-${Date.now()}`;

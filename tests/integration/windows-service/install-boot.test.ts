@@ -9,8 +9,8 @@ import {
   setServiceStartupType,
   setServiceAutoRestart,
   removeService
-} from "../../src/services/windows-service/config/nssm.js";
-import { executeCommand } from "../../src/services/windows-service/utils/process.js";
+} from "../../src/services/windows-service/config/nssm";
+import { executeCommand } from "../../src/services/windows-service/utils/process";
 
 describe("Service Auto-Start Configuration", { timeout: 60000 }, () => {
   const testServiceName = `IronBot-Boot-Test-${Date.now()}`;

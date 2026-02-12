@@ -3,9 +3,9 @@
  * Provides safe execution of NSSM commands for Windows service management
  */
 
-import { execa } from "execa";
-import type { CommandResult, ServiceStatus } from "../types/index.js";
-import { logger } from "../../utils/logging.ts";
+import { execSync } from "child_process";
+import type { CommandResult, ServiceStatus } from "../types/index";
+import { logger } from "../../utils/logging";
 
 /**
  * Execute an NSSM command safely
@@ -18,12 +18,13 @@ export async function executeNssmCommand(
     const fullArgs = [command, ...args];
     logger.debug({ command, argsCount: args.length }, "Executing NSSM command");
 
-    const result = await execa("nssm", fullArgs);
+    const cmdLine = `nssm ${fullArgs.map(arg => `"${arg}"`).join(" ")}`;
+    const stdout = execSync(cmdLine, { encoding: "utf-8" });
 
     return {
-      statusCode: result.exitCode || 0,
-      stdout: result.stdout,
-      stderr: result.stderr,
+      statusCode: 0,
+      stdout: stdout || "",
+      stderr: "",
       success: true
     };
   } catch (error) {
@@ -31,16 +32,16 @@ export async function executeNssmCommand(
     logger.error(
       {
         command,
-        statusCode: err.exitCode,
-        stderr: err.stderr
+        statusCode: err.status,
+        stderr: err.stderr || err.message
       },
       "NSSM command failed"
     );
 
     return {
-      statusCode: err.exitCode || 1,
-      stdout: err.stdout || "",
-      stderr: err.stderr || "",
+      statusCode: err.status || 1,
+      stdout: err.stdout ? err.stdout.toString() : "",
+      stderr: err.stderr ? err.stderr.toString() : err.message || "",
       success: false
     };
   }
