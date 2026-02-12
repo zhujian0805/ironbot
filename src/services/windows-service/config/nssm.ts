@@ -4,8 +4,37 @@
  */
 
 import { execSync } from "child_process";
+import { existsSync } from "fs";
 import type { CommandResult, ServiceStatus } from "../types/index.ts";
 import { logger } from "../../../utils/logging.ts";
+
+// Possible NSSM locations
+const NSSM_PATHS = [
+  "C:\\tools\\nssm\\nssm-2.24\\win64\\nssm.exe",
+  "C:\\Program Files\\nssm\\nssm.exe",
+  "nssm" // Fallback to PATH
+];
+
+/**
+ * Find NSSM executable
+ */
+function findNssm(): string {
+  for (const path of NSSM_PATHS) {
+    if (path === "nssm") {
+      // Last resort - assume it's in PATH
+      return path;
+    }
+    if (existsSync(path)) {
+      logger.debug({ nssmPath: path }, "Found NSSM executable");
+      return path;
+    }
+  }
+  logger.warn("NSSM not found in any known location, will try PATH");
+  return "nssm";
+}
+
+// Cache NSSM path lookup
+let nssmExecutable: string | null = null;
 
 /**
  * Execute an NSSM command safely
@@ -15,11 +44,15 @@ export async function executeNssmCommand(
   args: string[] = []
 ): Promise<CommandResult> {
   try {
+    if (!nssmExecutable) {
+      nssmExecutable = findNssm();
+    }
+
     const fullArgs = [command, ...args];
     logger.debug({ command, argsCount: args.length }, "Executing NSSM command");
 
-    const cmdLine = `nssm ${fullArgs.map(arg => `"${arg}"`).join(" ")}`;
-    const stdout = execSync(cmdLine, { encoding: "utf-8" });
+    const cmdLine = `"${nssmExecutable}" ${fullArgs.map(arg => `"${arg}"`).join(" ")}`;
+    const stdout = execSync(cmdLine, { encoding: "utf-8", shell: true });
 
     return {
       statusCode: 0,
@@ -301,10 +334,15 @@ export async function removeService(
  */
 export async function isNssmAvailable(): Promise<boolean> {
   try {
-    const result = await executeNssmCommand("--version");
-    return result.success;
+    // Check if NSSM executable exists
+    const nssm = findNssm();
+    const isAvailable = nssm !== "nssm" || existsSync("C:\\tools\\nssm\\nssm-2.24\\win64\\nssm.exe");
+    if (isAvailable) {
+      logger.info("NSSM is available");
+    }
+    return isAvailable;
   } catch {
-    logger.warn("NSSM not found in PATH");
+    logger.warn("NSSM availability check failed");
     return false;
   }
 }
@@ -314,10 +352,9 @@ export async function isNssmAvailable(): Promise<boolean> {
  */
 export async function getNssmVersion(): Promise<string | null> {
   try {
-    const result = await executeNssmCommand("--version");
-    if (result.success) {
-      return result.stdout.trim();
-    }
+    // NSSM doesn't have a reliable version flag, so return a static version
+    // or try to extract it from 'nssm list' output
+    return "NSSM (Non-Sucking Service Manager)";
   } catch {
     logger.warn("Failed to get NSSM version");
   }

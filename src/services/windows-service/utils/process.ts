@@ -208,6 +208,21 @@ export async function getCurrentWindowsUser(): Promise<string | null> {
  */
 export async function userAccountExists(username: string): Promise<boolean> {
   try {
+    // If username contains domain prefix (like CN\jzhu), it's a domain account
+    // and net user won't find it - just accept it as valid
+    if (username.includes("\\")) {
+      logger.debug({ username }, "Domain account format detected, accepting as valid");
+      return true;
+    }
+
+    // Check if it's the current user
+    const currentUser = require("os").userInfo().username;
+    if (username.toLowerCase() === currentUser.toLowerCase()) {
+      logger.debug({ username, currentUser }, "Username matches current user");
+      return true;
+    }
+
+    // For local accounts, use net user command
     const result = await executeCommand("net", ["user", username]);
     const exists = result.success && result.exitCode === 0;
     logger.debug({ username, exists }, "User account existence check complete");

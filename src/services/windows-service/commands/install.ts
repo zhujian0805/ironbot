@@ -4,6 +4,7 @@
  */
 
 import { logger } from "../../../utils/logging.ts";
+import { join } from "path";
 import type { InstallOptions, InstallResult } from "../types/index.ts";
 import {
   buildServiceConfig,
@@ -139,8 +140,12 @@ export async function installService(options: InstallOptions): Promise<InstallRe
     }
 
     // Install the service with NSSM
+    // Resolve the path to main.ts from the current working directory
+    const projectRoot = process.cwd();
+    const mainTsPath = join(projectRoot, "src", "main.ts");
+
     const installResult = await nssmInstall(config.serviceName, process.execPath, [
-      require.resolve("../../main.ts")
+      mainTsPath
     ]);
 
     if (!installResult) {

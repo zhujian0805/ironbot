@@ -22,3 +22,19 @@
 [2026-02-12 20:57:24] [INFO] Installing service
 [2026-02-12 20:57:24] [DEBUG] Running: bun src/main.ts windows-service install --force --json
 [2026-02-12 20:57:27] [ERROR] âœ?Service not registered
+[2026-02-12 21:01:06] [INFO] âœ?bun found
+[2026-02-12 21:01:06] [INFO] âœ?NSSM found at C:\tools\nssm\nssm-2.24\win64\nssm.exe
+[2026-02-12 21:01:06] [INFO] âœ?Node.js v25.3.0 found
+[2026-02-12 21:01:06] [INFO] âœ?All required files found
+[2026-02-12 21:01:06] [INFO] âœ?All prerequisites met
+[2026-02-12 21:01:06] [INFO] Installing service
+[2026-02-12 21:01:06] [DEBUG] Running: bun src/main.ts windows-service install --force --json
+[2026-02-12 21:01:09] [ERROR] âœ?Service not registered
+[2026-02-12 21:01:26] [INFO] âœ?bun found
+[2026-02-12 21:01:26] [INFO] âœ?NSSM found at C:\tools\nssm\nssm-2.24\win64\nssm.exe
+[2026-02-12 21:01:26] [INFO] âœ?Node.js v25.3.0 found
+[2026-02-12 21:01:26] [INFO] âœ?All required files found
+[2026-02-12 21:01:26] [INFO] âœ?All prerequisites met
+[2026-02-12 21:01:26] [INFO] Installing service
+[2026-02-12 21:01:26] [DEBUG] Running: bun src/main.ts windows-service install --force --json
+[2026-02-12 21:01:32] [ERROR] âœ?Service not registered

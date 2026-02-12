@@ -17,6 +17,14 @@ $serviceName = "IronBot"
 $projectPath = (Get-Location).Path
 $logFile = Join-Path $projectPath "logs\service-test.log"
 
+# Add NSSM to PATH if not already there
+$nssmPath = "C:\tools\nssm\nssm-2.24\win64"
+if (Test-Path $nssmPath) {
+    if ($env:PATH -notlike "*$nssmPath*") {
+        $env:PATH = "$nssmPath;$env:PATH"
+    }
+}
+
 # Ensure logs directory exists
 $logsDir = Join-Path $projectPath "logs"
 if (-not (Test-Path $logsDir)) {
