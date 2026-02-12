@@ -8,9 +8,9 @@ export * from './types/index';
 
 // Export command functions
 export { installService, handleInstallCommand } from './commands/install';
-export { uninstallService } from './commands/uninstall';
-export { getServiceStatus } from './commands/status';
-export { getServiceLogs } from './commands/logs';
+export { uninstallService, handleUninstallCommand } from './commands/uninstall';
+export { getServiceStatus, handleStatusCommand, formatStatusOutput } from './commands/status';
+export { getServiceLogs, handleLogsCommand, readServiceLogs, parseLogEntries, filterLogsByLevel, filterLogsByTimestamp } from './commands/logs';
 
 // Export utility functions
 export {

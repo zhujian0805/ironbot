@@ -9,6 +9,8 @@ import { handleInstallCommand } from '../services/windows-service/commands/insta
 import { handleUninstallCommand } from '../services/windows-service/commands/uninstall';
 import { handleStatusCommand } from '../services/windows-service/commands/status';
 import { handleLogsCommand } from '../services/windows-service/commands/logs';
+import { startService, stopService, restartService } from '../services/windows-service/config/nssm';
+import { logger } from '../utils/logging';
 
 /**
  * Create windows-service command group
@@ -42,6 +44,128 @@ export function createWindowsServiceCommands(parentProgram: Command): void {
     .action((serviceName: string | undefined, options: any) =>
       handleUninstallCommand(serviceName, options)
     );
+
+  // Start command
+  serviceGroup
+    .command('start [serviceName]')
+    .description('Start IronBot service')
+    .option('--json', 'Output as JSON')
+    .action(async (serviceName: string | undefined, options: any) => {
+      try {
+        const name = serviceName || 'IronBot';
+        logger.info({ serviceName: name }, 'Starting service');
+
+        const result = await startService(name);
+
+        if (result) {
+          if (options.json) {
+            console.log(JSON.stringify({
+              success: true,
+              serviceName: name,
+              message: `Service '${name}' started successfully`
+            }, null, 2));
+          } else {
+            console.log(`\n✓ Service '${name}' started successfully\n`);
+          }
+          process.exit(0);
+        } else {
+          throw new Error(`Failed to start service '${name}'`);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (options.json) {
+          console.error(JSON.stringify({
+            success: false,
+            error: message
+          }, null, 2));
+        } else {
+          console.error(`\n✗ Failed to start service\n  Error: ${message}\n`);
+        }
+        process.exit(1);
+      }
+    });
+
+  // Stop command
+  serviceGroup
+    .command('stop [serviceName]')
+    .description('Stop IronBot service')
+    .option('--timeout <seconds>', 'Timeout in seconds (default: 30)', '30')
+    .option('--json', 'Output as JSON')
+    .action(async (serviceName: string | undefined, options: any) => {
+      try {
+        const name = serviceName || 'IronBot';
+        const timeout = parseInt(options.timeout, 10) || 30;
+        logger.info({ serviceName: name, timeout }, 'Stopping service');
+
+        const result = await stopService(name, timeout);
+
+        if (result) {
+          if (options.json) {
+            console.log(JSON.stringify({
+              success: true,
+              serviceName: name,
+              message: `Service '${name}' stopped successfully`
+            }, null, 2));
+          } else {
+            console.log(`\n✓ Service '${name}' stopped successfully\n`);
+          }
+          process.exit(0);
+        } else {
+          throw new Error(`Failed to stop service '${name}'`);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (options.json) {
+          console.error(JSON.stringify({
+            success: false,
+            error: message
+          }, null, 2));
+        } else {
+          console.error(`\n✗ Failed to stop service\n  Error: ${message}\n`);
+        }
+        process.exit(1);
+      }
+    });
+
+  // Restart command
+  serviceGroup
+    .command('restart [serviceName]')
+    .description('Restart IronBot service')
+    .option('--json', 'Output as JSON')
+    .action(async (serviceName: string | undefined, options: any) => {
+      try {
+        const name = serviceName || 'IronBot';
+        logger.info({ serviceName: name }, 'Restarting service');
+
+        const result = await restartService(name);
+
+        if (result) {
+          if (options.json) {
+            console.log(JSON.stringify({
+              success: true,
+              serviceName: name,
+              message: `Service '${name}' restarted successfully`
+            }, null, 2));
+          } else {
+            console.log(`\n✓ Service '${name}' restarted successfully\n`);
+          }
+          process.exit(0);
+        } else {
+          throw new Error(`Failed to restart service '${name}'`);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (options.json) {
+          console.error(JSON.stringify({
+            success: false,
+            error: message
+          }, null, 2));
+        } else {
+          console.error(`\n✗ Failed to restart service\n  Error: ${message}\n`);
+        }
+        process.exit(1);
+      }
+    });
 
   // Status command
   serviceGroup
