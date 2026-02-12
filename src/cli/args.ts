@@ -1,9 +1,14 @@
 import { Command } from "commander";
 import type { CliArgs } from "../config.ts";
+import { createWindowsServiceCommands } from "./windows-service-cli.ts";
 
 export const parseCliArgs = (argv: string[] = process.argv.slice(2)): CliArgs => {
   const program = new Command();
 
+  // Add windows-service command group
+  createWindowsServiceCommands(program);
+
+  // Main bot options
   program
     .option("--debug", "Enable debug logging")
     .option("--log-level <level>", "Override log level (DEBUG, INFO, WARNING, ERROR)")
@@ -23,3 +28,4 @@ export const parseCliArgs = (argv: string[] = process.argv.slice(2)): CliArgs =>
     permissionsFile: options.permissionsFile
   };
 };
+

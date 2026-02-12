@@ -1,4 +1,4 @@
-# ironbot Development Guidelines
+﻿# ironbot Development Guidelines
 
 Auto-generated from all feature plans. Last updated: 2026-01-30
 
@@ -6,6 +6,8 @@ Auto-generated from all feature plans. Last updated: 2026-01-30
 - TypeScript 5.x on Node.js 20 LTS + Slack Bolt (Socket Mode), Anthropic JS SDK, YAML parser (`yaml`), file watcher (`chokidar`), CLI arg parser (`commander`), structured logging (`pino`)
 - YAML configuration file (`permissions.yaml`)
 - Filesystem + environment variables (config YAML, skills directory)
+- TypeScript 5.x on Node.js 20 LTS + NSSM (Non-Sucking Service Manager), commander (CLI arg parser), pino (structured logging), execa (process execution) (008-nssm-service)
+- File system (configuration files, logs, environment setup) (008-nssm-service)
 
 ## Platform Considerations
 - On Windows systems, prefer PowerShell over other scripting tools (Python, TypeScript, etc.) when executing system commands or scripts
@@ -26,10 +28,10 @@ bun run typecheck; bun run test
 TypeScript: Follow existing lint/format configuration
 
 ## Recent Changes
+- 008-nssm-service: Added TypeScript 5.x on Node.js 20 LTS + NSSM (Non-Sucking Service Manager), commander (CLI arg parser), pino (structured logging), execa (process execution)
 - 001-typescript-conversion: Target TypeScript 5.x on Node.js 20 LTS + Slack Bolt (Socket Mode), Anthropic JS SDK, YAML parser (`yaml`), file watcher (`chokidar`), CLI arg parser (`commander`), structured logging (`pino`)
 - 002-tool-permissions-config: YAML-based permission system for tools, skills, and MCPs
 
-- 1-slack-ai-agent: Slack AI agent built with Slack Bolt and Anthropic JS SDK
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

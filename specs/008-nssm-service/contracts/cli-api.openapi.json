@@ -1,0 +1,316 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "IronBot Windows Service CLI",
+    "version": "1.0.0",
+    "description": "CLI interface for managing IronBot as a Windows service"
+  },
+  "servers": [
+    {
+      "url": "cli://ironbot-service",
+      "description": "Command-line interface"
+    }
+  ],
+  "paths": {
+    "/install": {
+      "post": {
+        "summary": "Install IronBot as Windows service",
+        "operationId": "installService",
+        "parameters": [
+          {
+            "name": "service-name",
+            "in": "query",
+            "description": "Service name",
+            "schema": { "type": "string", "default": "IronBot" }
+          },
+          {
+            "name": "startup-type",
+            "in": "query",
+            "description": "Startup type",
+            "schema": { "type": "string", "enum": ["auto", "manual"], "default": "auto" }
+          },
+          {
+            "name": "auto-restart",
+            "in": "query",
+            "description": "Enable auto-restart",
+            "schema": { "type": "boolean", "default": true }
+          },
+          {
+            "name": "username",
+            "in": "query",
+            "description": "User to run service as",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "force",
+            "in": "query",
+            "description": "Force reinstall if service exists",
+            "schema": { "type": "boolean", "default": false }
+          },
+          {
+            "name": "json",
+            "in": "query",
+            "description": "Output as JSON",
+            "schema": { "type": "boolean", "default": false }
+          }
+        ],
+        "responses": {
+          "0": {
+            "description": "Installation successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallResult"
+                }
+              },
+              "text/plain": {
+                "schema": { "type": "string" }
+              }
+            }
+          },
+          "1": {
+            "description": "General error"
+          },
+          "2": {
+            "description": "Admin privileges required"
+          },
+          "3": {
+            "description": "NSSM not found"
+          },
+          "4": {
+            "description": "User account doesn't exist"
+          },
+          "5": {
+            "description": "Service already exists"
+          },
+          "6": {
+            "description": "Invalid working directory"
+          }
+        }
+      }
+    },
+    "/uninstall": {
+      "delete": {
+        "summary": "Uninstall IronBot service",
+        "operationId": "uninstallService",
+        "parameters": [
+          {
+            "name": "serviceName",
+            "in": "path",
+            "required": false,
+            "description": "Service name to remove",
+            "schema": { "type": "string", "default": "IronBot" }
+          },
+          {
+            "name": "force",
+            "in": "query",
+            "description": "Force uninstall without confirmation",
+            "schema": { "type": "boolean", "default": false }
+          },
+          {
+            "name": "json",
+            "in": "query",
+            "description": "Output as JSON",
+            "schema": { "type": "boolean", "default": false }
+          }
+        ],
+        "responses": {
+          "0": {
+            "description": "Uninstallation successful",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UninstallResult" }
+              }
+            }
+          },
+          "1": {
+            "description": "General error"
+          },
+          "2": {
+            "description": "Admin privileges required"
+          },
+          "3": {
+            "description": "Service not found"
+          },
+          "4": {
+            "description": "Service is running"
+          }
+        }
+      }
+    },
+    "/status": {
+      "get": {
+        "summary": "Get service status",
+        "operationId": "getServiceStatus",
+        "parameters": [
+          {
+            "name": "serviceName",
+            "in": "path",
+            "required": false,
+            "description": "Service name",
+            "schema": { "type": "string", "default": "IronBot" }
+          },
+          {
+            "name": "json",
+            "in": "query",
+            "description": "Output as JSON",
+            "schema": { "type": "boolean", "default": false }
+          },
+          {
+            "name": "watch",
+            "in": "query",
+            "description": "Watch for status changes",
+            "schema": { "type": "boolean", "default": false }
+          }
+        ],
+        "responses": {
+          "0": {
+            "description": "Service running",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ServiceStatus" }
+              }
+            }
+          },
+          "1": {
+            "description": "Service stopped or not found"
+          },
+          "2": {
+            "description": "Query failed"
+          }
+        }
+      }
+    },
+    "/logs": {
+      "get": {
+        "summary": "Get service logs",
+        "operationId": "getServiceLogs",
+        "parameters": [
+          {
+            "name": "serviceName",
+            "in": "path",
+            "required": false,
+            "description": "Service name",
+            "schema": { "type": "string", "default": "IronBot" }
+          },
+          {
+            "name": "lines",
+            "in": "query",
+            "description": "Number of lines to display",
+            "schema": { "type": "integer", "default": 50 }
+          },
+          {
+            "name": "follow",
+            "in": "query",
+            "description": "Follow log output",
+            "schema": { "type": "boolean", "default": false }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "description": "Show logs since time (e.g., 1h, 30m)",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "level",
+            "in": "query",
+            "description": "Filter by log level",
+            "schema": { "type": "string", "enum": ["error", "warn", "info", "debug"] }
+          },
+          {
+            "name": "json",
+            "in": "query",
+            "description": "Output as JSON array",
+            "schema": { "type": "boolean", "default": false }
+          }
+        ],
+        "responses": {
+          "0": {
+            "description": "Logs retrieved",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LogsResult" }
+              },
+              "text/plain": {
+                "schema": { "type": "string" }
+              }
+            }
+          },
+          "1": {
+            "description": "Service not found"
+          },
+          "2": {
+            "description": "Log file not found"
+          },
+          "3": {
+            "description": "Invalid filter"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "InstallResult": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "serviceName": { "type": "string" },
+          "displayName": { "type": "string" },
+          "username": { "type": "string" },
+          "workingDirectory": { "type": "string" },
+          "startupType": { "type": "string", "enum": ["auto", "manual"] },
+          "logPath": { "type": "string" },
+          "message": { "type": "string" }
+        },
+        "required": ["success", "serviceName", "message"]
+      },
+      "UninstallResult": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "serviceName": { "type": "string" },
+          "message": { "type": "string" }
+        },
+        "required": ["success", "serviceName", "message"]
+      },
+      "ServiceStatus": {
+        "type": "object",
+        "properties": {
+          "serviceName": { "type": "string" },
+          "displayName": { "type": "string" },
+          "state": {
+            "type": "string",
+            "enum": ["running", "stopped", "paused", "starting", "stopping", "unknown"]
+          },
+          "processId": { "type": ["integer", "null"] },
+          "startType": { "type": "string", "enum": ["auto", "manual", "disabled"] },
+          "uptime": { "type": ["integer", "null"], "description": "Uptime in milliseconds" },
+          "lastStartTime": { "type": ["string", "null"], "format": "date-time" },
+          "lastStopTime": { "type": ["string", "null"], "format": "date-time" }
+        },
+        "required": ["serviceName", "state", "startType"]
+      },
+      "LogsResult": {
+        "type": "object",
+        "properties": {
+          "serviceName": { "type": "string" },
+          "logFile": { "type": "string" },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "timestamp": { "type": "string", "format": "date-time" },
+                "level": { "type": "string", "enum": ["error", "warn", "info", "debug"] },
+                "message": { "type": "string" },
+                "source": { "type": "string" }
+              }
+            }
+          }
+        },
+        "required": ["serviceName", "lines"]
+      }
+    }
+  }
+}
