@@ -214,17 +214,17 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T031 [P] [US4] Write integration test for service status in `tests/integration/windows-service/status.test.ts`:
+- [x] T031 [P] [US4] Write integration test for service status in `tests/integration/windows-service/status.test.ts`:
   - Setup: Install and start service
   - Test: Execute status command
   - Verify: Returns 'running' state, process ID, uptime
   - Verify: Output format matches ServiceStatus interface
-- [ ] T032 [P] [US4] Write integration test for service stop/start in `tests/integration/windows-service/lifecycle.test.ts`:
+- [x] T032 [P] [US4] Write integration test for service stop/start in `tests/integration/windows-service/lifecycle.test.ts`:
   - Test: Execute stop command (net stop, nssm stop)
   - Verify: Service transitions to 'stopped' state within timeout
   - Test: Execute start command (net start, nssm start)
   - Verify: Service transitions to 'running' state
-- [ ] T033 [P] [US4] Write integration test for service logs in `tests/integration/windows-service/logs.test.ts`:
+- [x] T033 [P] [US4] Write integration test for service logs in `tests/integration/windows-service/logs.test.ts`:
   - Setup: Install service and generate log entries
   - Test: Execute logs command with --lines 50
   - Verify: Returns log entries from service.log
@@ -273,39 +273,39 @@
 
 **Purpose**: Improvements and cross-cutting concerns affecting all stories
 
-- [ ] T039 Integrate all commands into CLI in `src/cli/windows-service-cli.ts`:
+- [x] T039 Integrate all commands into CLI in `src/cli/windows-service-cli.ts`:
   - Register install, uninstall, status, logs commands with commander
   - Implement common options: --json, --help for all commands
   - Add help text and examples for each command
-- [ ] T040 [P] Implement error handling and logging throughout service module:
+- [x] T040 [P] Implement error handling and logging throughout service module:
   - Use pino logger for structured logging of all operations
   - Add debug logs for NSSM command execution
   - Add info logs for successful operations
   - Add error logs with stack traces for failures
-- [ ] T041 [P] Add input validation and sanitization:
+- [x] T041 [P] Add input validation and sanitization:
   - Validate service names, usernames, paths
   - Prevent command injection in NSSM commands
   - Validate exit codes and handle unexpected NSSM behavior
-- [ ] T042 Update `src/main.ts` to properly integrate windows-service CLI:
+- [x] T042 Update `src/main.ts` to properly integrate windows-service CLI:
   - Add windows-service command group to main CLI
   - Register all subcommands: install, uninstall, status, logs
   - Test CLI help: `ironbot-service --help`, `ironbot-service install --help`, etc.
-- [ ] T043 [P] Add comprehensive documentation:
+- [x] T043 [P] Add comprehensive documentation:
   - Update quickstart.md with CLI examples for all commands
   - Add troubleshooting guide entries in quickstart.md
   - Document command exit codes and error messages
   - Add examples for JSON output format
-- [ ] T044 Run all tests to verify complete feature:
+- [x] T044 Run all tests to verify complete feature:
   - Execute unit tests: `bun test tests/unit/windows-service/`
   - Execute integration tests: `bun test tests/integration/windows-service/`
   - Verify all tests pass
   - Verify test coverage >80% for service module
-- [ ] T045 Validate against quickstart.md test scenarios:
+- [x] T045 Validate against quickstart.md test scenarios:
   - Follow developer quickstart (quickstart.md)
   - Verify installation workflow end-to-end
   - Verify service management operations
   - Verify logs and status commands work correctly
-- [ ] T046 [P] Code cleanup and refactoring:
+- [x] T046 [P] Code cleanup and refactoring:
   - Remove any debug code or console.log statements
   - Extract common patterns into utilities
   - Ensure consistent error handling across all commands
