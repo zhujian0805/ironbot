@@ -4,8 +4,11 @@
  */
 
 import { Command } from 'commander';
-import type { InstallOptions } from '../services/windows-service/types/index.js';
-import { handleInstallCommand } from '../services/windows-service/commands/install.js';
+import type { InstallOptions } from '../services/windows-service/types/index';
+import { handleInstallCommand } from '../services/windows-service/commands/install';
+import { handleUninstallCommand } from '../services/windows-service/commands/uninstall';
+import { handleStatusCommand } from '../services/windows-service/commands/status';
+import { handleLogsCommand } from '../services/windows-service/commands/logs';
 
 /**
  * Create windows-service command group
@@ -28,7 +31,7 @@ export function createWindowsServiceCommands(parentProgram: Command): void {
     .option('--force', 'Force uninstall existing service first')
     .option('--skip-validation', 'Skip pre-installation checks')
     .option('--json', 'Output as JSON')
-    .action(handleInstallCommand);
+    .action((options: InstallOptions) => handleInstallCommand(options));
 
   // Uninstall command
   serviceGroup
@@ -36,56 +39,32 @@ export function createWindowsServiceCommands(parentProgram: Command): void {
     .description('Uninstall IronBot service')
     .option('--force', 'Force uninstall without confirmation')
     .option('--json', 'Output as JSON')
-    .action(async (serviceName, options) => {
-      try {
-        // To be implemented in Phase 6
-        console.log('Uninstall command not yet implemented');
-        console.log('Service:', serviceName || 'IronBot', 'Options:', options);
-        process.exit(1);
-      } catch (error) {
-        console.error('Error:', error instanceof Error ? error.message : String(error));
-        process.exit(1);
-      }
-    });
+    .action((serviceName: string | undefined, options: any) =>
+      handleUninstallCommand(serviceName, options)
+    );
 
   // Status command
   serviceGroup
     .command('status [serviceName]')
     .description('Get service status')
     .option('--json', 'Output as JSON')
-    .option('--watch', 'Watch for status changes')
-    .action(async (serviceName, options) => {
-      try {
-        // To be implemented in Phase 6
-        console.log('Status command not yet implemented');
-        console.log('Service:', serviceName || 'IronBot', 'Options:', options);
-        process.exit(1);
-      } catch (error) {
-        console.error('Error:', error instanceof Error ? error.message : String(error));
-        process.exit(1);
-      }
-    });
+    .option('--watch', 'Watch for status changes (not yet implemented)')
+    .action((serviceName: string | undefined, options: any) =>
+      handleStatusCommand(serviceName, options)
+    );
 
   // Logs command
   serviceGroup
     .command('logs [serviceName]')
     .description('View service logs')
     .option('--lines <number>', 'Number of lines to display', '50')
-    .option('--follow', 'Follow log output')
+    .option('--follow', 'Follow log output (not yet implemented)')
     .option('--since <time>', 'Show logs since time (e.g., 1h, 30m)')
     .option('--level <level>', 'Filter by log level (error|warn|info|debug)')
     .option('--json', 'Output as JSON')
-    .action(async (serviceName, options) => {
-      try {
-        // To be implemented in Phase 6
-        console.log('Logs command not yet implemented');
-        console.log('Service:', serviceName || 'IronBot', 'Options:', options);
-        process.exit(1);
-      } catch (error) {
-        console.error('Error:', error instanceof Error ? error.message : String(error));
-        process.exit(1);
-      }
-    });
+    .action((serviceName: string | undefined, options: any) =>
+      handleLogsCommand(serviceName, options)
+    );
 
   // Add service group to parent program
   parentProgram.addCommand(serviceGroup);
@@ -93,4 +72,3 @@ export function createWindowsServiceCommands(parentProgram: Command): void {
 
 // Export for CLI registration
 export default createWindowsServiceCommands;
-
