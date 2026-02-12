@@ -1,6 +1,6 @@
 # IronBot - Advanced Slack AI Agent
 
-A sophisticated TypeScript-based AI agent that integrates with Slack to provide conversational AI responses using Anthropic's Claude, with advanced memory management, tool use (system operations), and extensible skills.
+A sophisticated TypeScript-based AI agent that integrates with Slack to provide conversational AI responses using Anthropic's Claude, with advanced memory management, tool use (system operations), and extensible skills. Supports Windows service deployment for production environments.
 
 ## Features
 
@@ -10,6 +10,7 @@ A sophisticated TypeScript-based AI agent that integrates with Slack to provide 
 - **Thinking Indicator**: Shows "Thinking..." while processing, then updates with the response
 - **Async Processing**: Handles concurrent users efficiently
 - **Structured Logging**: JSON-formatted logs for production monitoring
+- **Windows Service Support**: Run as a Windows service using NSSM for production deployments
 
 ### Memory & Context Management
 - **Session-Based Memory**: Each Slack thread maintains its own conversation context
@@ -50,6 +51,7 @@ A sophisticated TypeScript-based AI agent that integrates with Slack to provide 
 - **Bun** runtime (required for SQLite memory indexing)
 - **Node.js** 18+ (alternative runtime)
 - **Slack App** with proper permissions configured
+- **NSSM** (Non-Sucking Service Manager) - required for Windows service deployment
 
 ### Installation
 
@@ -81,6 +83,7 @@ A sophisticated TypeScript-based AI agent that integrates with Slack to provide 
    SKILLS_DIR=./skills
    PERMISSIONS_FILE=./permissions.yaml
    IRONBOT_STATE_DIR=~/.ironbot
+   IRONBOT_CRON_STORE_PATH=C:\Users\jzhu\.ironbot\cron\jobs.json
    ```
 
 IronBot scans the workspace-defined `SKILLS_DIR` (default `./skills`), the user-level `~/.ironbot/skills`, and any folders listed in `IRONBOT_SKILL_PATHS`. Place skills in any of those directories and enable them via `permissions.yaml`.
@@ -140,6 +143,47 @@ bun run build
 bun run start -- --permissions-file ./permissions.yaml
 ```
 
+**Windows Service Management:**
+
+Install as a Windows service:
+```bash
+bun run dev windows-service install --service-name "IronBot"
+```
+
+Start the service:
+```bash
+bun run dev windows-service start
+```
+
+Stop the service:
+```bash
+bun run dev windows-service stop
+```
+
+Check service status:
+```bash
+bun run dev windows-service status
+```
+
+View service logs:
+```bash
+bun run dev windows-service logs
+```
+
+Uninstall the service:
+```bash
+bun run dev windows-service uninstall
+```
+
+**Service Commands Reference:**
+- `windows-service install` - Install IronBot as a Windows service
+- `windows-service uninstall` - Remove the Windows service
+- `windows-service start` - Start the service
+- `windows-service stop` - Stop the service
+- `windows-service restart` - Restart the service
+- `windows-service status` - Check service status and health
+- `windows-service logs` - View service logs with filtering options
+
 ## Memory System
 
 IronBot includes a sophisticated memory system for maintaining context across conversations:
@@ -159,6 +203,123 @@ IronBot includes a sophisticated memory system for maintaining context across co
 ### Memory Commands
 - **`/remember`**: Enable cross-session memory for the current channel/thread
 - **`/clear`**: Clear conversation history and start fresh without previous context
+
+## Windows Service Management
+
+IronBot can be deployed and managed as a Windows service using NSSM (Non-Sucking Service Manager). This provides reliable production deployment with automatic restarts and proper Windows integration.
+
+### Service Installation
+
+**Basic Installation:**
+```bash
+bun run dev windows-service install
+```
+
+**Advanced Installation Options:**
+```bash
+bun run dev windows-service install \
+  --service-name "MyIronBot" \
+  --startup-type auto \
+  --username "DOMAIN\User" \
+  --force
+```
+
+**Installation Parameters:**
+- `--service-name`: Service display name (default: "IronBot")
+- `--startup-type`: Service startup type - "auto" or "manual" (default: "auto")
+- `--no-auto-restart`: Disable automatic restart on failure
+- `--username`: User account to run service as (default: current user)
+- `--force`: Force uninstall existing service before installing
+- `--skip-validation`: Skip pre-installation environment checks
+
+### Service Control
+
+**Start Service:**
+```bash
+bun run dev windows-service start
+```
+
+**Stop Service:**
+```bash
+bun run dev windows-service stop --timeout 60
+```
+
+**Restart Service:**
+```bash
+bun run dev windows-service restart
+```
+
+**Check Status:**
+```bash
+bun run dev windows-service status
+```
+
+### Service Logs
+
+**View Recent Logs:**
+```bash
+bun run dev windows-service logs --lines 100
+```
+
+**Filter Logs by Level:**
+```bash
+bun run dev windows-service logs --level error
+```
+
+**Filter Logs by Time:**
+```bash
+bun run dev windows-service logs --since 1h
+```
+
+**Log Options:**
+- `--lines <number>`: Number of lines to display (default: 50)
+- `--level <level>`: Filter by log level (error|warn|info|debug)
+- `--since <time>`: Show logs since specified time (e.g., 1h, 30m, 15s)
+- `--json`: Output log data as JSON
+
+### Service Removal
+
+**Uninstall Service:**
+```bash
+bun run dev windows-service uninstall
+```
+
+**Force Uninstall:**
+```bash
+bun run dev windows-service uninstall --force
+```
+
+### Service Requirements
+
+**Prerequisites:**
+- NSSM (Non-Sucking Service Manager) must be installed and available in PATH
+- Administrative privileges for service installation/uninstallation
+- Valid environment configuration (Slack tokens, Claude API key)
+
+**Service Account:**
+- Service runs under the specified user account (default: current user)
+- Account must have access to all required files and network resources
+- Password is securely stored using Windows Credential Manager
+
+**Log Locations:**
+- Service logs: `%PROGRAMDATA%\IronBot\logs\`
+- Application logs: Configured via `LOG_FILE` environment variable
+- NSSM logs: `%PROGRAMDATA%\nssm\IronBot\`
+
+### Troubleshooting Service Issues
+
+**Common Problems:**
+1. **Service won't start**: Check environment variables and file permissions
+2. **Access denied**: Ensure the service account has proper permissions
+3. **NSSM not found**: Verify NSSM is installed and in PATH
+4. **Logs not appearing**: Check both service logs and application logs
+
+**Service Status Codes:**
+- `SERVICE_RUNNING`: Service is running normally
+- `SERVICE_STOPPED`: Service is stopped
+- `SERVICE_START_PENDING`: Service is starting
+- `SERVICE_STOP_PENDING`: Service is stopping
+- `SERVICE_PAUSED`: Service is paused
 
 ## Configuration
 
@@ -225,7 +386,7 @@ IronBot includes a sophisticated memory system for maintaining context across co
 #### Cron Configuration
 
 - `IRONBOT_SKIP_CRON` - Skip loading and executing cron jobs on startup (default: false)
-- `IRONBOT_CRON_STORE_PATH` - Custom path for cron job store JSON
+- `IRONBOT_CRON_STORE_PATH` - Custom path for cron job store JSON file (default: `~/.ironbot/cron/jobs.json`)
 
 #### Tool Iterations
 
@@ -234,6 +395,16 @@ IronBot includes a sophisticated memory system for maintaining context across co
 #### Anthropic Timeout
 
 - `ANTHROPIC_TIMEOUT_MS` - Timeout for Anthropic Claude API requests in milliseconds (default: 60000)
+
+### Windows Service Configuration
+
+#### NSSM Service Settings
+When running as a Windows service, additional environment variables control service behavior:
+
+- Service runs under the current user account by default
+- Auto-restart is enabled on service failure
+- Service startup type defaults to "auto" (starts with Windows)
+- Service logs are stored in `%PROGRAMDATA%\IronBot\logs\` by default
 
 ### CLI Options
 
@@ -427,7 +598,25 @@ bun run test:contract
 bun run typecheck
 ```
 
-### Adding Skills
+### Service Development
+
+**Service Testing:**
+```bash
+# Test service installation (dry run)
+bun run dev windows-service install --skip-validation
+
+# Test service status
+bun run dev windows-service status
+
+# Test service logs
+bun run dev windows-service logs --level debug
+```
+
+**Service Debugging:**
+- Service logs are automatically rotated and compressed
+- Use `--debug` flag when starting the bot for detailed service logging
+- Check Windows Event Viewer for system-level service events
+- NSSM maintains its own logs separate from application logs
 
 1. Create a new file in the skills directory
 2. Export an `executeSkill` function that takes a string and returns a Promise<string>
@@ -469,6 +658,18 @@ The memory system uses:
    - Ensure `IRONBOT_MEMORY_SESSION_INDEXING=true`
    - Check memory database permissions
    - Verify embedding provider configuration
+
+5. **Service installation fails**
+   - Ensure NSSM is installed and available in PATH
+   - Run command prompt as Administrator
+   - Verify environment variables are properly configured
+   - Check that the service account has necessary permissions
+
+6. **Service won't start**
+   - Check service logs: `bun run dev windows-service logs`
+   - Verify Slack tokens and Claude API key are accessible
+   - Ensure all required directories exist and are writable
+   - Check Windows Event Viewer for additional error details
 
 ### Logs
 
