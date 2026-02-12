@@ -88,6 +88,61 @@ const updateLastCommunication = () => {
   lastSuccessfulCommunication = Date.now();
 };
 
+const getBoltSocketModeClient = (app: SlackApp): SocketModeClient | undefined => {
+  return (app as any)?.receiver?.client as SocketModeClient | undefined;
+};
+
+const patchUnhandledSocketModeDisconnect = (socketModeClient: SocketModeClient): void => {
+  const stateMachine = (socketModeClient as any)?.stateMachine;
+  if (!stateMachine || typeof stateMachine.handleUnhandledEvent !== "function") {
+    logger.warn("Socket Mode state machine not available for patching");
+    return;
+  }
+
+  if (stateMachine.__ironbotUnhandledDisconnectPatched) {
+    return;
+  }
+
+  const originalHandleUnhandledEvent = stateMachine.handleUnhandledEvent;
+  stateMachine.handleUnhandledEvent = function patchedHandleUnhandledEvent(event: string, eventPayload: unknown) {
+    if (event === "server explicit disconnect" && this.currentState === "connecting") {
+      logger.warn("Ignoring server explicit disconnect while connecting; forcing reconnect");
+      try {
+        this.handle("websocket close", eventPayload);
+      } catch (error) {
+        logger.warn({ error }, "Failed to force reconnect after explicit disconnect; ignoring event");
+      }
+      return;
+    }
+    return originalHandleUnhandledEvent.call(this, event, eventPayload);
+  };
+  stateMachine.__ironbotUnhandledDisconnectPatched = true;
+  logger.info("Patched Socket Mode unhandled disconnect behavior");
+};
+
+const attachSocketModeMonitoring = (socketModeClient: SocketModeClient): void => {
+  socketModeClient.on("web_client_connected", () => {
+    logger.info("Socket Mode web client connected");
+    setupConnectionHeartbeat(socketModeClient);
+  });
+
+  socketModeClient.on("web_client_disconnected", () => {
+    logger.info("Socket Mode web client disconnected");
+    if (connectionHeartbeat) {
+      clearInterval(connectionHeartbeat);
+      connectionHeartbeat = null;
+    }
+  });
+
+  socketModeClient.on("authenticated", (info) => {
+    logger.info({ info }, "Socket Mode authentication successful");
+  });
+
+  socketModeClient.on("unable_to_socket_mode_auth", (err) => {
+    logger.error({ error: err }, "Unable to authenticate in Socket Mode");
+  });
+};
+
 const checkSlackConnection = async (app: SlackApp, supervisor: SlackConnectionSupervisor): Promise<boolean> => {
   try {
     const probeResult = await supervisor.runProbe(
@@ -181,13 +236,6 @@ const main = async (): Promise<void> => {
   }
   logger.debug({ permissionsFile: config.permissionsFile, permissionsWatcher: true }, "Permission manager ready");
 
-  // Create a custom SocketModeClient
-  const socketModeClient = new SocketModeClient({
-    appToken: config.slackAppToken!,
-    logLevel: toSlackLogLevel(config.logLevel),
-    logger: undefined, // Use default logger
-  });
-
   const app = new App({
     token: config.slackBotToken,
     appToken: config.slackAppToken,  // Still pass appToken as it's required for Socket Mode
@@ -195,30 +243,13 @@ const main = async (): Promise<void> => {
     logLevel: toSlackLogLevel(config.logLevel)
   });
 
-  // Add event listeners to monitor connection state
-  socketModeClient.on("web_client_connected", () => {
-    logger.info("Socket Mode web client connected");
-    // Set up connection heartbeat after successful connection
-    setupConnectionHeartbeat(socketModeClient);
-  });
-
-  socketModeClient.on("web_client_disconnected", () => {
-    logger.info("Socket Mode web client disconnected");
-    // Clear heartbeat when disconnected
-    if (connectionHeartbeat) {
-      clearInterval(connectionHeartbeat);
-      connectionHeartbeat = null;
-    }
-  });
-
-  socketModeClient.on("authenticated", (info) => {
-    logger.info({ info }, "Socket Mode authentication successful");
-  });
-
-  // Add more conservative retry configuration for connection
-  socketModeClient.on("unable_to_socket_mode_auth", (err) => {
-    logger.error({ error: err }, "Unable to authenticate in Socket Mode");
-  });
+  const boltSocketModeClient = getBoltSocketModeClient(app);
+  if (boltSocketModeClient) {
+    patchUnhandledSocketModeDisconnect(boltSocketModeClient);
+    attachSocketModeMonitoring(boltSocketModeClient);
+  } else {
+    logger.warn("Bolt Socket Mode client not found; connection monitoring disabled");
+  }
 
   const memoryManager = new MemoryManager(config);
   memoryManager.logStatus();
