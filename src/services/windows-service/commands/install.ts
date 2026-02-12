@@ -20,7 +20,7 @@ import {
   setServiceAutoRestart,
   removeService as nssmRemove
 } from "../config/nssm";
-import { getLogsDirectory } from "../utils/paths";
+import { getLogsDirectory, createLogDirectory } from "../utils/paths";
 import { hasAdminPrivileges } from "../utils/process";
 
 /**
@@ -152,6 +152,13 @@ export async function installService(options: InstallOptions): Promise<InstallRe
     }
 
     logger.info({ serviceName: config.serviceName }, "Service installed via NSSM");
+
+    // Create log directory
+    const logDirCreated = await createLogDirectory(config.workingDirectory);
+    if (!logDirCreated) {
+      logger.warn({ workingDirectory: config.workingDirectory }, "Failed to create log directory");
+      // Continue despite this warning
+    }
 
     // Configure working directory
     const appDirResult = await setServiceAppDirectory(

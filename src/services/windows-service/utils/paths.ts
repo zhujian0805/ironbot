@@ -116,3 +116,46 @@ export function formatWindowsPath(path: string): string {
 export function normalizePath(path: string): string {
   return isAbsolute(path) ? path : resolve(process.cwd(), path);
 }
+
+/**
+ * Create log directory if it doesn't exist
+ */
+export async function createLogDirectory(projectPath: string): Promise<boolean> {
+  try {
+    const logsDir = getLogsDirectory(projectPath);
+
+    // Check if directory exists
+    if (!existsSync(logsDir)) {
+      // Create the directory using Windows command
+      const { execSync } = require("child_process");
+      try {
+        // Try using mkdir for Windows (cmd.exe)
+        execSync(`if not exist "${logsDir}" mkdir "${logsDir}"`, {
+          stdio: "ignore",
+          shell: true
+        });
+      } catch {
+        // Fallback: Try PowerShell
+        execSync(`powershell.exe -NoProfile -Command "New-Item -ItemType Directory -Path '${logsDir}' -Force | Out-Null"`, {
+          stdio: "ignore"
+        });
+      }
+      logger.info({ logsDir }, "Log directory created");
+    } else {
+      logger.debug({ logsDir }, "Log directory already exists");
+    }
+
+    // Verify we can write to it
+    try {
+      accessSync(logsDir, constants.W_OK);
+      logger.debug({ logsDir }, "Log directory is writable");
+      return true;
+    } catch {
+      logger.warn({ logsDir }, "Log directory exists but not writable");
+      return false;
+    }
+  } catch (error) {
+    logger.error({ projectPath, error }, "Failed to create log directory");
+    return false;
+  }
+}

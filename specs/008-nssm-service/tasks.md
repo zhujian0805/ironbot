@@ -136,19 +136,19 @@
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] Implement user account validation in `src/services/windows-service/config/service-config.ts`:
+- [x] T021 [US2] Implement user account validation in `src/services/windows-service/config/service-config.ts`:
   - validateUserAccountExists(username: string): Promise<boolean>
   - getUserAccountInfo(username: string): Promise<{domain: string, username: string}>
   - Format user credential: `{DOMAIN}\{username}` or `.{username}` for local accounts
-- [ ] T022 [US2] Implement credential manager integration in `src/services/windows-service/config/nssm.ts`:
+- [x] T022 [US2] Implement credential manager integration in `src/services/windows-service/config/nssm.ts`:
   - storeAndApplyCredentials(serviceName: string, username: string, password: string): Promise<boolean>
   - setServiceObjectName(serviceName: string, username: string, password: string): Promise<boolean>
   - Use NSSM command: `nssm set {serviceName} ObjectName {domain}\{username} {password}`
-- [ ] T023 [US2] Implement environment variable validation in `src/services/windows-service/config/service-config.ts`:
+- [x] T023 [US2] Implement environment variable validation in `src/services/windows-service/config/service-config.ts`:
   - validateEnvironmentVariableAccess(username: string, requiredVars: string[]): Promise<ValidationResult>
   - Check: HKEY_CURRENT_USER\Environment for user's registry hive
   - Report: Missing critical variables (SLACK_BOT_TOKEN, ANTHROPIC_API_KEY) as warnings
-- [ ] T024 [US2] Implement service user context verification in install command:
+- [x] T024 [US2] Implement service user context verification in install command:
   - Add pre-installation check: Verify user account exists and has required environment variables
   - Display: Which environment variables will be accessible to service
   - Add warning messages for missing variables with suggestion to configure
@@ -180,21 +180,21 @@
 
 ### Implementation for User Story 3
 
-- [ ] T027 [US3] Implement project path resolution in `src/services/windows-service/utils/paths.ts`:
+- [x] T027 [US3] Implement project path resolution in `src/services/windows-service/utils/paths.ts`:
   - resolveAbsoluteProjectPath(inputPath?: string): Promise<string>
   - Validate path exists and is accessible
   - Return absolute path (handle relative paths, symlinks, env vars)
   - resolveConfigFilePath(projectPath: string, filename: string): string
-- [ ] T028 [US3] Implement working directory configuration in `src/services/windows-service/config/nssm.ts`:
+- [x] T028 [US3] Implement working directory configuration in `src/services/windows-service/config/nssm.ts`:
   - setServiceWorkingDirectory(serviceName: string, workingDirectory: string): Promise<boolean>
   - Use NSSM command: `nssm set {serviceName} AppDirectory {absolutePath}`
   - Validate path accessibility before applying
-- [ ] T029 [US3] Implement log directory setup in `src/services/windows-service/config/service-config.ts`:
+- [x] T029 [US3] Implement log directory setup in `src/services/windows-service/config/service-config.ts`:
   - createLogDirectory(projectPath: string): Promise<boolean>
   - setServiceLogPath(serviceName: string, projectPath: string): Promise<boolean>
   - Log path: `{projectPath}\logs\service.log`
   - Create logs directory if not exists
-- [ ] T030 [US3] Implement working directory validation in install command:
+- [x] T030 [US3] Implement working directory validation in install command:
   - Pre-installation check: Verify project path is accessible
   - Display: Absolute project path being used as working directory
   - Verify: Key config files exist (permissions.yaml, etc.)

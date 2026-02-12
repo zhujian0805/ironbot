@@ -4,18 +4,43 @@
  */
 
 // Re-export all types
-export * from './types/index.js';
+export * from './types/index';
 
 // Export command functions
-export { installService, handleInstallCommand } from './commands/install.js';
-export { uninstallService } from './commands/uninstall.js';
-export { getServiceStatus } from './commands/status.js';
-export { getServiceLogs } from './commands/logs.js';
+export { installService, handleInstallCommand } from './commands/install';
+export { uninstallService } from './commands/uninstall';
+export { getServiceStatus } from './commands/status';
+export { getServiceLogs } from './commands/logs';
 
 // Export utility functions
-export { resolveProjectPath, validatePathAccessibility, getLogPath } from './utils/paths.js';
-export { validateEnvironmentVariables, getEnvironmentFromUser } from './utils/env.js';
-export { executeCommand, executeWithCredentials } from './utils/process.js';
+export {
+  resolveProjectPath,
+  validatePathAccessibility,
+  getLogPath,
+  createLogDirectory,
+  getLogsDirectory,
+  validateProjectStructure,
+  resolveConfigFilePath,
+  configFileExists
+} from './utils/paths';
+export {
+  validateEnvironmentVariables,
+  getEnvironmentFromUser,
+  validateServiceEnvironment,
+  getEnvironmentSummary,
+  isEnvironmentVariableSet,
+  getCriticalEnvironmentVariables
+} from './utils/env';
+export {
+  executeCommand,
+  executeWithCredentials,
+  executePowerShell,
+  hasAdminPrivileges,
+  getCurrentWindowsUser,
+  userAccountExists,
+  serviceExists,
+  getUserAccountInfo
+} from './utils/process';
 
 // Export NSSM operations
 export {
@@ -25,10 +50,21 @@ export {
   setServiceAppDirectory,
   setServiceLogging,
   setServiceUser,
+  setServiceObjectName,
+  storeAndApplyCredentials,
   setServiceStartupType,
   setServiceAutoRestart,
   removeService,
-  isNssmAvailable
-} from './config/nssm.js';
-export { buildServiceConfig, validateServiceConfig } from './config/service-config.js';
+  getServiceStatus,
+  isNssmAvailable,
+  getNssmVersion
+} from './config/nssm';
+
+export {
+  buildServiceConfig,
+  validateServiceConfig,
+  validateEnvironmentVariableAccess,
+  formatValidationReport
+} from './config/service-config';
+
 
