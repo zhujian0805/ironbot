@@ -4,7 +4,7 @@
  */
 
 import { readFileSync, existsSync } from "fs";
-import { logger } from "../../utils/logging.ts";
+import { logger } from "../../../utils/logging.ts";
 import type { LogsResult, LogEntry } from "../types/index.ts";
 import { getLogPath, getLogsDirectory } from "../utils/paths.ts";
 import { resolveProjectPath } from "../utils/paths.ts";

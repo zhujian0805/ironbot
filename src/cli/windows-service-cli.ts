@@ -1,11 +1,14 @@
 /**
  * Windows Service CLI Commands
  * Command-line interface for managing IronBot as a Windows service
- *
- * Uses dynamic imports to avoid bundling issues with windows-service module
  */
 
 import { Command } from 'commander';
+import { handleInstallCommand } from '../services/windows-service/commands/install.ts';
+import { handleUninstallCommand } from '../services/windows-service/commands/uninstall.ts';
+import { handleStatusCommand } from '../services/windows-service/commands/status.ts';
+import { handleLogsCommand } from '../services/windows-service/commands/logs.ts';
+import { startService, stopService, restartService } from '../services/windows-service/config/nssm.ts';
 
 /**
  * Create windows-service command group
@@ -16,7 +19,7 @@ export function createWindowsServiceCommands(parentProgram: Command): void {
     .description('Manage IronBot as a Windows service')
     .alias('service');
 
-  // Install command - uses dynamic import
+  // Install command
   serviceGroup
     .command('install')
     .description('Install IronBot as a Windows service')
@@ -30,7 +33,6 @@ export function createWindowsServiceCommands(parentProgram: Command): void {
     .option('--json', 'Output as JSON')
     .action(async (options: any) => {
       try {
-        const { handleInstallCommand } = await import('../services/windows-service/commands/install.ts');
         await handleInstallCommand(options);
       } catch (error) {
         console.error(`Install failed: ${error}`);
@@ -46,7 +48,6 @@ export function createWindowsServiceCommands(parentProgram: Command): void {
     .option('--json', 'Output as JSON')
     .action(async (serviceName: string | undefined, options: any) => {
       try {
-        const { handleUninstallCommand } = await import('../services/windows-service/commands/uninstall.ts');
         await handleUninstallCommand(serviceName, options);
       } catch (error) {
         console.error(`Uninstall failed: ${error}`);
@@ -61,7 +62,6 @@ export function createWindowsServiceCommands(parentProgram: Command): void {
     .option('--json', 'Output as JSON')
     .action(async (serviceName: string | undefined, options: any) => {
       try {
-        const { startService } = await import('../services/windows-service/config/nssm.ts');
         const name = serviceName || 'IronBot';
         const result = await startService(name);
 
@@ -94,7 +94,6 @@ export function createWindowsServiceCommands(parentProgram: Command): void {
     .option('--json', 'Output as JSON')
     .action(async (serviceName: string | undefined, options: any) => {
       try {
-        const { stopService } = await import('../services/windows-service/config/nssm.ts');
         const name = serviceName || 'IronBot';
         const timeout = parseInt(options.timeout, 10) || 30;
 
@@ -128,7 +127,6 @@ export function createWindowsServiceCommands(parentProgram: Command): void {
     .option('--json', 'Output as JSON')
     .action(async (serviceName: string | undefined, options: any) => {
       try {
-        const { restartService } = await import('../services/windows-service/config/nssm.ts');
         const name = serviceName || 'IronBot';
 
         const result = await restartService(name);
@@ -161,7 +159,6 @@ export function createWindowsServiceCommands(parentProgram: Command): void {
     .option('--json', 'Output as JSON')
     .action(async (serviceName: string | undefined, options: any) => {
       try {
-        const { handleStatusCommand } = await import('../services/windows-service/commands/status.ts');
         await handleStatusCommand(serviceName, options);
       } catch (error) {
         console.error(`Status failed: ${error}`);
@@ -180,7 +177,6 @@ export function createWindowsServiceCommands(parentProgram: Command): void {
     .option('--json', 'Output as JSON')
     .action(async (serviceName: string | undefined, options: any) => {
       try {
-        const { handleLogsCommand } = await import('../services/windows-service/commands/logs.ts');
         await handleLogsCommand(serviceName, options);
       } catch (error) {
         console.error(`Logs failed: ${error}`);

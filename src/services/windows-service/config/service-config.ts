@@ -27,7 +27,7 @@ import {
   getCurrentWindowsUser,
   getUserAccountInfo
 } from "../utils/process.ts";
-import { logger } from "../../utils/logging.ts";
+import { logger } from "../../../utils/logging.ts";
 import { isNssmAvailable } from "./nssm.ts";
 
 /**

@@ -4,7 +4,7 @@
  */
 
 import type { ValidationResult, ValidationCheck } from "../types/index.ts";
-import { logger } from "../../utils/logging.ts";
+import { logger } from "../../../utils/logging.ts";
 
 /**
  * Critical environment variables that should be present for IronBot

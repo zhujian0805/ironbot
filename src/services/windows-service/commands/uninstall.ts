@@ -3,7 +3,7 @@
  * Handles removal of IronBot Windows service
  */
 
-import { logger } from "../../utils/logging.ts";
+import { logger } from "../../../utils/logging.ts";
 import type { UninstallResult } from "../types/index.ts";
 import { removeService } from "../config/nssm.ts";
 import { serviceExists } from "../utils/process.ts";

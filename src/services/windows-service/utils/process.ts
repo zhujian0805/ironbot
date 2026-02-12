@@ -5,7 +5,7 @@
 
 import { execSync } from "child_process";
 import type { ExecOptions, ExecResult } from "../types/index.ts";
-import { logger } from "../../utils/logging.ts";
+import { logger } from "../../../utils/logging.ts";
 
 /**
  * Execute a command safely
