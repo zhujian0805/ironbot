@@ -93,21 +93,28 @@ const getBoltSocketModeClient = (app: SlackApp): SocketModeClient | undefined =>
 };
 
 const patchUnhandledSocketModeDisconnect = (socketModeClient: SocketModeClient): void => {
-  const stateMachine = (socketModeClient as any)?.stateMachine;
-  if (!stateMachine || typeof stateMachine.handleUnhandledEvent !== "function") {
+  const hierarchicalStateMachine = (socketModeClient as any)?.stateMachine;
+  const rootStateMachine = hierarchicalStateMachine?.rootStateMachine;
+  const patchTarget =
+    typeof hierarchicalStateMachine?.handleUnhandledEvent === "function"
+      ? hierarchicalStateMachine
+      : rootStateMachine;
+
+  if (!patchTarget || typeof patchTarget.handleUnhandledEvent !== "function") {
     logger.warn("Socket Mode state machine not available for patching");
     return;
   }
 
-  if (stateMachine.__ironbotUnhandledDisconnectPatched) {
+  if (patchTarget.__ironbotUnhandledDisconnectPatched) {
     return;
   }
 
-  const originalHandleUnhandledEvent = stateMachine.handleUnhandledEvent;
-  stateMachine.handleUnhandledEvent = function patchedHandleUnhandledEvent(event: string, eventPayload: unknown) {
+  const originalHandleUnhandledEvent = patchTarget.handleUnhandledEvent;
+  patchTarget.handleUnhandledEvent = function patchedHandleUnhandledEvent(event: string, eventPayload: unknown) {
     if (event === "server explicit disconnect" && this.currentState === "connecting") {
       logger.warn("Ignoring server explicit disconnect while connecting; forcing reconnect");
       try {
+        // The event is valid on the parent state and triggers normal reconnect flow.
         this.handle("websocket close", eventPayload);
       } catch (error) {
         logger.warn({ error }, "Failed to force reconnect after explicit disconnect; ignoring event");
@@ -116,7 +123,7 @@ const patchUnhandledSocketModeDisconnect = (socketModeClient: SocketModeClient):
     }
     return originalHandleUnhandledEvent.call(this, event, eventPayload);
   };
-  stateMachine.__ironbotUnhandledDisconnectPatched = true;
+  patchTarget.__ironbotUnhandledDisconnectPatched = true;
   logger.info("Patched Socket Mode unhandled disconnect behavior");
 };
 
