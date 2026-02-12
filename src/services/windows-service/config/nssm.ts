@@ -371,3 +371,80 @@ export async function storeAndApplyCredentials(
     return false;
   }
 }
+
+/**
+ * Start a Windows service
+ * Usage: net start <serviceName> OR nssm start <serviceName>
+ */
+export async function startService(serviceName: string): Promise<boolean> {
+  try {
+    // Try using net start command first
+    const result = await executeNssmCommand("start", [serviceName]);
+
+    if (result.success) {
+      logger.info({ serviceName }, "Service started successfully");
+      return true;
+    } else {
+      logger.error({ serviceName, stderr: result.stderr }, "Failed to start service");
+      return false;
+    }
+  } catch (error) {
+    logger.error({ serviceName, error }, "Error starting service");
+    return false;
+  }
+}
+
+/**
+ * Stop a Windows service
+ * Usage: net stop <serviceName> OR nssm stop <serviceName>
+ */
+export async function stopService(
+  serviceName: string,
+  timeoutSeconds: number = 30
+): Promise<boolean> {
+  try {
+    const result = await executeNssmCommand("stop", [serviceName, String(timeoutSeconds)]);
+
+    if (result.success) {
+      logger.info({ serviceName, timeoutSeconds }, "Service stopped successfully");
+      return true;
+    } else {
+      logger.error({ serviceName, stderr: result.stderr }, "Failed to stop service");
+      return false;
+    }
+  } catch (error) {
+    logger.error({ serviceName, error }, "Error stopping service");
+    return false;
+  }
+}
+
+/**
+ * Restart a Windows service
+ * Usage: net stop && net start OR nssm restart
+ */
+export async function restartService(serviceName: string): Promise<boolean> {
+  try {
+    // Stop the service first
+    const stopResult = await stopService(serviceName);
+    if (!stopResult) {
+      logger.warn({ serviceName }, "Service might not have stopped cleanly");
+    }
+
+    // Wait a bit before starting
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Start the service
+    const startResult = await startService(serviceName);
+
+    if (startResult) {
+      logger.info({ serviceName }, "Service restarted successfully");
+      return true;
+    } else {
+      logger.error({ serviceName }, "Failed to restart service");
+      return false;
+    }
+  } catch (error) {
+    logger.error({ serviceName, error }, "Error restarting service");
+    return false;
+  }
+}

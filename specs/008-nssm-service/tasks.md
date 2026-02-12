@@ -233,34 +233,34 @@
 
 ### Implementation for User Story 4
 
-- [ ] T034 [P] [US4] Implement status command in `src/services/windows-service/commands/status.ts`:
+- [x] T034 [P] [US4] Implement status command in `src/services/windows-service/commands/status.ts`:
   - getServiceStatus(serviceName: string): Promise<ServiceStatus>
   - parseNssmStatus(): ServiceStatus (from NSSM output)
   - queryWindowsServiceState(serviceName: string): Promise<ServiceState>
   - Support options: --json, --watch
   - Output: Human-readable or JSON format
   - Handle case: Service not found, NSSM error
-- [ ] T035 [P] [US4] Implement service lifecycle commands in `src/services/windows-service/config/nssm.ts`:
+- [x] T035 [P] [US4] Implement service lifecycle commands in `src/services/windows-service/config/nssm.ts`:
   - startService(serviceName: string): Promise<boolean>
   - stopService(serviceName: string, timeoutSeconds: number = 30): Promise<boolean>
   - restartService(serviceName: string): Promise<boolean>
   - Use: net start/stop commands or NSSM commands
   - Handle: Service already running/stopped, timeout, permission errors
-- [ ] T036 [US4] Implement logs command in `src/services/windows-service/commands/logs.ts`:
+- [x] T036 [US4] Implement logs command in `src/services/windows-service/commands/logs.ts`:
   - readServiceLogs(logPath: string, lines: number = 50): Promise<LogEntry[]>
   - parseLogEntries(logContent: string): LogEntry[] (parse NSSM log format)
   - followServiceLogs(logPath: string): AsyncIterable<LogEntry> (tail -f behavior)
   - filterLogsByLevel(entries: LogEntry[], level: string): LogEntry[]
   - filterLogsByTimestamp(entries: LogEntry[], since: string): LogEntry[]
   - Support options: --lines, --follow, --since, --level, --json
-- [ ] T037 [US4] Implement uninstall command in `src/services/windows-service/commands/uninstall.ts`:
+- [x] T037 [US4] Implement uninstall command in `src/services/windows-service/commands/uninstall.ts`:
   - validateServiceCanBeUninstalled(serviceName: string): Promise<boolean>
   - stopServiceIfRunning(serviceName: string): Promise<void> (with --force flag)
   - uninstallService(serviceName: string): Promise<boolean>
   - Use NSSM command: `nssm remove {serviceName} confirm`
   - Support options: --force (skip confirmation), --json
   - Handle: Service running, NSSM error, permission errors
-- [ ] T038 [US4] Add error handling to all management commands:
+- [x] T038 [US4] Add error handling to all management commands:
   - Exit codes: 0 (success), 1 (general error), 2 (admin required), 3 (service not found)
   - Clear error messages for: service not found, timeout, permission denied, NSSM error
   - Log all operations with timestamps and outcomes
