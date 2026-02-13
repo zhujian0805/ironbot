@@ -13,7 +13,14 @@
     "test:integration": "bunx vitest run --dir tests/integration",
     "test:contract": "bunx vitest run --dir tests/contract",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "release-check": "bun src/cli/check_release.ts --permissions-file ./permissions.yaml"
+    "release-check": "bun src/cli/check_release.ts --permissions-file ./permissions.yaml",
+    "service:install": "bun src/main.ts windows-service install",
+    "service:uninstall": "bun src/main.ts windows-service uninstall",
+    "service:start": "bun src/main.ts windows-service start",
+    "service:stop": "bun src/main.ts windows-service stop",
+    "service:restart": "bun src/main.ts windows-service restart",
+    "service:status": "bun src/main.ts windows-service status",
+    "service:logs": "bun src/main.ts windows-service logs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.1",

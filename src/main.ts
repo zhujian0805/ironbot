@@ -223,6 +223,11 @@ const performHealthChecks = async (
 const main = async (): Promise<void> => {
   const args = parseCliArgs();
 
+  // If this is a service command, it has already been executed and should exit
+  if (args.isServiceCommand) {
+    return;
+  }
+
   // Log environment variables for debugging service deployment
   const envVars = {
     SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN ? '***SET***' : 'NOT SET',

@@ -2,7 +2,11 @@ import { Command } from "commander";
 import type { CliArgs } from "../config.ts";
 import { createWindowsServiceCommands } from "./windows-service-cli.ts";
 
-export const parseCliArgs = (argv: string[] = process.argv.slice(2)): CliArgs => {
+export interface ParsedCliArgs extends CliArgs {
+  isServiceCommand: boolean;
+}
+
+export const parseCliArgs = (argv: string[] = process.argv.slice(2)): ParsedCliArgs => {
   const program = new Command();
 
   // Add windows-service command group
@@ -26,9 +30,13 @@ export const parseCliArgs = (argv: string[] = process.argv.slice(2)): CliArgs =>
       logLevel: undefined,
       logFile: undefined,
       skipHealthChecks: false,
-      permissionsFile: undefined
+      permissionsFile: undefined,
+      isServiceCommand: false
     };
   }
+
+  // Check if this is a service command
+  const isServiceCommand = argv.includes('windows-service') || argv.includes('service');
 
   // If we have arguments, parse them
   program.parse(argv, { from: "user" });
@@ -40,7 +48,8 @@ export const parseCliArgs = (argv: string[] = process.argv.slice(2)): CliArgs =>
     logLevel: options.logLevel,
     logFile: options.logFile,
     skipHealthChecks: options.skipHealthChecks,
-    permissionsFile: options.permissionsFile
+    permissionsFile: options.permissionsFile,
+    isServiceCommand
   };
 };
 
