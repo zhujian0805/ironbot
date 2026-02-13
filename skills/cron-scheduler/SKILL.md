@@ -1,6 +1,6 @@
 ---
 name: cron-scheduler
-description: Schedule Slack reminders via the existing cron store. Use when the user asks the bot to "set up a reminder" or "run something via a cron expression" so you can collect the job name, channel, payload text, and schedule, then invoke `npm run cron -- add …` to write the job into `~/.ironbot/cron/jobs.json`. Jobs are self-contained and do not retain original conversation context.
+description: Schedule Slack reminders via the existing cron store. Use when the user asks the bot to "set up a reminder" or "run something via a cron expression" so you can collect the job name, channel, payload text, and schedule, then invoke `npm run cron -- add …` to write the job into `~/.ironbot/cron/jobs.json`. Jobs are self-contained and do not retain original conversation context. Also handles requests to list/show scheduled jobs.
 ---
 
 # Cron Scheduler
@@ -12,8 +12,11 @@ This skill creates **internal cron jobs only**. It never creates Windows schedul
 - The user explicitly says "schedule", "remind", "cron", or "wake" in a Slack thread or DM.
 - They ask the bot to send a message at a future time (once or repeating) in a specific channel/thread.
 - They describe a schedule and can provide (or are willing to provide) a `cron` expression for it.
+- **They ask to "list", "show", "view", or "see" scheduled jobs, cron jobs, or current tasks.**
 
 ## Step-by-step workflow
+
+### For Scheduling Jobs
 1. **Gather the required fields.**
    - **Job name** (short descriptive name, e.g., `standup-reminder`). Ask if missing.
    - **Slack channel** (channel ID like `C12345678` or DM `D87654321`). Accept channel names only if you can map to the ID; otherwise prompt for the canonical ID.
@@ -41,6 +44,19 @@ This skill creates **internal cron jobs only**. It never creates Windows schedul
    - Suggest `npm run cron -- list` or `npm run cron -- status` to the user if they want to see all scheduled jobs.
    - Report back in Slack that the reminder will fire as scheduled and note the job ID and next run time.
    - **Remind the user that the job is self-contained and will execute without retaining original conversation context.**
+
+### For Listing Scheduled Jobs
+1. **Detect list requests.**
+   - Recognize natural language requests like "show scheduled jobs", "list cron jobs", "what jobs are scheduled", "see my scheduled jobs", etc.
+
+2. **Execute the list command.**
+   - Call `npm run cron -- list` to retrieve all scheduled jobs.
+   - Format the output in a code block for readability.
+
+3. **Return formatted results.**
+   - Show the job list with columns: ID, Name, Schedule, Next Run, Status, Channel.
+   - Include helpful instructions for managing jobs (list, remove, etc.).
+   - Handle cases where no jobs are scheduled.
 
 ## Important Implementation Detail
 **Always create internal cron jobs using the `npm run cron -- add` command. Never create Windows scheduled tasks or use any external scheduler. All jobs must be stored in the internal cron system at `~/.ironbot/cron/jobs.json`. Jobs are self-contained and do not retain original conversation context - they must contain all necessary information within the job definition itself.**

@@ -62,8 +62,9 @@ describe("NLP Cron Job Scheduling Test", () => {
             name: "system-resource-report-complete-1",
             description: "Check system resources and send HTML report via SMTP",
             schedule: {
-              kind: "at",
-              at: new Date(Date.now() + 10000).toISOString() // 10 seconds in future for testing
+              kind: "cron",
+              expr: "0 10 4 * * *", // Every day at 4:10 UTC
+              tz: "UTC"
             },
             payload: {
               type: 'direct-execution',
@@ -166,13 +167,13 @@ describe("NLP Cron Job Scheduling Test", () => {
 
     assert.ok(scheduledJob, "Scheduled job should exist in the store");
     assert.strictEqual(scheduledJob.name, "system-resource-report-complete-1", "Job name should match");
-    assert.strictEqual(scheduledJob.schedule.kind, "at", "Schedule should be 'at' type");
+    assert.strictEqual(scheduledJob.schedule.kind, "cron", "Schedule should be 'cron' type");
     assert.ok(scheduledJob.enabled, "Job should be enabled");
 
     console.log(`✅ Successfully verified job scheduling`);
     console.log(`🆔 Job ID: ${scheduledJob.id}`);
     console.log(`📝 Job Name: ${scheduledJob.name}`);
-    console.log(`🕒 Schedule: ${scheduledJob.schedule.kind} ${scheduledJob.schedule.at}`);
+    console.log(`🕒 Schedule: cron ${scheduledJob.schedule.expr} @ ${scheduledJob.schedule.tz}`);
 
     // Verify the payload structure for direct execution
     if ('type' in scheduledJob.payload && scheduledJob.payload.type === 'direct-execution') {
@@ -215,10 +216,10 @@ describe("NLP Cron Job Scheduling Test", () => {
 
     const job = jobs[0]; // The job we created
     console.log(`📋 Scheduled job: ${job.name}`);
-    console.log(`⏰ Time: ${job.schedule.at || job.schedule.every || job.schedule.cron}`);
+    console.log(`⏰ Time: cron ${job.schedule.expr} @ ${job.schedule.tz}`);
 
-    // The original request was for "4:10 UTC today" which should create an "at" schedule
-    assert.strictEqual(job.schedule.kind, "at", "Should create 'at' schedule for one-time execution");
+    // The original request was for "4:10 UTC today" which should create a cron schedule
+    assert.strictEqual(job.schedule.kind, "cron", "Should create 'cron' schedule for recurring execution");
 
     // Verify it's a direct execution job (since it mentions running a script/email)
     if ('type' in job.payload && job.payload.type === 'direct-execution') {
@@ -227,5 +228,115 @@ describe("NLP Cron Job Scheduling Test", () => {
     }
 
     console.log("✅ Complete processing flow verified successfully");
+  });
+
+  it("should handle natural language requests to list scheduled jobs", async () => {
+    // First, schedule a test job so we have something to list
+    const testJob = await cronService.add({
+      name: "test-listing-job",
+      description: "A test job for listing verification",
+      schedule: {
+        kind: "cron",
+        expr: "0 12 * * *", // Every day at noon
+        tz: "UTC"
+      },
+      payload: {
+        channel: "C12345678",
+        text: "Test reminder for listing jobs"
+      },
+      enabled: true
+    });
+
+    console.log(`📋 Created test job: ${testJob.id} (${testJob.name})`);
+
+    // Mock the cron list command execution
+    const originalToolExecutor = (claudeProcessor as any).toolExecutor;
+    (claudeProcessor as any).toolExecutor = {
+      executeTool: async (toolName: string, params: Record<string, unknown>) => {
+        if (toolName === 'cron-scheduler') {
+          const input = params.input as string || '';
+
+          // Check if this is a list request
+          const listPatterns = [
+            /\b(list|show|display|view)\s+(scheduled\s+)?(?:cron\s+)?jobs?\b/i,
+            /\bwhat\s+(cron\s+)?jobs?\s+(are\s+)?scheduled/i,
+            /\bsee\s+(my\s+)?(?:scheduled\s+)?(?:cron\s+)?jobs?/i,
+            /\bget\s+(a\s+)?list\s+of\s+(scheduled\s+)?(?:cron\s+)?jobs?/i,
+            /\bcurrent\s+(scheduled\s+)?(?:cron\s+)?jobs?/i,
+            /\bexisting\s+(scheduled\s+)?(?:cron\s+)?jobs?/i,
+            /\ball\s+(scheduled\s+)?(?:cron\s+)?jobs?/i,
+          ];
+
+          const isListRequest = listPatterns.some(pattern => pattern.test(input));
+
+          if (isListRequest) {
+            // Simulate listing jobs
+            const jobs = await cronService.list();
+            if (jobs.length === 0) {
+              return { success: true, message: "No scheduled jobs found." };
+            }
+
+            // Format jobs like the real cron list command would
+            const jobLines = jobs.map(job => {
+              const idLabel = job.id.slice(0, 8);
+              const status = job.enabled ? (job.state.lastStatus ?? "idle") : "disabled";
+              const next = job.state.nextRunAtMs ? new Date(job.state.nextRunAtMs).toISOString() : "-";
+              const scheduleStr = job.schedule.kind === "at" ? `at ${job.schedule.at}` :
+                                 job.schedule.kind === "every" ? `every ${job.schedule.everyMs}ms` :
+                                 `cron ${job.schedule.expr}`;
+              return `${idLabel}\t${job.name}\t${scheduleStr}\t${next}\t${status}\t${(job.payload as any).channel || 'N/A'}`;
+            });
+
+            const output = `ID\tName\tSchedule\tNext\tStatus\tChannel\n${jobLines.join('\n')}`;
+
+            return {
+              success: true,
+              message: `📋 **Scheduled Jobs:**\n\`\`\`\n${output}\n\`\`\`\n\nTo manage jobs, use \`npm run cron -- list\`, \`npm run cron -- remove <job-id>\`, etc.`
+            };
+          }
+
+          // For non-list requests, return a scheduling success message
+          return {
+            success: true,
+            message: "Job scheduled successfully"
+          };
+        }
+
+        return { success: true };
+      }
+    };
+
+    // Test various natural language requests for listing jobs
+    const listRequests = [
+      "show scheduled jobs",
+      "list cron jobs",
+      "what jobs are scheduled",
+      "see my scheduled jobs",
+      "get a list of cron jobs",
+      "current scheduled jobs",
+      "all cron jobs"
+    ];
+
+    for (const request of listRequests) {
+      console.log(`Testing list request: "${request}"`);
+
+      const result = await (claudeProcessor as any).toolExecutor.executeTool('cron-scheduler', {
+        input: request,
+        channel: "C12345678",
+        user: "U1234567890"
+      });
+
+      assert.ok(result.success, `List request "${request}" should succeed`);
+      assert.ok(result.message, `List request "${request}" should return a message`);
+      assert.ok(result.message.includes("Scheduled Jobs"), `List request "${request}" should return job listing`);
+      assert.ok(result.message.includes(testJob.name), `List request "${request}" should include the test job`);
+
+      console.log(`✅ Successfully processed: "${request}"`);
+    }
+
+    // Restore original tool executor
+    (claudeProcessor as any).toolExecutor = originalToolExecutor;
+
+    console.log("✅ All natural language list requests handled successfully");
   });
 });

@@ -368,6 +368,23 @@ export const executeSkill = async (input: string, context?: SkillContext): Promi
 
   console.log(`[DEBUG] cron-scheduler: processing input: "${cleanedInput}"`);
 
+  // Check if user is asking to list/show scheduled jobs
+  if (detectListJobsRequest(cleanedInput)) {
+    const storePath = resolveCronStorePath(process.env.IRONBOT_CRON_STORE_PATH);
+    const { success, stdout, stderr } = await runCronListCommand(storePath);
+
+    if (!success) {
+      const message = stderr || stdout || "Failed to list cron jobs.";
+      return `❌ Unable to list scheduled jobs: ${message.split(/\r?\n/)[0]}`;
+    }
+
+    if (!stdout.trim()) {
+      return "No scheduled jobs found.";
+    }
+
+    return `📋 **Scheduled Jobs:**\n\`\`\`\n${stdout.trim()}\n\`\`\`\n\nTo manage jobs, use \`npm run cron -- list\`, \`npm run cron -- remove <job-id>\`, etc.`;
+  }
+
   // Check if user wants direct execution (like PowerShell scripts)
   const directExec = detectDirectExecution(cleanedInput);
   // Enforce absolute paths for direct-execution commands per SKILL.md
@@ -505,8 +522,13 @@ export const executeSkill = async (input: string, context?: SkillContext): Promi
   }
 };
 
-const runCronRemoveCommand = async (jobId: string) => {
-  const args = ["run", "cron", "--", "remove", jobId];
+const runCronListCommand = async (storePath?: string) => {
+  const args = ["run", "cron", "--"];
+  if (storePath) {
+    args.push("--store", storePath);
+  }
+  args.push("list");
+
   const child = spawn("npm", args, { cwd: repoRoot, env: process.env });
   let stdout = "";
   let stderr = "";
@@ -523,6 +545,21 @@ const runCronRemoveCommand = async (jobId: string) => {
   });
 };
 
+const detectListJobsRequest = (input: string): boolean => {
+  const lower = input.toLowerCase();
+  const listPatterns = [
+    /\b(list|show|display|view)\s+(scheduled\s+)?(?:cron\s+)?jobs?\b/i,
+    /\bwhat\s+(cron\s+)?jobs?\s+(are\s+)?scheduled/i,
+    /\bsee\s+(my\s+)?(?:scheduled\s+)?(?:cron\s+)?jobs?/i,
+    /\bget\s+(a\s+)?list\s+of\s+(scheduled\s+)?(?:cron\s+)?jobs?/i,
+    /\bcurrent\s+(scheduled\s+)?(?:cron\s+)?jobs?/i,
+    /\bexisting\s+(scheduled\s+)?(?:cron\s+)?jobs?/i,
+    /\ball\s+(scheduled\s+)?(?:cron\s+)?jobs?/i,
+  ];
+
+  return listPatterns.some(pattern => pattern.test(input));
+};
+
 export const removeSkill = async (jobId: string): Promise<string> => {
   if (!jobId) {
     return "Please provide a job ID to remove.";
@@ -536,6 +573,24 @@ export const removeSkill = async (jobId: string): Promise<string> => {
   }
 
   return `✅ Successfully removed cron job: ${stdout.trim()}`;
+};
+
+const runCronRemoveCommand = async (jobId: string) => {
+  const args = ["run", "cron", "--", "remove", jobId];
+  const child = spawn("npm", args, { cwd: repoRoot, env: process.env });
+  let stdout = "";
+  let stderr = "";
+  return new Promise<{ success: boolean; stdout: string; stderr: string }>((resolve) => {
+    child.stdout?.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    child.stderr?.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    child.on("close", (code) => {
+      resolve({ success: code === 0, stdout, stderr });
+    });
+  });
 };
 
 export { parseSchedule };
