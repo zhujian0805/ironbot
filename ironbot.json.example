@@ -1,24 +1,24 @@
 {
   "slack": {
-    "botToken": "xoxb-your-bot-token-here",
-    "appToken": "xapp-1-your-app-token-here"
+    "botToken": "xoxb-YOUR-BOT-TOKEN-HERE",
+    "appToken": "xapp-1-YOUR-APP-TOKEN-HERE"
   },
   "anthropic": {
-    "baseUrl": "https://api.anthropic.com",
-    "authToken": "sk-ant-your-api-key-here",
-    "model": "claude-3-5-sonnet-20241022"
+    "baseUrl": "https://your-anthropic-instance:5000",
+    "authToken": "sk-your-anthropic-token-here",
+    "model": "grok-code-fast-1"
   },
   "llmProvider": {
-    "provider": "anthropic",
+    "provider": "openai",
     "anthropic": {
-      "apiKey": "sk-ant-your-api-key-here",
-      "baseUrl": "https://api.anthropic.com",
-      "model": "claude-3-5-sonnet-20241022"
+      "apiKey": "sk-your-anthropic-api-key-here",
+      "baseUrl": "https://your-anthropic-instance:5000",
+      "model": "grok-code-fast-1"
     },
     "openai": {
-      "apiKey": "sk-your-openai-key-here",
-      "baseUrl": "https://api.openai.com/v1",
-      "model": "gpt-4o"
+      "apiKey": "your-azure-openai-api-key-here",
+      "baseUrl": "https://your-resource-name.openai.azure.com/openai/v1",
+      "model": "gpt-5-mini"
     },
     "google": {
       "apiKey": "your-google-api-key-here",
@@ -27,7 +27,7 @@
     }
   },
   "skills": {
-    "directory": "./skills"
+    "directory": "~/.ironbot/skills"
   },
   "permissions": {
     "file": "./permissions.yaml"
@@ -41,7 +41,7 @@
   },
   "cron": {
     "enabled": true,
-    "storePath": "./cron/jobs.json"
+    "storePath": "~/.ironbot/cron/jobs.json"
   },
   "sessions": {
     "maxHistoryMessages": 12
@@ -56,13 +56,11 @@
     "candidateMultiplier": 4,
     "maxResults": 6,
     "minScore": 0.35,
-    "sources": [
-      "memory"
-    ],
+    "sources": ["memory"],
     "crossSessionMemory": true
   },
   "embeddings": {
-    "provider": "auto",
+    "provider": "local",
     "fallback": "none",
     "local": {
       "modelPath": "hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf"
@@ -98,5 +96,5 @@
     "optOutSkills": []
   },
   "anthropic_timeout_ms": 60000,
-  "claude_max_tool_iterations": 10
+  "claude_max_tool_iterations": 100
 }
