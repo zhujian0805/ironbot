@@ -1,0 +1,102 @@
+{
+  "slack": {
+    "botToken": "xoxb-your-bot-token-here",
+    "appToken": "xapp-1-your-app-token-here"
+  },
+  "anthropic": {
+    "baseUrl": "https://api.anthropic.com",
+    "authToken": "sk-ant-your-api-key-here",
+    "model": "claude-3-5-sonnet-20241022"
+  },
+  "llmProvider": {
+    "provider": "anthropic",
+    "anthropic": {
+      "apiKey": "sk-ant-your-api-key-here",
+      "baseUrl": "https://api.anthropic.com",
+      "model": "claude-3-5-sonnet-20241022"
+    },
+    "openai": {
+      "apiKey": "sk-your-openai-key-here",
+      "baseUrl": "https://api.openai.com/v1",
+      "model": "gpt-4o"
+    },
+    "google": {
+      "apiKey": "your-google-api-key-here",
+      "baseUrl": "https://generativelanguage.googleapis.com",
+      "model": "gemini-2.0-flash"
+    }
+  },
+  "skills": {
+    "directory": "./skills"
+  },
+  "permissions": {
+    "file": "./permissions.yaml"
+  },
+  "logging": {
+    "debug": false,
+    "level": "INFO"
+  },
+  "dev": {
+    "mode": false
+  },
+  "cron": {
+    "enabled": true,
+    "storePath": "./cron/jobs.json"
+  },
+  "sessions": {
+    "maxHistoryMessages": 12
+  },
+  "memory": {
+    "sessionIndexing": false
+  },
+  "memorySearch": {
+    "enabled": true,
+    "vectorWeight": 0.7,
+    "textWeight": 0.3,
+    "candidateMultiplier": 4,
+    "maxResults": 6,
+    "minScore": 0.35,
+    "sources": [
+      "memory"
+    ],
+    "crossSessionMemory": true
+  },
+  "embeddings": {
+    "provider": "auto",
+    "fallback": "none",
+    "local": {
+      "modelPath": "hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf"
+    },
+    "openai": {
+      "model": "text-embedding-3-small"
+    },
+    "gemini": {
+      "model": "gemini-embedding-001"
+    }
+  },
+  "retry": {
+    "maxAttempts": 3,
+    "baseDelayMs": 2000,
+    "maxDelayMs": 60000,
+    "backoffMultiplier": 2.0,
+    "jitterMax": 0.1
+  },
+  "slack_retry": {
+    "maxAttempts": 5,
+    "baseDelayMs": 15000,
+    "maxDelayMs": 300000
+  },
+  "slack_rate_limit": {
+    "enabled": true,
+    "requestsPerSecond": 2,
+    "burstCapacity": 5,
+    "queueSize": 20
+  },
+  "auto_routing": {
+    "enabled": true,
+    "confidenceThreshold": 0.5,
+    "optOutSkills": []
+  },
+  "anthropic_timeout_ms": 60000,
+  "claude_max_tool_iterations": 10
+}

@@ -22,6 +22,8 @@ dist/
 .env
 .env.local
 .env.*.local
+ironbot.json
+!ironbot.json.example
 
 # OS/Editor
 .DS_Store
