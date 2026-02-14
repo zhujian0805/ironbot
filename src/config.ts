@@ -1,5 +1,6 @@
 import path from "node:path";
-import { config as loadDotenv } from "dotenv";
+import { readFileSync, existsSync } from "node:fs";
+import { homedir } from "node:os";
 import {
   resolveDefaultSessionStorePath,
   resolveSessionTranscriptsDir,
@@ -9,30 +10,31 @@ import {
 import { DEFAULT_AGENT_ID, DEFAULT_MAIN_SESSION_KEY } from "./sessions/session_key.ts";
 import { resolveCronStorePath } from "./cron/store.ts";
 
-loadDotenv();
-
 type BooleanString = "true" | "false" | "1" | "0";
 
-const parseBoolean = (value: string | undefined, fallback = false): boolean => {
-  if (!value) return fallback;
-  const normalized = value.toLowerCase() as BooleanString | string;
+const parseBoolean = (value: string | boolean | undefined, fallback = false): boolean => {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === "boolean") return value;
+  const normalized = String(value).toLowerCase() as BooleanString | string;
   return normalized === "true" || normalized === "1";
 };
 
-const parseNumber = (value: string | undefined, fallback: number): number => {
-  if (!value) return fallback;
+const parseNumber = (value: string | number | undefined, fallback: number): number => {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === "number") return value;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const parseInteger = (value: string | undefined, fallback: number): number => {
+const parseInteger = (value: string | number | undefined, fallback: number): number => {
   const parsed = parseNumber(value, fallback);
   return Number.isFinite(parsed) ? Math.floor(parsed) : fallback;
 };
 
-const parseStringArray = (value: string | undefined, fallback: string[]): string[] => {
+const parseStringArray = (value: string | string[] | undefined, fallback: string[]): string[] => {
   if (!value) return fallback;
-  const items = value
+  if (Array.isArray(value)) return value;
+  const items = String(value)
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
@@ -47,6 +49,15 @@ const parseEmbeddingProvider = (value: string | undefined, fallback: EmbeddingPr
     return normalized;
   }
   return fallback;
+};
+
+const parseLlmProvider = (value: string | undefined): LlmProvider => {
+  const normalized = value?.trim().toLowerCase();
+  const validProviders: LlmProvider[] = ["anthropic", "openai", "google", "groq", "mistral", "cerebras", "xai", "bedrock"];
+  if (normalized && validProviders.includes(normalized as LlmProvider)) {
+    return normalized as LlmProvider;
+  }
+  return "anthropic"; // default to anthropic
 };
 
 export type CliArgs = {
@@ -98,6 +109,27 @@ export type AutoRoutingConfig = {
   enabled: boolean;
   confidenceThreshold: number;
   optOutSkills: string[];
+};
+
+export type LlmProvider = "anthropic" | "openai" | "google" | "groq" | "mistral" | "cerebras" | "xai" | "bedrock";
+
+export type LlmProviderConfig = {
+  provider: LlmProvider;
+  anthropic?: {
+    apiKey?: string;
+    baseUrl?: string;
+    model: string;
+  };
+  openai?: {
+    apiKey?: string;
+    baseUrl?: string;
+    model: string;
+  };
+  google?: {
+    apiKey?: string;
+    baseUrl?: string;
+    model: string;
+  };
 };
 
 export type EmbeddingsConfig = {
@@ -153,6 +185,7 @@ export type AppConfig = {
   anthropicTimeoutMs: number;
   cron: CronConfig;
   maxToolIterations: number;
+  llmProvider: LlmProviderConfig;
 };
 
 export type CronConfig = {
@@ -164,106 +197,312 @@ const DEFAULT_OPENAI_MODEL = "text-embedding-3-small";
 const DEFAULT_GEMINI_MODEL = "gemini-embedding-001";
 const DEFAULT_LOCAL_MODEL = "hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf";
 
+// JSON Configuration loading
+type JsonConfig = Partial<{
+  slack: {
+    botToken: string;
+    appToken: string;
+  };
+  anthropic: {
+    baseUrl: string;
+    authToken: string;
+    model: string;
+  };
+  llmProvider: {
+    provider: LlmProvider;
+    anthropic: {
+      apiKey: string;
+      baseUrl: string;
+      model: string;
+    };
+    openai: {
+      apiKey: string;
+      baseUrl: string;
+      model: string;
+    };
+    google: {
+      apiKey: string;
+      baseUrl: string;
+      model: string;
+    };
+  };
+  skills: {
+    directory: string;
+  };
+  logging: {
+    debug: boolean;
+    level: string;
+    file: string;
+  };
+  permissions: {
+    file: string;
+  };
+  dev: {
+    mode: boolean;
+  };
+  cron: {
+    enabled: boolean;
+    storePath: string;
+  };
+  sessions: {
+    storePath: string;
+    transcriptsDir: string;
+    dmSessionKey: string;
+    maxHistoryMessages: number;
+  };
+  memory: {
+    workspaceDir: string;
+    sessionIndexing: boolean;
+  };
+  memorySearch: {
+    enabled: boolean;
+    vectorWeight: number;
+    textWeight: number;
+    candidateMultiplier: number;
+    maxResults: number;
+    minScore: number;
+    sources: Array<"memory" | "sessions">;
+    crossSessionMemory: boolean;
+    storePath: string;
+  };
+  embeddings: {
+    provider: EmbeddingProvider;
+    fallback: EmbeddingProvider;
+    local: {
+      modelPath: string;
+      modelCacheDir: string;
+    };
+    openai: {
+      apiKey: string;
+      baseUrl: string;
+      model: string;
+    };
+    gemini: {
+      apiKey: string;
+      baseUrl: string;
+      model: string;
+    };
+  };
+  retry: {
+    maxAttempts: number;
+    baseDelayMs: number;
+    maxDelayMs: number;
+    backoffMultiplier: number;
+    jitterMax: number;
+  };
+  slack_retry: {
+    maxAttempts: number;
+    baseDelayMs: number;
+    maxDelayMs: number;
+  };
+  slack_rate_limit: {
+    enabled: boolean;
+    requestsPerSecond: number;
+    burstCapacity: number;
+    queueSize: number;
+  };
+  auto_routing: {
+    enabled: boolean;
+    confidenceThreshold: number;
+    optOutSkills: string[];
+  };
+  anthropic_timeout_ms: number;
+  claude_max_tool_iterations: number;
+}>;
+
+function loadJsonConfig(configPath: string): JsonConfig {
+  try {
+    if (!existsSync(configPath)) {
+      throw new Error(`Configuration file not found: ${configPath}`);
+    }
+    const content = readFileSync(configPath, "utf-8");
+    const config = JSON.parse(content) as JsonConfig;
+    return config;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`Invalid JSON in config file ${configPath}: ${error.message}`);
+    }
+    throw error;
+  }
+}
+
+function findConfigFile(): string {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || homedir();
+
+  // Check for config file in order of precedence
+  const candidates = [
+    process.env.IRONBOT_CONFIG,
+    path.join(homeDir, ".ironbot", "ironbot.json"),
+    path.join(process.cwd(), "ironbot.json"),
+    path.join(process.cwd(), "config", "ironbot.json")
+  ].filter(Boolean) as string[];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      console.log(`[CONFIG] Loaded from: ${candidate}`);
+      return candidate;
+    }
+  }
+
+  // No config file found - provide helpful error
+  const suggestions = [
+    `  1. Create ~/.ironbot/ironbot.json (global config)`,
+    `  2. Or create ironbot.json in your project directory`,
+    `  3. Or copy from template: cp ironbot.json.example ironbot.json`,
+    `  4. Or set IRONBOT_CONFIG environment variable to point to config file`,
+    ``,
+    `  Checked locations (in order):`,
+    ...candidates.map(c => `    - ${c}`)
+  ];
+
+  throw new Error(
+    `Configuration file not found. Ironbot requires ironbot.json.\n\n${suggestions.join('\n')}`
+  );
+}
+
 const loadBaseConfig = (): AppConfig => {
+  // Load JSON config - this is mandatory
+  const configPath = findConfigFile();
+  const jsonConfig = loadJsonConfig(configPath);
+
   const stateDir = resolveStateDir();
   const defaultWorkspace = path.join(stateDir, "workspace");
+
+  // Validate required fields
+  if (!jsonConfig.slack?.botToken) {
+    throw new Error("Configuration error: slack.botToken is required in ironbot.json");
+  }
+  if (!jsonConfig.slack?.appToken) {
+    throw new Error("Configuration error: slack.appToken is required in ironbot.json");
+  }
+  if (!jsonConfig.llmProvider?.provider) {
+    throw new Error("Configuration error: llmProvider.provider is required in ironbot.json");
+  }
+
+  // Resolve session paths
   const storePath = resolveUserPath(
-    process.env.IRONBOT_SESSIONS_STORE_PATH ?? resolveDefaultSessionStorePath(DEFAULT_AGENT_ID)
+    jsonConfig.sessions?.storePath ?? resolveDefaultSessionStorePath(DEFAULT_AGENT_ID)
   );
   const transcriptsDir = resolveUserPath(
-    process.env.IRONBOT_SESSIONS_TRANSCRIPTS_DIR ?? resolveSessionTranscriptsDir()
+    jsonConfig.sessions?.transcriptsDir ?? resolveSessionTranscriptsDir()
   );
   const memoryStorePath = resolveUserPath(
-    process.env.IRONBOT_MEMORY_INDEX_PATH ?? path.join(stateDir, "memory", `${DEFAULT_AGENT_ID}.sqlite`)
+    path.join(stateDir, "memory", `${DEFAULT_AGENT_ID}.sqlite`)
   );
 
-  const baseSkillsDir = resolveUserPath(process.env.SKILLS_DIR ?? path.join(process.cwd(), "skills"));
+  // Resolve skills directories
+  const baseSkillsDir = resolveUserPath(
+    jsonConfig.skills?.directory ?? path.join(process.cwd(), "skills")
+  );
   const stateSkillsDir = resolveUserPath(path.join(stateDir, "skills"));
   const dedupedSkillDirs = [baseSkillsDir, stateSkillsDir];
 
+  // Resolve LLM provider
+  const provider = parseLlmProvider(jsonConfig.llmProvider.provider);
+
   return {
-    slackBotToken: process.env.SLACK_BOT_TOKEN,
-    slackAppToken: process.env.SLACK_APP_TOKEN,
-    anthropicBaseUrl: process.env.ANTHROPIC_BASE_URL,
-    anthropicAuthToken: process.env.ANTHROPIC_AUTH_TOKEN,
-    anthropicModel: process.env.ANTHROPIC_MODEL ?? "gpt-5-mini",
+    slackBotToken: jsonConfig.slack.botToken,
+    slackAppToken: jsonConfig.slack.appToken,
+    anthropicBaseUrl: jsonConfig.anthropic?.baseUrl,
+    anthropicAuthToken: jsonConfig.anthropic?.authToken,
+    anthropicModel: jsonConfig.anthropic?.model ?? "claude-3-5-sonnet-20241022",
     skillsDir: baseSkillsDir,
     stateSkillsDir,
     skillDirs: dedupedSkillDirs,
-    permissionsFile: process.env.PERMISSIONS_FILE ? path.resolve(process.env.PERMISSIONS_FILE) : path.resolve("./permissions.yaml"),
-    debug: parseBoolean(process.env.DEBUG),
-    logLevel: process.env.LOG_LEVEL ?? "INFO",
-    logFile: process.env.LOG_FILE,
-    devMode: parseBoolean(process.env.DEV_MODE),
+    permissionsFile: jsonConfig.permissions?.file
+      ? path.resolve(jsonConfig.permissions.file)
+      : path.resolve("./permissions.yaml"),
+    debug: parseBoolean(jsonConfig.logging?.debug, false),
+    logLevel: jsonConfig.logging?.level ?? "INFO",
+    logFile: jsonConfig.logging?.file,
+    devMode: parseBoolean(jsonConfig.dev?.mode, false),
     skipHealthChecks: false,
     sessions: {
       storePath,
       transcriptsDir,
-      dmSessionKey: process.env.IRONBOT_DM_SESSION_KEY ?? DEFAULT_MAIN_SESSION_KEY,
-      maxHistoryMessages: parseInteger(process.env.IRONBOT_SESSION_HISTORY_MAX, 12)
+      dmSessionKey: jsonConfig.sessions?.dmSessionKey ?? DEFAULT_MAIN_SESSION_KEY,
+      maxHistoryMessages: parseInteger(jsonConfig.sessions?.maxHistoryMessages, 12)
     },
     memory: {
-      workspaceDir: resolveUserPath(process.env.IRONBOT_MEMORY_WORKSPACE_DIR ?? defaultWorkspace),
-      sessionIndexing: parseBoolean(process.env.IRONBOT_MEMORY_SESSION_INDEXING, false) || parseBoolean(process.env.IRONBOT_MEMORY_CROSS_SESSION, true)
+      workspaceDir: resolveUserPath(jsonConfig.memory?.workspaceDir ?? defaultWorkspace),
+      sessionIndexing: parseBoolean(jsonConfig.memory?.sessionIndexing, false)
     },
     memorySearch: {
-      enabled: parseBoolean(process.env.IRONBOT_MEMORY_SEARCH_ENABLED, true),
-      vectorWeight: parseNumber(process.env.IRONBOT_MEMORY_VECTOR_WEIGHT, 0.7),
-      textWeight: parseNumber(process.env.IRONBOT_MEMORY_TEXT_WEIGHT, 0.3),
-      candidateMultiplier: parseInteger(process.env.IRONBOT_MEMORY_CANDIDATE_MULTIPLIER, 4),
-      maxResults: parseInteger(process.env.IRONBOT_MEMORY_MAX_RESULTS, 6),
-      minScore: parseNumber(process.env.IRONBOT_MEMORY_MIN_SCORE, 0.35),
-      sources: parseStringArray(process.env.IRONBOT_MEMORY_SOURCES, ["memory"]) as Array<"memory" | "sessions">,
-      crossSessionMemory: parseBoolean(process.env.IRONBOT_MEMORY_CROSS_SESSION, true),
+      enabled: parseBoolean(jsonConfig.memorySearch?.enabled, true),
+      vectorWeight: parseNumber(jsonConfig.memorySearch?.vectorWeight, 0.7),
+      textWeight: parseNumber(jsonConfig.memorySearch?.textWeight, 0.3),
+      candidateMultiplier: parseInteger(jsonConfig.memorySearch?.candidateMultiplier, 4),
+      maxResults: parseInteger(jsonConfig.memorySearch?.maxResults, 6),
+      minScore: parseNumber(jsonConfig.memorySearch?.minScore, 0.35),
+      sources: parseStringArray(jsonConfig.memorySearch?.sources, ["memory"]) as Array<"memory" | "sessions">,
+      crossSessionMemory: parseBoolean(jsonConfig.memorySearch?.crossSessionMemory, true),
       storePath: memoryStorePath
     },
     embeddings: {
-      provider: parseEmbeddingProvider(process.env.IRONBOT_EMBEDDINGS_PROVIDER, "auto"),
-      fallback: parseEmbeddingProvider(process.env.IRONBOT_EMBEDDINGS_FALLBACK, "none"),
+      provider: parseEmbeddingProvider(jsonConfig.embeddings?.provider, "auto"),
+      fallback: parseEmbeddingProvider(jsonConfig.embeddings?.fallback, "none"),
       local: {
-        modelPath: process.env.IRONBOT_EMBEDDINGS_LOCAL_MODEL ?? DEFAULT_LOCAL_MODEL,
-        modelCacheDir: process.env.IRONBOT_EMBEDDINGS_LOCAL_CACHE
+        modelPath: jsonConfig.embeddings?.local?.modelPath ?? DEFAULT_LOCAL_MODEL,
+        modelCacheDir: jsonConfig.embeddings?.local?.modelCacheDir
       },
       openai: {
-        apiKey: process.env.IRONBOT_OPENAI_API_KEY,
-        baseUrl: process.env.IRONBOT_OPENAI_BASE_URL,
-        model: process.env.IRONBOT_OPENAI_EMBEDDINGS_MODEL ?? DEFAULT_OPENAI_MODEL
+        apiKey: jsonConfig.embeddings?.openai?.apiKey,
+        baseUrl: jsonConfig.embeddings?.openai?.baseUrl,
+        model: jsonConfig.embeddings?.openai?.model ?? DEFAULT_OPENAI_MODEL
       },
       gemini: {
-        apiKey: process.env.IRONBOT_GEMINI_API_KEY,
-        baseUrl: process.env.IRONBOT_GEMINI_BASE_URL,
-        model: process.env.IRONBOT_GEMINI_EMBEDDINGS_MODEL ?? DEFAULT_GEMINI_MODEL
+        apiKey: jsonConfig.embeddings?.gemini?.apiKey,
+        baseUrl: jsonConfig.embeddings?.gemini?.baseUrl,
+        model: jsonConfig.embeddings?.gemini?.model ?? DEFAULT_GEMINI_MODEL
       }
     },
     retry: {
-      maxAttempts: parseInteger(process.env.IRONBOT_RETRY_MAX_ATTEMPTS, 3),
-      baseDelayMs: parseInteger(process.env.IRONBOT_RETRY_BASE_DELAY_MS, 2000), // Increased from 1000 to 2000ms
-      maxDelayMs: parseInteger(process.env.IRONBOT_RETRY_MAX_DELAY_MS, 60000),  // Increased from 30000 to 60000ms
-      backoffMultiplier: parseNumber(process.env.IRONBOT_RETRY_BACKOFF_MULTIPLIER, 2.0),
-      jitterMax: parseNumber(process.env.IRONBOT_RETRY_JITTER_MAX, 0.1)
+      maxAttempts: parseInteger(jsonConfig.retry?.maxAttempts, 3),
+      baseDelayMs: parseInteger(jsonConfig.retry?.baseDelayMs, 2000),
+      maxDelayMs: parseInteger(jsonConfig.retry?.maxDelayMs, 60000),
+      backoffMultiplier: parseNumber(jsonConfig.retry?.backoffMultiplier, 2.0),
+      jitterMax: parseNumber(jsonConfig.retry?.jitterMax, 0.1)
     },
     slackRateLimit: {
-      enabled: parseBoolean(process.env.SLACK_RATE_LIMIT_ENABLED, true),
-      requestsPerSecond: parseInteger(process.env.SLACK_RATE_LIMIT_RPS, 2), // Reduced from 5 to 2 to prevent rate limiting
-      burstCapacity: parseInteger(process.env.SLACK_RATE_LIMIT_BURST, 5),  // Reduced from 10 to 5 to prevent rate limiting
-      queueSize: parseInteger(process.env.SLACK_RATE_LIMIT_QUEUE_SIZE, 20) // Reduced from 50 to 20
+      enabled: parseBoolean(jsonConfig.slack_rate_limit?.enabled, true),
+      requestsPerSecond: parseInteger(jsonConfig.slack_rate_limit?.requestsPerSecond, 2),
+      burstCapacity: parseInteger(jsonConfig.slack_rate_limit?.burstCapacity, 5),
+      queueSize: parseInteger(jsonConfig.slack_rate_limit?.queueSize, 20)
     },
     slackRetry: {
-      maxAttempts: parseInteger(process.env.IRONBOT_SLACK_RETRY_MAX_ATTEMPTS, 5), // Increased to 5 for more resilience
-      baseDelayMs: parseInteger(process.env.IRONBOT_SLACK_RETRY_BASE_DELAY_MS, 15000), // Increased to 15 seconds to avoid aggressive retries
-      maxDelayMs: parseInteger(process.env.IRONBOT_SLACK_RETRY_MAX_DELAY_MS, 300000) // Increased to 5 minutes max for stability
+      maxAttempts: parseInteger(jsonConfig.slack_retry?.maxAttempts, 5),
+      baseDelayMs: parseInteger(jsonConfig.slack_retry?.baseDelayMs, 15000),
+      maxDelayMs: parseInteger(jsonConfig.slack_retry?.maxDelayMs, 300000)
     },
     autoRouting: {
-      enabled: parseBoolean(process.env.CLAUDE_AUTO_ROUTE_ENABLED, true),
-      confidenceThreshold: parseNumber(process.env.CLAUDE_AUTO_ROUTE_CONFIDENCE, 0.5),
-      optOutSkills: parseStringArray(process.env.CLAUDE_AUTO_ROUTE_OPTOUT, [])
+      enabled: parseBoolean(jsonConfig.auto_routing?.enabled, true),
+      confidenceThreshold: parseNumber(jsonConfig.auto_routing?.confidenceThreshold, 0.5),
+      optOutSkills: parseStringArray(jsonConfig.auto_routing?.optOutSkills, [])
     },
-    anthropicTimeoutMs: parseInteger(process.env.ANTHROPIC_TIMEOUT_MS, 60000),
+    anthropicTimeoutMs: parseInteger(jsonConfig.anthropic_timeout_ms, 60000),
     cron: {
-      enabled: !parseBoolean(process.env.IRONBOT_SKIP_CRON),
-      storePath: resolveCronStorePath(process.env.IRONBOT_CRON_STORE_PATH)
+      enabled: parseBoolean(jsonConfig.cron?.enabled, true),
+      storePath: resolveCronStorePath(jsonConfig.cron?.storePath)
     },
-    maxToolIterations: parseInteger(process.env.CLAUDE_MAX_TOOL_ITERATIONS, 10)
+    maxToolIterations: parseInteger(jsonConfig.claude_max_tool_iterations, 10),
+    llmProvider: {
+      provider,
+      anthropic: {
+        apiKey: jsonConfig.llmProvider.anthropic?.apiKey,
+        baseUrl: jsonConfig.llmProvider.anthropic?.baseUrl,
+        model: jsonConfig.llmProvider.anthropic?.model ?? "claude-3-5-sonnet-20241022"
+      },
+      openai: {
+        apiKey: jsonConfig.llmProvider.openai?.apiKey,
+        baseUrl: jsonConfig.llmProvider.openai?.baseUrl,
+        model: jsonConfig.llmProvider.openai?.model ?? "gpt-4o"
+      },
+      google: {
+        apiKey: jsonConfig.llmProvider.google?.apiKey,
+        baseUrl: jsonConfig.llmProvider.google?.baseUrl,
+        model: jsonConfig.llmProvider.google?.model ?? "gemini-2.0-flash"
+      }
+    }
   };
 };
 

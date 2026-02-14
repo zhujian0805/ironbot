@@ -1,6 +1,6 @@
 import { logger } from "../utils/logging.ts";
 import { formatForSlack } from "../utils/slack_formatter.ts";
-import { ClaudeProcessor } from "./claude_processor.ts";
+import type { AgentProcessor } from "./agent_factory.ts";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 import { resolveConfig, type AppConfig } from "../config.ts";
 import { deriveSlackSessionKey } from "../sessions/session_key.ts";
@@ -34,7 +34,7 @@ type SlackEvent = {
 };
 
 export class MessageRouter {
-  private claude: ClaudeProcessor;
+  private agent: AgentProcessor;
   private slackClient?: SlackClientLike;
   private config: AppConfig;
   private newConversationChannels: Set<string> = new Set();
@@ -43,12 +43,12 @@ export class MessageRouter {
   private slackSupervisor?: SlackConnectionSupervisor;
 
   constructor(
-    claude: ClaudeProcessor,
+    agent: AgentProcessor,
     slackClient?: SlackClientLike,
     config: AppConfig = resolveConfig(),
     slackSupervisor?: SlackConnectionSupervisor
   ) {
-    this.claude = claude;
+    this.agent = agent;
     this.slackClient = slackClient;
     this.config = config;
     this.slackSupervisor = slackSupervisor;
@@ -225,7 +225,7 @@ export class MessageRouter {
       
       let response: string;
       try {
-        response = await this.claude.processMessage(
+        response = await this.agent.processMessage(
           text,
           {
             conversationHistory,
@@ -388,7 +388,7 @@ export class MessageRouter {
 
     // Clear memory for the session
     try {
-      await this.claude.clearMemoryForSession(sessionKey);
+      await this.agent.clearMemoryForSession(sessionKey);
     } catch (error) {
       logger.warn({ sessionKey, error }, "Failed to clear memory for session");
     }
@@ -480,7 +480,7 @@ export class MessageRouter {
 
     // Clear all memory entries
     try {
-      await this.claude.clearAllMemory();
+      await this.agent.clearAllMemory();
       logger.info("Cleared all memory entries");
     } catch (error) {
       logger.warn({ error }, "Failed to clear memory");

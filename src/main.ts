@@ -6,7 +6,6 @@ import { CronService } from "./cron/service.ts";
 import { formatForSlack } from "./utils/slack_formatter.ts";
 import { initPermissionManager } from "./services/permission_manager.ts";
 import { SlackMessageHandler } from "./services/slack_handler.ts";
-import { ClaudeProcessor } from "./services/claude_processor.ts";
 import { MessageRouter } from "./services/message_router.ts";
 import { MemoryManager } from "./memory/manager.ts";
 import { parseCliArgs } from "./cli/args.ts";
@@ -14,6 +13,7 @@ import { RateLimiter, type ApiMethod } from "./services/rate_limiter.ts";
 import { RetryManager } from "./services/retry_manager.ts";
 import { SlackApiOptimizer } from "./services/slack_api_optimizer.ts";
 import { SlackConnectionSupervisor } from "./services/slack_connection_supervisor.ts";
+import { AgentFactory } from "./services/agent_factory.ts";
 import type { CronMessagePayload } from "./cron/types.ts";
 import { SocketModeClient } from "@slack/socket-mode";
 
@@ -171,9 +171,9 @@ const checkSlackConnection = async (app: SlackApp, supervisor: SlackConnectionSu
 
 
 
-const checkLlmConnection = async (claude: ClaudeProcessor): Promise<boolean> => {
+const checkLlmConnection = async (agent: any): Promise<boolean> => {
   try {
-    return await claude.checkConnection();
+    return await agent.checkConnection();
   } catch (error) {
     logger.error({ error }, "LLM connection check failed");
     return false;
@@ -182,7 +182,7 @@ const checkLlmConnection = async (claude: ClaudeProcessor): Promise<boolean> => 
 
 const performHealthChecks = async (
   app: SlackApp,
-  claude: ClaudeProcessor,
+  agent: any,
   skipChecks: boolean,
   supervisor: SlackConnectionSupervisor
 ): Promise<boolean> => {
@@ -204,7 +204,7 @@ const performHealthChecks = async (
 
   // Check LLM connection
   logger.info("Checking LLM connection...");
-  const llmOk = await checkLlmConnection(claude);
+  const llmOk = await checkLlmConnection(agent);
   if (llmOk) {
     logger.info("✓ LLM health check passed");
   } else {
@@ -297,10 +297,10 @@ const main = async (): Promise<void> => {
   const memoryManager = new MemoryManager(config);
   memoryManager.logStatus();
 
-  logger.info({ skillsDir: config.skillsDir }, "[INIT] Creating ClaudeProcessor");
+  logger.info({ skillsDir: config.skillsDir }, "[INIT] Creating agent processor");
   logger.debug({ skillDirs: config.skillDirs }, "Skill directories being loaded");
   logger.debug({ memoryWorkspace: config.memory.workspaceDir, memorySearchEnabled: config.memorySearch.enabled }, "Memory manager state");
-  const claude = new ClaudeProcessor(config.skillDirs, memoryManager);
+  const agent = AgentFactory.create(config, config.skillDirs, memoryManager);
   const slackOptimizer = new SlackApiOptimizer();
   const slackRateLimiter = new RateLimiter({
     enabled: config.slackRateLimit.enabled,
@@ -319,7 +319,7 @@ const main = async (): Promise<void> => {
     onActivityCallback: updateLastCommunication // Pass the communication update function
   });
   const router = new MessageRouter(
-    claude,
+    agent,
     app.client as unknown as { chat: { postMessage: any; update: any } },
     config,
     slackSupervisor
@@ -363,15 +363,15 @@ const main = async (): Promise<void> => {
     executeTool: async (toolName: string, params: Record<string, unknown>) => {
       logger.info({ toolName, params }, "cron: executing tool directly");
 
-      // Execute the tool using the ClaudeProcessor's executeTool method
+      // Execute the tool using the agent's executeTool method
       logger.debug({ toolName }, "cron: starting tool execution");
-      const result = await claude.executeTool(toolName, params);
+      const result = await agent.executeTool(toolName, params);
       logger.debug({ toolName, resultLength: result ? String(result).length : 0 }, "cron: tool execution completed");
       return result;
     }
   });
 
-  const healthOk = await performHealthChecks(app, claude, config.skipHealthChecks, slackSupervisor);
+  const healthOk = await performHealthChecks(app, agent, config.skipHealthChecks, slackSupervisor);
   if (!healthOk) {
     logger.warn("Continuing despite health check failures...");
   }
