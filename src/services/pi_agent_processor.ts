@@ -27,7 +27,10 @@ const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant with access to sys
 1. ALWAYS use tools to get information - NEVER make up or guess command output
 2. You MUST execute the appropriate tool for EVERY request that asks for system information
 3. NEVER respond with example or fake data - only use actual tool output
-4. If asked about system information (hostname, disks, printers, processes, etc.), you MUST use run_powershell or run_bash
+4. **DETERMINE OS FIRST**: Before executing any commands, identify the operating system and use the correct tool:
+   - **Windows**: Use \`run_powershell\` for system commands (Get-Volume, Get-ComputerInfo, Get-Process, etc.)
+   - **Linux/macOS**: Use \`run_bash\` for system commands (df, free, lscpu, uname, etc.)
+5. If asked about system information (hostname, disks, printers, processes, CPUs, RAM, etc.), you MUST determine the OS and use the appropriate tool
 
 **SKILL SELECTION (Progressive Disclosure Pattern):**
 Before responding, scan the <available_skills> list:
@@ -43,6 +46,24 @@ When given a complex, multi-step task (like "show X, save to file, then email it
 3. **Show Your Work**: After each step, report what was done and the results
 4. **Verify Completion**: Confirm each step succeeded before proceeding
 5. **Final Summary**: At the end, provide a complete summary of all steps and outcomes
+
+**MANDATORY RESPONSE REQUIREMENTS:**
+1. **NEVER** respond with just tool names like "Executed run_powershell" - this is UNACCEPTABLE
+2. **ALWAYS** show the actual data, results, or content the user requested
+3. **ALWAYS** explain what you did in each step
+4. **ALWAYS** provide specific file paths, values, or outputs
+5. If you create a file, state the exact path and show a preview of the content
+6. If you send email, confirm the recipient and what was sent
+7. For system information requests, ALWAYS show the actual data in a readable format
+
+**Response Formatting Guidelines:**
+- Use headers (###) to organize sections clearly
+- Use **bold** for emphasis on key information (like file paths, important values, warnings)
+- Use code blocks (\`\`\`) for command output, file contents, or raw data tables
+- Use inline code (\`) for command names, file paths, and technical terms
+- For tabular data from commands, present it in a code block to preserve formatting
+- Always include a "### Summary" section at the end with key takeaways using **bold** for important details
+- Keep responses well-structured and easy to scan
 
 Be helpful, concise, and safe. Never execute destructive commands without explicit user confirmation.`;
 
@@ -186,6 +207,23 @@ export class PiAgentProcessor {
     }
   }
 
+  private getOSContext(): string {
+    const platform = process.platform;
+    let osInfo = "";
+
+    if (platform === "win32") {
+      osInfo = "**Operating System**: Windows\n**Tool to use**: run_powershell for system commands (Get-Volume, Get-ComputerInfo, Get-Process, Get-NetIPConfiguration, etc.)";
+    } else if (platform === "darwin") {
+      osInfo = "**Operating System**: macOS\n**Tool to use**: run_bash for system commands (df, free, system_profiler, etc.)";
+    } else if (platform === "linux") {
+      osInfo = "**Operating System**: Linux\n**Tool to use**: run_bash for system commands (df, free, lscpu, cat /proc/cpuinfo, etc.)";
+    } else {
+      osInfo = `**Operating System**: ${platform}\n**Tool to use**: Determine appropriate tool based on OS`;
+    }
+
+    return osInfo;
+  }
+
   async clearMemoryForSession(sessionKey: string): Promise<void> {
     if (!this.memoryManager) return;
     await this.memoryManager.clearMemoryForSession(sessionKey);
@@ -231,9 +269,10 @@ export class PiAgentProcessor {
 
   private async processWithTools(userMessage: string, memoryContext: string): Promise<string> {
     try {
-      // Build system prompt with skill metadata
+      // Build system prompt with skill metadata and OS context
       const skillsList = this.formatSkillsForPrompt();
-      let systemPrompt = `${DEFAULT_SYSTEM_PROMPT}${skillsList}`;
+      const osContext = this.getOSContext();
+      let systemPrompt = `${DEFAULT_SYSTEM_PROMPT}\n\n<system_context>\n${osContext}\n</system_context>${skillsList}`;
       if (memoryContext) {
         systemPrompt = `${systemPrompt}\n\nRelevant memory:\n${memoryContext}\n\nUse this context if it helps answer the user.`;
       }
@@ -307,6 +346,7 @@ Note: Azure OpenAI tool calling requires proper configuration.`;
     let response = "";
     let iteration = 0;
     const maxIterations = 10;
+    const operations: OperationRecord[] = [];
 
     // Tool calling loop
     while (iteration < maxIterations) {
@@ -357,17 +397,37 @@ Note: Azure OpenAI tool calling requires proper configuration.`;
               "[PI-AGENT] Tool execution completed"
             );
 
+            const resultContent = toolResult.success
+              ? (toolResult.result || toolResult.stdout || "Tool executed successfully")
+              : toolResult.error || "Tool execution failed";
+
             toolResults.push({
               toolCallId: toolCall.id,
-              result: toolResult.success
-                ? (toolResult.result || toolResult.stdout || "Tool executed successfully")
-                : toolResult.error || "Tool execution failed"
+              result: resultContent
+            });
+
+            // Record operation for potential fallback response
+            operations.push({
+              kind: "tool",
+              name: toolCall.function.name,
+              status: toolResult.success ? "success" : "error",
+              command: typeof toolArgs.command === "string" ? toolArgs.command : undefined,
+              result: this.extractOperationOutput(toolResult),
+              toolResult: toolResult
             });
           } catch (error) {
             logger.error({ toolName: toolCall.function.name, error }, "[PI-AGENT] Tool execution error");
+            const errorMsg = `Error executing tool: ${String(error)}`;
             toolResults.push({
               toolCallId: toolCall.id,
-              result: `Error executing tool: ${String(error)}`
+              result: errorMsg
+            });
+            operations.push({
+              kind: "tool",
+              name: toolCall.function.name,
+              status: "error",
+              reason: String(error),
+              result: errorMsg
             });
           }
         }
@@ -390,11 +450,35 @@ Note: Azure OpenAI tool calling requires proper configuration.`;
         }
 
         logger.debug({ responseLength: response.length, iterations: iteration }, "[PI-AGENT] Received final response");
-        return response || "I have completed the requested task.";
+
+        if (response) {
+          return response;
+        }
+
+        // If no response text but we executed tools, build response from operations
+        if (operations.length > 0) {
+          const detailedResponse = this.buildDetailedResponse(operations);
+          if (detailedResponse) {
+            logger.debug("[PI-AGENT] Built detailed response from operations");
+            return detailedResponse;
+          }
+        }
+
+        return "I have completed the requested task.";
       }
     }
 
     logger.warn({ maxIterations }, "[PI-AGENT] Reached maximum iterations in tool calling loop");
+
+    // If we hit max iterations but executed tools, build response from operations
+    if (operations.length > 0 && !response) {
+      const detailedResponse = this.buildDetailedResponse(operations);
+      if (detailedResponse) {
+        logger.debug("[PI-AGENT] Built detailed response from operations after max iterations");
+        return detailedResponse;
+      }
+    }
+
     return response || "I have completed the requested task but reached iteration limit.";
   }
 
@@ -463,5 +547,58 @@ Note: Azure OpenAI tool calling requires proper configuration.`;
       logger.error({ error, skillName: skillInfo.name, triggerType }, "[SKILL-EXEC] Skill execution failed");
       return `Sorry, error executing skill ${skillInfo.name}.`;
     }
+  }
+
+  private extractOperationOutput(result: ToolResult): string | undefined {
+    if (!result) return undefined;
+    if (result.stdout && result.stdout.trim()) {
+      return result.stdout.trim();
+    }
+    if (typeof result.result === "string" && result.result.trim()) {
+      return result.result.trim();
+    }
+    if (result.stderr && result.stderr.trim()) {
+      return result.stderr.trim();
+    }
+    const serialized = JSON.stringify(result.result ?? result, null, 2);
+    return serialized.length ? serialized : undefined;
+  }
+
+  private truncateForDisplay(text: string | null | undefined, maxLength = 4000): string | null {
+    if (!text) return null;
+    if (text.length <= maxLength) return text;
+    return `${text.slice(0, maxLength)}\n... (truncated ${text.length - maxLength} chars)`;
+  }
+
+  private buildDetailedResponse(operations: OperationRecord[]): string | null {
+    if (!operations.length) return null;
+    const steps: string[] = [];
+    for (let index = 0; index < operations.length; index += 1) {
+      const op = operations[index];
+      const stepNum = index + 1;
+      const description = op.command
+        ? `Executed \`${op.command}\``
+        : `Invoked tool \`${op.name}\``;
+      const lines: string[] = [`### Step ${stepNum}: ${description}`];
+      const output = this.truncateForDisplay(op.result);
+      if (output) {
+        lines.push("```\n" + output + "\n```");
+      }
+      if (op.reason && !op.result) {
+        lines.push(`- **Error**: ${op.reason}`);
+      }
+      steps.push(lines.join("\n"));
+    }
+    const summarySection = this.buildSummarySection(operations);
+    return [steps.join("\n\n"), summarySection].filter(Boolean).join("\n\n");
+  }
+
+  private buildSummarySection(operations: OperationRecord[]): string | null {
+    if (!operations.length) return null;
+    const summaryLines = ["### Summary"];
+    const successCount = operations.filter((op) => op.status === "success").length;
+    const errorCount = operations.filter((op) => op.status === "error").length;
+    summaryLines.push(`- **Operations performed**: ${operations.length} tool call(s) (${successCount} successful, ${errorCount} failed)`);
+    return summaryLines.join("\n");
   }
 }
