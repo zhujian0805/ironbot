@@ -1,4 +1,7 @@
+export type AtSchedule = { kind: "at"; at: string };
+export type EverySchedule = { kind: "every"; everyMs: number };
 export type CronSchedule = { kind: "cron"; expr: string; tz?: string };
+export type Schedule = AtSchedule | EverySchedule | CronSchedule;
 
 export type CronMessagePayload = {
   channel: string;
@@ -33,7 +36,7 @@ export type CronJob = {
   deleteAfterRun?: boolean;
   createdAtMs: number;
   updatedAtMs: number;
-  schedule: CronSchedule;
+  schedule: Schedule;
   payload: CronJobPayload;
   details?: string;
   state: CronJobState;
@@ -51,7 +54,7 @@ export type CronJobCreate = Omit<CronJob, "id" | "createdAtMs" | "updatedAtMs" |
 export type CronJobPatch = Partial<
   Pick<CronJob, "name" | "description" | "enabled" | "deleteAfterRun">
 > & {
-  schedule?: CronSchedule;
+  schedule?: Schedule;
   payload?: Partial<CronMessagePayload>;
   details?: string;
   state?: Partial<CronJobState>;
