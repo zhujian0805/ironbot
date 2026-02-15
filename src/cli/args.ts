@@ -7,10 +7,12 @@ export interface ParsedCliArgs extends CliArgs {
 }
 
 export const parseCliArgs = (argv: string[] = process.argv.slice(2)): ParsedCliArgs => {
-  const program = new Command();
+  // Check if this is a service command first
+  const isServiceCommand = argv.some((arg, i) => {
+    return (arg === 'windows-service' || arg === 'service') && i === 0;
+  });
 
-  // Add windows-service command group
-  createWindowsServiceCommands(program);
+  const program = new Command();
 
   // Main bot options
   program
@@ -20,34 +22,51 @@ export const parseCliArgs = (argv: string[] = process.argv.slice(2)): ParsedCliA
     .option("--skip-health-checks", "Skip startup health checks")
     .option("--permissions-file <path>", "Path to permissions.yaml configuration file");
 
+  // Only add windows-service commands if this is actually a service command
+  // This prevents the command handlers from being invoked during flag parsing
+  if (isServiceCommand) {
+    createWindowsServiceCommands(program);
+  }
+
   // Don't show help for unknown commands - just continue with the bot
   program.showHelpAfterError = false;
+  program.exitOverride();
 
   // Only parse if we have actual arguments, otherwise return defaults
   if (argv.length === 0) {
     return {
-      debug: false,
+      debug: undefined,
       logLevel: undefined,
       logFile: undefined,
-      skipHealthChecks: false,
+      skipHealthChecks: undefined,
       permissionsFile: undefined,
       isServiceCommand: false
     };
   }
 
-  // Check if this is a service command
-  const isServiceCommand = argv.includes('windows-service') || argv.includes('service');
-
   // If we have arguments, parse them
-  program.parse(argv, { from: "user" });
+  try {
+    program.parse(argv, { from: "user" });
+  } catch (error) {
+    // If parsing fails, return defaults
+    // This can happen if service commands are malformed or other parsing issues
+    return {
+      debug: undefined,
+      logLevel: undefined,
+      logFile: undefined,
+      skipHealthChecks: undefined,
+      permissionsFile: undefined,
+      isServiceCommand
+    };
+  }
 
   const options = program.opts();
 
   return {
-    debug: options.debug,
+    debug: options.debug || undefined,
     logLevel: options.logLevel,
     logFile: options.logFile,
-    skipHealthChecks: options.skipHealthChecks,
+    skipHealthChecks: options.skipHealthChecks || undefined,
     permissionsFile: options.permissionsFile,
     isServiceCommand
   };

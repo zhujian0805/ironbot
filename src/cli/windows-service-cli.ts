@@ -19,6 +19,9 @@ export function createWindowsServiceCommands(parentProgram: Command): void {
     .description('Manage IronBot as a Windows service')
     .alias('service');
 
+  // Set exit override to prevent process.exit in tests
+  serviceGroup.exitOverride();
+
   // Install command
   serviceGroup
     .command('install')
