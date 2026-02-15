@@ -85,10 +85,10 @@ describe("CLI Args Parser", () => {
 
     it("returns default values for unset options", () => {
       const args = parseCliArgs([]);
-      expect(args.debug).toBe(false); // Commander.js sets boolean defaults to false
+      expect(args.debug).toBeUndefined(); // Now returns undefined when not provided
       expect(args.logLevel).toBeUndefined();
       expect(args.logFile).toBeUndefined();
-      expect(args.skipHealthChecks).toBe(false); // Commander.js sets boolean defaults to false
+      expect(args.skipHealthChecks).toBeUndefined(); // Now returns undefined when not provided
       expect(args.permissionsFile).toBeUndefined();
       expect(args.isServiceCommand).toBe(false);
     });
@@ -96,10 +96,10 @@ describe("CLI Args Parser", () => {
     it("handles empty args array", () => {
       const args = parseCliArgs([]);
       expect(args).toEqual({
-        debug: false, // Commander.js sets boolean defaults to false
+        debug: undefined, // Now returns undefined when not provided
         logLevel: undefined,
         logFile: undefined,
-        skipHealthChecks: false, // Commander.js sets boolean defaults to false
+        skipHealthChecks: undefined, // Now returns undefined when not provided
         permissionsFile: undefined,
         isServiceCommand: false
       });
