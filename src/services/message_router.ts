@@ -89,16 +89,18 @@ export class MessageRouter {
 
   private async getThreadHistory(channel: string, threadTs: string): Promise<SlackMessage[]> {
     if (!this.slackClient?.conversations?.replies) {
-      logger.debug({ channel, threadTs }, "Slack client does not have conversations.replies API");
+      logger.warn({ channel, threadTs }, "Slack client missing conversations.replies - cannot fetch thread history");
       return [];
     }
 
     // Check cache first
     const cached = this.threadHistoryCache.get(channel, threadTs);
     if (cached) {
-      logger.debug({ channel, threadTs, messageCount: cached.length }, "Retrieved thread history from cache");
+      logger.info({ channel, threadTs, messageCount: cached.length, source: "cache" }, "Thread history hit");
       return cached;
     }
+
+    logger.debug({ channel, threadTs, limit: this.config.slackThreadContextLimit }, "Thread history cache miss - fetching from API");
 
     try {
       const response = await this.slackClient.conversations.replies({
@@ -112,10 +114,11 @@ export class MessageRouter {
       // Store in cache
       this.threadHistoryCache.set(channel, threadTs, messages);
 
-      logger.info({ channel, threadTs, messageCount: messages.length }, "Fetched thread history from Slack API");
+      logger.info({ channel, threadTs, messageCount: messages.length, source: "slack-api" }, "Thread history fetched");
       return messages;
     } catch (error) {
-      logger.warn({ error, channel, threadTs }, "Failed to fetch thread history from Slack API");
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.error({ error: errorMsg, channel, threadTs }, "Thread history fetch failed");
       return [];
     }
   }
@@ -181,7 +184,11 @@ export class MessageRouter {
     // Fetch Slack thread history if this is a threaded message
     let threadHistory: SlackMessage[] = [];
     if (event.thread_ts) {
+      logger.info({ channel, threadTs: event.thread_ts }, "Fetching thread history for threaded message");
       threadHistory = await this.getThreadHistory(channel, event.thread_ts);
+      logger.info({ channel, threadTs: event.thread_ts, messageCount: threadHistory.length }, "Thread history retrieved");
+    } else {
+      logger.debug({ channel }, "No thread_ts, skipping thread history fetch");
     }
 
     const skillContext: SkillContext = {
