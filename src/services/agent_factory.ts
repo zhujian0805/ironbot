@@ -12,12 +12,29 @@ export class AgentFactory {
 
     logger.info({ provider }, "[AGENT-FACTORY] Creating agent processor");
 
-    if (provider === "anthropic" || provider === "anthropic-compatible") {
-      logger.info("Using Claude Agent SDK (Anthropic-compatible provider)");
+    // Get the active provider's configuration using bracket notation (allows custom provider names)
+    const providerConfig = (config.llmProvider as Record<string, any>)[provider];
+
+    if (!providerConfig) {
+      logger.error({ provider }, "[AGENT-FACTORY] Provider not configured");
+      throw new Error(`Provider '${provider}' is not configured in llmProvider`);
+    }
+
+    // Route based on API type, not provider name
+    const apiType = providerConfig.api ?? "anthropic"; // default to anthropic for backwards compatibility
+
+    if (apiType === "anthropic") {
+      logger.info({ provider, api: apiType }, "[AGENT-FACTORY] Using Claude Agent SDK (Anthropic API)");
       return new ClaudeProcessor(skillDirs, config, memoryManager);
     }
 
-    logger.info({ provider }, "Using Pi Agent (multi-provider support)");
+    if (apiType === "openai") {
+      logger.info({ provider, api: apiType }, "[AGENT-FACTORY] Using Pi Agent (OpenAI-compatible API)");
+      return new PiAgentProcessor(skillDirs, config, memoryManager);
+    }
+
+    // For any other API type, default to PiAgentProcessor
+    logger.warn({ provider, api: apiType }, "[AGENT-FACTORY] Unknown API type, defaulting to Pi Agent");
     return new PiAgentProcessor(skillDirs, config, memoryManager);
   }
 }

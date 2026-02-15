@@ -52,12 +52,12 @@ const parseEmbeddingProvider = (value: string | undefined, fallback: EmbeddingPr
 };
 
 const parseLlmProvider = (value: string | undefined): LlmProvider => {
-  const normalized = value?.trim().toLowerCase();
-  const validProviders: LlmProvider[] = ["anthropic", "openai", "google", "groq", "mistral", "cerebras", "xai", "bedrock", "alibaba", "anthropic-compatible"];
-  if (normalized && validProviders.includes(normalized as LlmProvider)) {
-    return normalized as LlmProvider;
+  if (!value) {
+    return "anthropic"; // default to anthropic
   }
-  return "anthropic"; // default to anthropic
+  // Accept any provider name (custom or predefined)
+  // Validation happens at runtime when checking if the provider is configured
+  return value.trim().toLowerCase() as LlmProvider;
 };
 
 export type CliArgs = {
@@ -111,7 +111,8 @@ export type AutoRoutingConfig = {
   optOutSkills: string[];
 };
 
-export type LlmProvider = "anthropic" | "openai" | "google" | "groq" | "mistral" | "cerebras" | "xai" | "bedrock" | "alibaba" | "anthropic-compatible";
+// Allows both predefined providers and custom provider names
+export type LlmProvider = "anthropic" | "openai" | "google" | "groq" | "mistral" | "cerebras" | "xai" | "bedrock" | "alibaba" | "anthropic-compatible" | (string & {});
 
 export type LlmApiType = "anthropic" | "openai";
 
@@ -147,6 +148,13 @@ export type LlmProviderConfig = {
     baseUrl?: string;
     model: string;
   };
+  // Allow custom providers with any name (e.g., "copilot-api", "my-provider", etc.)
+  [key: string]: {
+    api?: LlmApiType;
+    apiKey?: string;
+    baseUrl?: string;
+    model: string;
+  } | LlmProvider | undefined;
 };
 
 export type EmbeddingsConfig = {
@@ -432,6 +440,19 @@ const loadBaseConfig = (): AppConfig => {
   // Resolve LLM provider
   const provider = parseLlmProvider(jsonConfig.llmProvider.provider);
 
+  // Helper function to get default model names for known providers
+  const getDefaultModel = (providerName: string): string => {
+    const defaults: Record<string, string> = {
+      anthropic: "claude-3-5-sonnet-20241022",
+      openai: "gpt-4o",
+      google: "gemini-2.0-flash",
+      alibaba: "qwen-max-latest",
+      "anthropic-compatible": "grok-code-fast-1",
+      "copilot-api": "grok-code-fast-1"
+    };
+    return defaults[providerName] || "gpt-4o"; // fallback to gpt-4o for unknown providers
+  };
+
   return {
     slackBotToken: jsonConfig.slack.botToken,
     slackAppToken: jsonConfig.slack.appToken,
@@ -519,46 +540,20 @@ const loadBaseConfig = (): AppConfig => {
     maxToolIterations: parseInteger(jsonConfig.claude_max_tool_iterations, 10),
     llmProvider: {
       provider,
-      ...(jsonConfig.llmProvider.anthropic && {
-        anthropic: {
-          api: jsonConfig.llmProvider.anthropic.api ?? "anthropic",
-          apiKey: jsonConfig.llmProvider.anthropic.apiKey,
-          baseUrl: jsonConfig.llmProvider.anthropic.baseUrl,
-          model: jsonConfig.llmProvider.anthropic.model ?? "claude-3-5-sonnet-20241022"
-        }
-      }),
-      ...(jsonConfig.llmProvider.openai && {
-        openai: {
-          api: jsonConfig.llmProvider.openai.api ?? "openai",
-          apiKey: jsonConfig.llmProvider.openai.apiKey,
-          baseUrl: jsonConfig.llmProvider.openai.baseUrl,
-          model: jsonConfig.llmProvider.openai.model ?? "gpt-4o"
-        }
-      }),
-      ...(jsonConfig.llmProvider.google && {
-        google: {
-          api: jsonConfig.llmProvider.google.api ?? "google",
-          apiKey: jsonConfig.llmProvider.google.apiKey,
-          baseUrl: jsonConfig.llmProvider.google.baseUrl,
-          model: jsonConfig.llmProvider.google.model ?? "gemini-2.0-flash"
-        }
-      }),
-      ...(jsonConfig.llmProvider.alibaba && {
-        alibaba: {
-          api: jsonConfig.llmProvider.alibaba.api ?? "openai",
-          apiKey: jsonConfig.llmProvider.alibaba.apiKey,
-          baseUrl: jsonConfig.llmProvider.alibaba.baseUrl,
-          model: jsonConfig.llmProvider.alibaba.model ?? "qwen-max-latest"
-        }
-      }),
-      ...(jsonConfig.llmProvider.anthropicCompatible && {
-        anthropicCompatible: {
-          api: jsonConfig.llmProvider.anthropicCompatible.api ?? "anthropic",
-          apiKey: jsonConfig.llmProvider.anthropicCompatible.apiKey,
-          baseUrl: jsonConfig.llmProvider.anthropicCompatible.baseUrl,
-          model: jsonConfig.llmProvider.anthropicCompatible.model ?? "grok-code-fast-1"
-        }
-      })
+      // Dynamically load all configured providers (including custom ones)
+      ...Object.fromEntries(
+        Object.entries(jsonConfig.llmProvider || {})
+          .filter(([key]) => key !== "provider") // Skip the "provider" key itself
+          .map(([key, config]: [string, any]) => [
+            key,
+            {
+              api: config?.api ?? (key === "alibaba" ? "openai" : key === "anthropic-compatible" ? "anthropic" : key),
+              apiKey: config?.apiKey,
+              baseUrl: config?.baseUrl,
+              model: config?.model ?? getDefaultModel(key)
+            }
+          ])
+      )
     }
   };
 };

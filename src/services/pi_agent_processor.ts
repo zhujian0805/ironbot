@@ -108,40 +108,19 @@ export class PiAgentProcessor {
   }
 
   private initializeProviderSettings(): void {
-    switch (this.provider) {
-      case "openai":
-        if (this.config.llmProvider.openai) {
-          this.api = this.config.llmProvider.openai.api ?? "openai";
-          this.model = this.config.llmProvider.openai.model;
-          this.apiKey = this.config.llmProvider.openai.apiKey;
-          this.baseUrl = this.config.llmProvider.openai.baseUrl;
-        }
-        break;
-      case "alibaba":
-        if (this.config.llmProvider.alibaba) {
-          this.api = this.config.llmProvider.alibaba.api ?? "openai";
-          this.model = this.config.llmProvider.alibaba.model;
-          this.apiKey = this.config.llmProvider.alibaba.apiKey;
-          this.baseUrl = this.config.llmProvider.alibaba.baseUrl;
-        }
-        break;
-      case "google":
-        if (this.config.llmProvider.google) {
-          this.api = this.config.llmProvider.google.api ?? "google";
-          this.model = this.config.llmProvider.google.model;
-          this.apiKey = this.config.llmProvider.google.apiKey;
-          this.baseUrl = this.config.llmProvider.google.baseUrl;
-        }
-        break;
-      case "anthropic":
-      default:
-        if (this.config.llmProvider.anthropic) {
-          this.api = this.config.llmProvider.anthropic.api ?? "anthropic";
-          this.model = this.config.llmProvider.anthropic.model;
-          this.apiKey = this.config.llmProvider.anthropic.apiKey;
-          this.baseUrl = this.config.llmProvider.anthropic.baseUrl;
-        }
-        break;
+    // Use bracket notation to support custom provider names
+    const providerConfig = (this.config.llmProvider as Record<string, any>)[this.provider];
+
+    if (providerConfig) {
+      this.api = providerConfig.api ?? "openai"; // default to openai for multi-provider support
+      this.model = providerConfig.model;
+      this.apiKey = providerConfig.apiKey;
+      this.baseUrl = providerConfig.baseUrl;
+    } else {
+      logger.warn(
+        { provider: this.provider },
+        "[PI-AGENT] Provider config not found, will use defaults"
+      );
     }
 
     if (!this.apiKey) {

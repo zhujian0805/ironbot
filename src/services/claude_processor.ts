@@ -146,14 +146,26 @@ export class ClaudeProcessor {
     const config = appConfig || resolveConfig();
     const provider = config.llmProvider.provider;
 
+    // Use bracket notation to support custom provider names
+    const providerConfig = (config.llmProvider as Record<string, any>)[provider];
+
+    if (!providerConfig) {
+      throw new Error(`Provider '${provider}' is not configured in llmProvider`);
+    }
+
     let anthropicConfig;
-    // Check new config structure first
-    if (provider === "anthropic-compatible" && config.llmProvider.anthropicCompatible) {
-      anthropicConfig = config.llmProvider.anthropicCompatible;
-    } else if (provider === "anthropic" && config.llmProvider.anthropic) {
-      anthropicConfig = config.llmProvider.anthropic;
+    const apiType = providerConfig.api ?? "anthropic";
+
+    // If the provider uses the Anthropic API, use its config
+    if (apiType === "anthropic") {
+      anthropicConfig = {
+        apiKey: providerConfig.apiKey,
+        baseUrl: providerConfig.baseUrl,
+        model: providerConfig.model
+      };
     } else {
       // Fallback to old config structure for backwards compatibility
+      // (if someone is using anthropic provider with old config format)
       anthropicConfig = {
         apiKey: config.anthropicAuthToken,
         baseUrl: config.anthropicBaseUrl,
