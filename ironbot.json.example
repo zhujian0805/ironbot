@@ -3,27 +3,37 @@
     "botToken": "xoxb-YOUR-BOT-TOKEN-HERE",
     "appToken": "xapp-1-YOUR-APP-TOKEN-HERE"
   },
-  "anthropic": {
-    "baseUrl": "https://your-anthropic-instance:5000",
-    "authToken": "sk-your-anthropic-token-here",
-    "model": "grok-code-fast-1"
-  },
   "llmProvider": {
     "provider": "openai",
     "anthropic": {
+      "api": "anthropic",
       "apiKey": "sk-your-anthropic-api-key-here",
       "baseUrl": "https://your-anthropic-instance:5000",
       "model": "grok-code-fast-1"
     },
     "openai": {
+      "api": "openai",
       "apiKey": "your-azure-openai-api-key-here",
       "baseUrl": "https://your-resource-name.openai.azure.com/openai/v1",
       "model": "gpt-5-mini"
     },
     "google": {
+      "api": "google",
       "apiKey": "your-google-api-key-here",
       "baseUrl": "https://generativelanguage.googleapis.com",
       "model": "gemini-2.0-flash"
+    },
+    "alibaba": {
+      "api": "openai",
+      "apiKey": "your-alibaba-qwen-api-key-here",
+      "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/openai/v1",
+      "model": "qwen-max-latest"
+    },
+    "anthropicCompatible": {
+      "api": "anthropic",
+      "apiKey": "your-grok-compatible-api-key-here",
+      "baseUrl": "https://your-grok-instance:5000",
+      "model": "grok-code-fast-1"
     }
   },
   "skills": {
@@ -98,3 +108,4 @@
   "anthropic_timeout_ms": 60000,
   "claude_max_tool_iterations": 100
 }
+

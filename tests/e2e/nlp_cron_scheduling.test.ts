@@ -43,7 +43,7 @@ describe("NLP Cron Job Scheduling Test", () => {
     await cronService.start();
 
     // Initialize Claude processor with the temp cron service
-    claudeProcessor = new ClaudeProcessor([], null); // We'll mock the skill execution directly
+    claudeProcessor = new ClaudeProcessor([], mockConfig); // Initialize with resolved config
 
     // Replace the tool executor with our test version
     (claudeProcessor as any).toolExecutor = {

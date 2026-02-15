@@ -60,7 +60,7 @@ describe("hostname query validation", () => {
   });
 
   it("should execute hostname command and return CN-JZHU-WD", async () => {
-    const processor = new ClaudeProcessor(config.skillDirs);
+    const processor = new ClaudeProcessor(config.skillDirs, config);
     
     const response = await processor.processMessage("告诉我主机名", {
       sessionKey: "test-session"
@@ -77,7 +77,7 @@ describe("hostname query validation", () => {
   }, 30000);
 
   it("should execute Get-Printer and return actual printers", async () => {
-    const processor = new ClaudeProcessor(config.skillDirs);
+    const processor = new ClaudeProcessor(config.skillDirs, config);
     
     const response = await processor.processMessage("有多少打印机", {
       sessionKey: "test-session"

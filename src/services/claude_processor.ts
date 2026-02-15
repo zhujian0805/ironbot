@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { MessageParam, Tool } from "@anthropic-ai/sdk/resources/messages";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { resolveConfig, type AutoRoutingConfig } from "../config.ts";
+import { resolveConfig, type AutoRoutingConfig, type AppConfig } from "../config.ts";
 import { logger } from "../utils/logging.ts";
 import { SkillLoader, type SkillHandler, type SkillInfo } from "./skill_loader.ts";
 import { ToolExecutor, getAllowedTools, type ToolResult } from "./tools.ts";
@@ -142,15 +142,32 @@ export class ClaudeProcessor {
   private autoRoutingConfig: AutoRoutingConfig;
   private autoRouteOptOutSet: Set<string>;
 
-  constructor(skillDirs: string[], memoryManager?: MemoryManager) {
-    const config = resolveConfig();
+  constructor(skillDirs: string[], appConfig: AppConfig, memoryManager?: MemoryManager) {
+    const config = appConfig || resolveConfig();
+    const provider = config.llmProvider.provider;
+
+    let anthropicConfig;
+    // Check new config structure first
+    if (provider === "anthropic-compatible" && config.llmProvider.anthropicCompatible) {
+      anthropicConfig = config.llmProvider.anthropicCompatible;
+    } else if (provider === "anthropic" && config.llmProvider.anthropic) {
+      anthropicConfig = config.llmProvider.anthropic;
+    } else {
+      // Fallback to old config structure for backwards compatibility
+      anthropicConfig = {
+        apiKey: config.anthropicAuthToken,
+        baseUrl: config.anthropicBaseUrl,
+        model: config.anthropicModel
+      };
+    }
+
     this.client = new Anthropic({
-      apiKey: config.anthropicAuthToken,
-      baseURL: config.anthropicBaseUrl ?? undefined,
+      apiKey: anthropicConfig.apiKey,
+      baseURL: anthropicConfig.baseUrl ?? undefined,
       maxRetries: 2,
       timeout: config.anthropicTimeoutMs
     });
-    this.model = config.anthropicModel;
+    this.model = anthropicConfig.model;
     this.devMode = config.devMode;
     this.retryManager = new RetryManager(config.retry);
     this.toolExecutor = new ToolExecutor(undefined, this.retryManager, []);

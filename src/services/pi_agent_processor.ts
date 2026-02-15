@@ -77,6 +77,7 @@ export class PiAgentProcessor {
   private config: AppConfig;
   private devMode: boolean;
   private provider: string;
+  private api: string = "";
   private model: string = "";
   private apiKey?: string;
   private baseUrl?: string;
@@ -96,6 +97,7 @@ export class PiAgentProcessor {
     logger.info(
       {
         provider: this.provider,
+        api: this.api,
         model: this.model,
         skillDirs,
         hasMemoryManager: !!memoryManager,
@@ -109,13 +111,23 @@ export class PiAgentProcessor {
     switch (this.provider) {
       case "openai":
         if (this.config.llmProvider.openai) {
+          this.api = this.config.llmProvider.openai.api ?? "openai";
           this.model = this.config.llmProvider.openai.model;
           this.apiKey = this.config.llmProvider.openai.apiKey;
           this.baseUrl = this.config.llmProvider.openai.baseUrl;
         }
         break;
+      case "alibaba":
+        if (this.config.llmProvider.alibaba) {
+          this.api = this.config.llmProvider.alibaba.api ?? "openai";
+          this.model = this.config.llmProvider.alibaba.model;
+          this.apiKey = this.config.llmProvider.alibaba.apiKey;
+          this.baseUrl = this.config.llmProvider.alibaba.baseUrl;
+        }
+        break;
       case "google":
         if (this.config.llmProvider.google) {
+          this.api = this.config.llmProvider.google.api ?? "google";
           this.model = this.config.llmProvider.google.model;
           this.apiKey = this.config.llmProvider.google.apiKey;
           this.baseUrl = this.config.llmProvider.google.baseUrl;
@@ -124,6 +136,7 @@ export class PiAgentProcessor {
       case "anthropic":
       default:
         if (this.config.llmProvider.anthropic) {
+          this.api = this.config.llmProvider.anthropic.api ?? "anthropic";
           this.model = this.config.llmProvider.anthropic.model;
           this.apiKey = this.config.llmProvider.anthropic.apiKey;
           this.baseUrl = this.config.llmProvider.anthropic.baseUrl;
@@ -133,14 +146,14 @@ export class PiAgentProcessor {
 
     if (!this.apiKey) {
       logger.warn(
-        { provider: this.provider },
+        { provider: this.provider, api: this.api },
         "[PI-AGENT] No API key configured for provider - connection tests will fail"
       );
     }
 
     if (!this.model) {
       logger.warn(
-        { provider: this.provider },
+        { provider: this.provider, api: this.api },
         "[PI-AGENT] No model configured for provider - using provider defaults"
       );
     }
@@ -280,6 +293,7 @@ export class PiAgentProcessor {
       logger.info(
         {
           provider: this.provider,
+          api: this.api,
           model: this.model,
           userMessageLength: userMessage.length,
           baseUrl: this.baseUrl,
@@ -288,17 +302,17 @@ export class PiAgentProcessor {
         "[PI-AGENT] Invoking Pi Agent with tool calling"
       );
 
-      // Initialize Azure OpenAI client based on provider
-      if (this.provider === "openai" && this.apiKey && this.baseUrl) {
+      // Initialize OpenAI-compatible client based on API type
+      if (this.api === "openai" && this.apiKey && this.baseUrl) {
         return await this.processWithAzureOpenAI(systemPrompt, userMessage);
       } else {
         logger.warn(
-          { provider: this.provider, hasApiKey: !!this.apiKey, hasBaseUrl: !!this.baseUrl },
-          "[PI-AGENT] Azure OpenAI not properly configured, returning placeholder response"
+          { provider: this.provider, api: this.api, hasApiKey: !!this.apiKey, hasBaseUrl: !!this.baseUrl },
+          "[PI-AGENT] OpenAI-compatible API not properly configured, returning placeholder response"
         );
         const response = `[Pi Agent - ${this.provider}:${this.model}] Ready to process: "${userMessage.substring(0, 80)}${userMessage.length > 80 ? "..." : ""}"
 
-Note: Azure OpenAI tool calling requires proper configuration.`;
+Note: OpenAI-compatible tool calling requires proper configuration.`;
         return response;
       }
     } catch (error) {
@@ -487,6 +501,7 @@ Note: Azure OpenAI tool calling requires proper configuration.`;
       logger.debug(
         {
           provider: this.provider,
+          api: this.api,
           model: this.model,
           hasApiKey: !!this.apiKey,
           hasBaseUrl: !!this.baseUrl

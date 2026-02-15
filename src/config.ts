@@ -53,7 +53,7 @@ const parseEmbeddingProvider = (value: string | undefined, fallback: EmbeddingPr
 
 const parseLlmProvider = (value: string | undefined): LlmProvider => {
   const normalized = value?.trim().toLowerCase();
-  const validProviders: LlmProvider[] = ["anthropic", "openai", "google", "groq", "mistral", "cerebras", "xai", "bedrock"];
+  const validProviders: LlmProvider[] = ["anthropic", "openai", "google", "groq", "mistral", "cerebras", "xai", "bedrock", "alibaba", "anthropic-compatible"];
   if (normalized && validProviders.includes(normalized as LlmProvider)) {
     return normalized as LlmProvider;
   }
@@ -111,21 +111,38 @@ export type AutoRoutingConfig = {
   optOutSkills: string[];
 };
 
-export type LlmProvider = "anthropic" | "openai" | "google" | "groq" | "mistral" | "cerebras" | "xai" | "bedrock";
+export type LlmProvider = "anthropic" | "openai" | "google" | "groq" | "mistral" | "cerebras" | "xai" | "bedrock" | "alibaba" | "anthropic-compatible";
+
+export type LlmApiType = "anthropic" | "openai";
 
 export type LlmProviderConfig = {
   provider: LlmProvider;
   anthropic?: {
+    api?: LlmApiType;
     apiKey?: string;
     baseUrl?: string;
     model: string;
   };
   openai?: {
+    api?: LlmApiType;
     apiKey?: string;
     baseUrl?: string;
     model: string;
   };
   google?: {
+    api?: LlmApiType;
+    apiKey?: string;
+    baseUrl?: string;
+    model: string;
+  };
+  alibaba?: {
+    api?: LlmApiType;
+    apiKey?: string;
+    baseUrl?: string;
+    model: string;
+  };
+  anthropicCompatible?: {
+    api?: LlmApiType;
     apiKey?: string;
     baseUrl?: string;
     model: string;
@@ -211,16 +228,31 @@ type JsonConfig = Partial<{
   llmProvider: {
     provider: LlmProvider;
     anthropic: {
+      api: string;
       apiKey: string;
       baseUrl: string;
       model: string;
     };
     openai: {
+      api: string;
       apiKey: string;
       baseUrl: string;
       model: string;
     };
     google: {
+      api: string;
+      apiKey: string;
+      baseUrl: string;
+      model: string;
+    };
+    alibaba: {
+      api: string;
+      apiKey: string;
+      baseUrl: string;
+      model: string;
+    };
+    anthropicCompatible: {
+      api: string;
       apiKey: string;
       baseUrl: string;
       model: string;
@@ -488,19 +520,34 @@ const loadBaseConfig = (): AppConfig => {
     llmProvider: {
       provider,
       anthropic: {
+        api: jsonConfig.llmProvider.anthropic?.api ?? "anthropic",
         apiKey: jsonConfig.llmProvider.anthropic?.apiKey,
         baseUrl: jsonConfig.llmProvider.anthropic?.baseUrl,
         model: jsonConfig.llmProvider.anthropic?.model ?? "claude-3-5-sonnet-20241022"
       },
       openai: {
+        api: jsonConfig.llmProvider.openai?.api ?? "openai",
         apiKey: jsonConfig.llmProvider.openai?.apiKey,
         baseUrl: jsonConfig.llmProvider.openai?.baseUrl,
         model: jsonConfig.llmProvider.openai?.model ?? "gpt-4o"
       },
       google: {
+        api: jsonConfig.llmProvider.google?.api ?? "google",
         apiKey: jsonConfig.llmProvider.google?.apiKey,
         baseUrl: jsonConfig.llmProvider.google?.baseUrl,
         model: jsonConfig.llmProvider.google?.model ?? "gemini-2.0-flash"
+      },
+      alibaba: {
+        api: jsonConfig.llmProvider.alibaba?.api ?? "openai",
+        apiKey: jsonConfig.llmProvider.alibaba?.apiKey,
+        baseUrl: jsonConfig.llmProvider.alibaba?.baseUrl,
+        model: jsonConfig.llmProvider.alibaba?.model ?? "qwen-max-latest"
+      },
+      anthropicCompatible: {
+        api: jsonConfig.llmProvider.anthropicCompatible?.api ?? "anthropic",
+        apiKey: jsonConfig.llmProvider.anthropicCompatible?.apiKey,
+        baseUrl: jsonConfig.llmProvider.anthropicCompatible?.baseUrl,
+        model: jsonConfig.llmProvider.anthropicCompatible?.model ?? "grok-code-fast-1"
       }
     }
   };

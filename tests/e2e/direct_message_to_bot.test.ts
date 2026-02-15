@@ -46,7 +46,7 @@ describe("Direct Message to Bot Processing Test", () => {
     await cronService.start();
 
     // Create ClaudeProcessor - this is what processes the messages
-    claudeProcessor = new ClaudeProcessor([], null); // Will initialize with default config
+    claudeProcessor = new ClaudeProcessor([], resolveConfig()); // Will initialize with resolved config
 
     // Initialize connection supervisor with optimizer and rate limiter
     const slackOptimizer = new SlackApiOptimizer();

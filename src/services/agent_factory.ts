@@ -12,9 +12,9 @@ export class AgentFactory {
 
     logger.info({ provider }, "[AGENT-FACTORY] Creating agent processor");
 
-    if (provider === "anthropic") {
-      logger.info("Using Claude Agent SDK (Anthropic provider)");
-      return new ClaudeProcessor(skillDirs, memoryManager);
+    if (provider === "anthropic" || provider === "anthropic-compatible") {
+      logger.info("Using Claude Agent SDK (Anthropic-compatible provider)");
+      return new ClaudeProcessor(skillDirs, config, memoryManager);
     }
 
     logger.info({ provider }, "Using Pi Agent (multi-provider support)");
