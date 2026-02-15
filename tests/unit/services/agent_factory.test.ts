@@ -1,64 +1,157 @@
 import { describe, it, expect } from "vitest";
-import { resolveConfig } from "../../../src/config.ts";
+import { resolveConfig, type AppConfig } from "../../../src/config.ts";
 import { AgentFactory } from "../../../src/services/agent_factory.ts";
 import { ClaudeProcessor } from "../../../src/services/claude_processor.ts";
 import { PiAgentProcessor } from "../../../src/services/pi_agent_processor.ts";
 
 describe("Multi-Provider LLM Configuration", () => {
+  const createTestConfig = (provider: string, providers: Record<string, any>): AppConfig => {
+    const baseConfig = resolveConfig();
+    return {
+      ...baseConfig,
+      llmProvider: {
+        provider,
+        ...providers
+      } as any
+    };
+  };
+
   it("should load configuration with multiple LLM providers", () => {
     const config = resolveConfig();
 
     expect(config.llmProvider).toBeDefined();
-    expect(config.llmProvider.provider).toBe("openai");
-    expect(config.llmProvider.anthropic).toBeDefined();
-    expect(config.llmProvider.openai).toBeDefined();
-    expect(config.llmProvider.google).toBeDefined();
+    expect(config.llmProvider.provider).toBeDefined();
   });
 
-  it("should use PiAgentProcessor for OpenAI provider (default)", () => {
-    const config = resolveConfig();
-    const agent = AgentFactory.create(config, config.skillDirs);
+  it("should use PiAgentProcessor for OpenAI provider", () => {
+    const config = createTestConfig("openai", {
+      openai: {
+        api: "openai",
+        apiKey: "test-key",
+        baseUrl: "https://api.openai.com/v1",
+        model: "gpt-4o"
+      }
+    });
 
+    const agent = AgentFactory.create(config, config.skillDirs);
     expect(agent).toBeInstanceOf(PiAgentProcessor);
   });
 
-  it("should use PiAgentProcessor for non-anthropic provider", () => {
-    const config = resolveConfig();
-    // Override provider to test non-anthropic path
-    config.llmProvider.provider = "openai";
+  it("should use PiAgentProcessor for alibaba provider with OpenAI API", () => {
+    const config = createTestConfig("alibaba", {
+      alibaba: {
+        api: "openai",
+        apiKey: "test-key",
+        baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        model: "qwen3-max"
+      }
+    });
 
     const agent = AgentFactory.create(config, config.skillDirs);
-
     expect(agent).toBeInstanceOf(PiAgentProcessor);
   });
 
-  it("PiAgentProcessor should properly initialize provider-specific settings", () => {
-    const config = resolveConfig();
-    config.llmProvider.provider = "openai";
+  it("should use ClaudeProcessor for anthropic provider", () => {
+    const config = createTestConfig("anthropic", {
+      anthropic: {
+        api: "anthropic",
+        apiKey: "test-key",
+        baseUrl: "https://api.anthropic.com",
+        model: "claude-3-5-sonnet-20241022"
+      }
+    });
 
-    const agent = AgentFactory.create(config, config.skillDirs) as PiAgentProcessor;
-
-    // Note: In a real test, we'd access these via a getter
-    // For now, just verify the agent was created successfully
-    expect(agent).toBeDefined();
-  });
-
-  it("should support switching between providers", () => {
-    const config = resolveConfig();
-
-    // Test anthropic
-    config.llmProvider.provider = "anthropic";
-    let agent = AgentFactory.create(config, config.skillDirs);
+    const agent = AgentFactory.create(config, config.skillDirs);
     expect(agent).toBeInstanceOf(ClaudeProcessor);
+  });
 
-    // Test openai
-    config.llmProvider.provider = "openai";
-    agent = AgentFactory.create(config, config.skillDirs);
-    expect(agent).toBeInstanceOf(PiAgentProcessor);
+  it("should use ClaudeProcessor for custom anthropic-compatible provider", () => {
+    const config = createTestConfig("copilot-api", {
+      "copilot-api": {
+        api: "anthropic",
+        apiKey: "test-key",
+        baseUrl: "https://custom-anthropic-endpoint:5000",
+        model: "grok-code-fast-1"
+      }
+    });
 
-    // Test google
-    config.llmProvider.provider = "google";
-    agent = AgentFactory.create(config, config.skillDirs);
+    const agent = AgentFactory.create(config, config.skillDirs);
+    expect(agent).toBeInstanceOf(ClaudeProcessor);
+  });
+
+  it("should route based on api field, not provider name", () => {
+    // Test that OpenAI-compatible API uses PiAgentProcessor regardless of provider name
+    const config = createTestConfig("my-custom-openai", {
+      "my-custom-openai": {
+        api: "openai",
+        apiKey: "test-key",
+        baseUrl: "https://custom-openai-endpoint",
+        model: "custom-model"
+      }
+    });
+
+    const agent = AgentFactory.create(config, config.skillDirs);
     expect(agent).toBeInstanceOf(PiAgentProcessor);
+  });
+
+  it("should throw error when provider is not configured", () => {
+    const config = createTestConfig("missing-provider", {});
+
+    expect(() => AgentFactory.create(config, config.skillDirs)).toThrow(
+      "Provider 'missing-provider' is not configured in llmProvider"
+    );
+  });
+
+  it("should support switching between different providers with same API type", () => {
+    // Both use OpenAI API but with different names
+    const config1 = createTestConfig("openai", {
+      openai: {
+        api: "openai",
+        apiKey: "test-key",
+        baseUrl: "https://api.openai.com/v1",
+        model: "gpt-4o"
+      }
+    });
+
+    const config2 = createTestConfig("alibaba", {
+      alibaba: {
+        api: "openai",
+        apiKey: "test-key",
+        baseUrl: "https://dashscope.aliyuncs.com",
+        model: "qwen3-max"
+      }
+    });
+
+    const agent1 = AgentFactory.create(config1, config1.skillDirs);
+    const agent2 = AgentFactory.create(config2, config2.skillDirs);
+
+    expect(agent1).toBeInstanceOf(PiAgentProcessor);
+    expect(agent2).toBeInstanceOf(PiAgentProcessor);
+  });
+
+  it("should support switching between different providers with different API types", () => {
+    const configAI = createTestConfig("openai", {
+      openai: {
+        api: "openai",
+        apiKey: "test-key",
+        baseUrl: "https://api.openai.com/v1",
+        model: "gpt-4o"
+      }
+    });
+
+    const configAnthropic = createTestConfig("anthropic", {
+      anthropic: {
+        api: "anthropic",
+        apiKey: "test-key",
+        baseUrl: "https://api.anthropic.com",
+        model: "claude-3-5-sonnet-20241022"
+      }
+    });
+
+    const agent1 = AgentFactory.create(configAI, configAI.skillDirs);
+    const agent2 = AgentFactory.create(configAnthropic, configAnthropic.skillDirs);
+
+    expect(agent1).toBeInstanceOf(PiAgentProcessor);
+    expect(agent2).toBeInstanceOf(ClaudeProcessor);
   });
 });

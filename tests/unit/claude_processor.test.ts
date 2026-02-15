@@ -112,27 +112,39 @@ vi.mock("../../src/services/skill_loader.ts", () => ({
 }));
 
 vi.mock("../../src/config.ts", () => ({
-  resolveConfig: vi.fn().mockReturnValue({
-    anthropicAuthToken: "test-token",
-    anthropicBaseUrl: undefined,
-    anthropicModel: "claude-3-sonnet-20240229",
-    devMode: false,
-    skillsDir: "./skills",
-    retry: {
-      maxAttempts: 2,
-      baseDelayMs: 10,
-      maxDelayMs: 100,
-      backoffMultiplier: 2,
-      jitterMax: 0.1
-    },
-    autoRouting: {
-      enabled: true,
-      confidenceThreshold: 0.5,
-      optOutSkills: []
-    },
-    maxToolIterations: 10
-  })
+  resolveConfig: vi.fn(() => createDefaultMockConfig())
 }));
+
+const createDefaultMockConfig = () => ({
+  anthropicAuthToken: "test-token",
+  anthropicBaseUrl: undefined,
+  anthropicModel: "claude-3-sonnet-20240229",
+  devMode: false,
+  skillDirs: ["./skills"],
+  baseSkillsDir: "./skills",
+  retry: {
+    maxAttempts: 2,
+    baseDelayMs: 10,
+    maxDelayMs: 100,
+    backoffMultiplier: 2,
+    jitterMax: 0.1
+  },
+  autoRouting: {
+    enabled: true,
+    confidenceThreshold: 0.5,
+    optOutSkills: []
+  },
+  maxToolIterations: 10,
+  llmProvider: {
+    provider: "anthropic",
+    anthropic: {
+      api: "anthropic",
+      apiKey: "test-token",
+      baseUrl: undefined,
+      model: "claude-3-sonnet-20240229"
+    }
+  }
+});
 
 vi.mock("@anthropic-ai/sdk", () => ({
   default: class MockAnthropic {
@@ -164,6 +176,16 @@ const mockSkillLoaderClass = vi.mocked(require("../../src/services/skill_loader.
 describe("ClaudeProcessor", () => {
   let processor: ClaudeProcessor;
   let mockMemoryManager: any;
+  let testConfig: any;
+
+  const setupConfig = (provider: string = "anthropic", providerConfig?: any) => {
+    testConfig = createDefaultMockConfig();
+    testConfig.llmProvider.provider = provider;
+    if (providerConfig) {
+      (testConfig.llmProvider as any)[provider] = providerConfig;
+    }
+    return testConfig;
+  };
 
   beforeEach(() => {
     resetTriggerConfigs();
@@ -207,7 +229,8 @@ describe("ClaudeProcessor", () => {
     mockMemoryManager.search.mockResolvedValue([]);
 
     // Create processor with mocked dependencies
-    processor = new ClaudeProcessor(["./skills"], mockMemoryManager);
+    testConfig = setupConfig();
+    processor = new ClaudeProcessor(["./skills"], testConfig, mockMemoryManager);
   });
 
   describe("checkConnection", () => {
@@ -402,17 +425,10 @@ describe("ClaudeProcessor", () => {
 
     it.skip("returns dev mode response when in dev mode", async () => {
       // Create processor in dev mode
-      const configModule = require("../../src/config.ts");
-      configModule.resolveConfig.mockReturnValueOnce({
-        anthropicAuthToken: "test-token",
-        anthropicBaseUrl: undefined,
-        anthropicModel: "claude-3-sonnet-20240229",
-        devMode: true,
-        skillsDir: "./skills",
-        maxToolIterations: 10
-      });
+      const devConfig = setupConfig();
+      devConfig.devMode = true;
 
-      const devProcessor = new ClaudeProcessor(["./skills"], mockMemoryManager as any);
+      const devProcessor = new ClaudeProcessor(["./skills"], devConfig, mockMemoryManager);
       const result = await devProcessor.processMessage("Test message");
 
       expect(result).toBe("[DEV MODE] I would respond to: Test message");
@@ -664,7 +680,8 @@ describe("ClaudeProcessor", () => {
         clearMemoryForSession: vi.fn()
       };
 
-      const processor = new ClaudeProcessor(["./skills"], testMemoryManager);
+      const testConfig = setupConfig();
+      const processor = new ClaudeProcessor(["./skills"], testConfig, testMemoryManager);
 
       await processor.clearAllMemory();
 
@@ -672,7 +689,8 @@ describe("ClaudeProcessor", () => {
     });
 
     it("does nothing when memory manager is not available", async () => {
-      const processor = new ClaudeProcessor(["./skills"]);
+      const testConfig = setupConfig();
+      const processor = new ClaudeProcessor(["./skills"], testConfig);
 
       // Should not throw an error
       await expect(processor.clearAllMemory()).resolves.toBeUndefined();

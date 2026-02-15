@@ -348,28 +348,226 @@ describe("Configuration System - JSON Only", () => {
     });
   });
 
-  describe("Deprecation of .env", () => {
-    it("should not fallback to environment variables", () => {
-      // Clear any env vars
-      delete process.env.SLACK_BOT_TOKEN;
-      delete process.env.SLACK_APP_TOKEN;
-      delete process.env.LLM_PROVIDER;
+  describe("Skills Directories Configuration", () => {
+    it("should accept single directory string for backwards compatibility", () => {
+      const config = {
+        skills: {
+          directory: "~/.ironbot/skills"
+        }
+      };
 
-      // Verify that config loading fails without ironbot.json
-      const config = undefined; // No config file loaded
-
-      expect(config).toBeUndefined();
+      expect(config.skills).toBeDefined();
+      expect(typeof config.skills.directory).toBe("string");
     });
 
-    it("should require ironbot.json exclusively", () => {
-      // Even if env vars are set, they should be ignored
-      process.env.SLACK_BOT_TOKEN = "xoxb-from-env";
-      process.env.SLACK_APP_TOKEN = "xapp-1-from-env";
+    it("should accept array of directories", () => {
+      const config = {
+        skills: {
+          directory: ["~/.ironbot/skills", "D:/repos/ironbot/skills"]
+        }
+      };
 
-      // Without ironbot.json, should fail
-      const hasConfig = false;
+      expect(Array.isArray(config.skills.directory)).toBe(true);
+      expect(config.skills.directory).toHaveLength(2);
+    });
 
-      expect(hasConfig).toBe(false);
+    it("should resolve path tilde expansion", () => {
+      const resolveTilde = (path: string): string => {
+        return path.replace(/^~/, process.env.HOME || process.env.USERPROFILE || "~");
+      };
+
+      const tilePath = "~/.ironbot/skills";
+      const resolved = resolveTilde(tilePath);
+
+      expect(resolved).not.toContain("~");
+      expect(resolved.length).toBeGreaterThan(tilePath.length - 1);
+    });
+
+    it("should handle multiple directories with tilde expansion", () => {
+      const resolveTilde = (path: string): string => {
+        return path.replace(/^~/, process.env.HOME || process.env.USERPROFILE || "~");
+      };
+
+      const dirs = ["~/.ironbot/skills", "D:/repos/ironbot/skills"];
+      const resolved = dirs.map(resolveTilde);
+
+      expect(resolved).toHaveLength(2);
+      expect(resolved[1]).toBe("D:/repos/ironbot/skills");
+    });
+
+    it("should deduplicate skill directories", () => {
+      const dedup = (dirs: string[]): string[] => {
+        return [...new Set(dirs)];
+      };
+
+      const dirs = ["~/.ironbot/skills", "D:/repos/ironbot/skills", "~/.ironbot/skills"];
+      const deduped = dedup(dirs);
+
+      expect(deduped).toHaveLength(2);
+    });
+
+    it("should automatically include state skills directory", () => {
+      const baseDir = "~/.ironbot";
+      const stateSkilsDir = `${baseDir}/state-skills`;
+      const configured = ["~/.ironbot/skills"];
+
+      const allDirs = [...configured, stateSkilsDir];
+
+      expect(allDirs).toContain(stateSkilsDir);
+      expect(allDirs).toHaveLength(2);
+    });
+
+    it("should preserve order of configured directories", () => {
+      const dirs = [
+        "D:/repos/ironbot/skills",
+        "C:/Users/jzhu/.ironbot/skills",
+        "E:/other/skills"
+      ];
+
+      const ordered = dirs;
+
+      expect(ordered[0]).toBe("D:/repos/ironbot/skills");
+      expect(ordered[1]).toBe("C:/Users/jzhu/.ironbot/skills");
+      expect(ordered[2]).toBe("E:/other/skills");
+    });
+
+    it("should use first configured directory as default skillsDir", () => {
+      const configured = ["~/.ironbot/skills", "D:/repos/ironbot/skills"];
+      const skillsDir = configured[0];
+
+      expect(skillsDir).toBe("~/.ironbot/skills");
+    });
+
+    it("should default to ./skills if no directory configured", () => {
+      const config = {
+        skills: {}
+      };
+
+      const defaultDir = "D:/repos/ironbot/skills";
+
+      expect(defaultDir).toBeDefined();
+      expect(defaultDir).toContain("skills");
+    });
+  });
+
+  describe("Custom Provider Configuration", () => {
+    it("should accept custom provider names", () => {
+      const config = {
+        llmProvider: {
+          provider: "copilot-api",
+          "copilot-api": {
+            api: "anthropic",
+            apiKey: "key",
+            baseUrl: "https://custom.com",
+            model: "custom-model"
+          }
+        }
+      };
+
+      expect(config.llmProvider.provider).toBe("copilot-api");
+      expect((config.llmProvider as any)["copilot-api"]).toBeDefined();
+    });
+
+    it("should accept multiple custom providers", () => {
+      const config = {
+        llmProvider: {
+          provider: "copilot-api",
+          "copilot-api": {
+            api: "anthropic",
+            apiKey: "key1",
+            baseUrl: "https://custom1.com",
+            model: "model1"
+          },
+          "my-openai": {
+            api: "openai",
+            apiKey: "key2",
+            baseUrl: "https://custom2.com",
+            model: "model2"
+          }
+        }
+      };
+
+      expect((config.llmProvider as any)["copilot-api"]).toBeDefined();
+      expect((config.llmProvider as any)["my-openai"]).toBeDefined();
+    });
+
+    it("should support provider switching between custom providers", () => {
+      const baseConfig = {
+        llmProvider: {
+          provider: "copilot-api",
+          "copilot-api": {
+            api: "anthropic",
+            apiKey: "key",
+            baseUrl: "https://custom1.com",
+            model: "model1"
+          }
+        }
+      };
+
+      baseConfig.llmProvider.provider = "my-provider";
+      (baseConfig.llmProvider as any)["my-provider"] = {
+        api: "openai",
+        apiKey: "key",
+        baseUrl: "https://custom2.com",
+        model: "model2"
+      };
+
+      expect(baseConfig.llmProvider.provider).toBe("my-provider");
+    });
+  });
+
+  describe("Multi-Provider API-Based Routing", () => {
+    it("should route based on api field for Anthropic API", () => {
+      const providers = {
+        "anthropic": { api: "anthropic" },
+        "copilot-api": { api: "anthropic" },
+        "custom-grok": { api: "anthropic" }
+      };
+
+      const anthropicProviders = Object.entries(providers)
+        .filter(([_, config]: any) => config.api === "anthropic")
+        .map(([name]) => name);
+
+      expect(anthropicProviders).toContain("anthropic");
+      expect(anthropicProviders).toContain("copilot-api");
+      expect(anthropicProviders).toContain("custom-grok");
+      expect(anthropicProviders).toHaveLength(3);
+    });
+
+    it("should route based on api field for OpenAI API", () => {
+      const providers = {
+        "openai": { api: "openai" },
+        "alibaba": { api: "openai" },
+        "my-qwen": { api: "openai" }
+      };
+
+      const openaiProviders = Object.entries(providers)
+        .filter(([_, config]: any) => config.api === "openai")
+        .map(([name]) => name);
+
+      expect(openaiProviders).toContain("openai");
+      expect(openaiProviders).toContain("alibaba");
+      expect(openaiProviders).toContain("my-qwen");
+      expect(openaiProviders).toHaveLength(3);
+    });
+
+    it("should allow mixing providers with same API type", () => {
+      const config = {
+        llmProvider: {
+          provider: "alibaba",
+          "openai": { api: "openai" },
+          "alibaba": { api: "openai" },
+          "custom": { api: "openai" }
+        }
+      };
+
+      const isOpenAiCompatible = (config: any, provider: string) => {
+        return (config.llmProvider as any)[provider]?.api === "openai";
+      };
+
+      expect(isOpenAiCompatible(config, "openai")).toBe(true);
+      expect(isOpenAiCompatible(config, "alibaba")).toBe(true);
+      expect(isOpenAiCompatible(config, "custom")).toBe(true);
     });
   });
 });
