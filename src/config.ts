@@ -519,36 +519,46 @@ const loadBaseConfig = (): AppConfig => {
     maxToolIterations: parseInteger(jsonConfig.claude_max_tool_iterations, 10),
     llmProvider: {
       provider,
-      anthropic: {
-        api: jsonConfig.llmProvider.anthropic?.api ?? "anthropic",
-        apiKey: jsonConfig.llmProvider.anthropic?.apiKey,
-        baseUrl: jsonConfig.llmProvider.anthropic?.baseUrl,
-        model: jsonConfig.llmProvider.anthropic?.model ?? "claude-3-5-sonnet-20241022"
-      },
-      openai: {
-        api: jsonConfig.llmProvider.openai?.api ?? "openai",
-        apiKey: jsonConfig.llmProvider.openai?.apiKey,
-        baseUrl: jsonConfig.llmProvider.openai?.baseUrl,
-        model: jsonConfig.llmProvider.openai?.model ?? "gpt-4o"
-      },
-      google: {
-        api: jsonConfig.llmProvider.google?.api ?? "google",
-        apiKey: jsonConfig.llmProvider.google?.apiKey,
-        baseUrl: jsonConfig.llmProvider.google?.baseUrl,
-        model: jsonConfig.llmProvider.google?.model ?? "gemini-2.0-flash"
-      },
-      alibaba: {
-        api: jsonConfig.llmProvider.alibaba?.api ?? "openai",
-        apiKey: jsonConfig.llmProvider.alibaba?.apiKey,
-        baseUrl: jsonConfig.llmProvider.alibaba?.baseUrl,
-        model: jsonConfig.llmProvider.alibaba?.model ?? "qwen-max-latest"
-      },
-      anthropicCompatible: {
-        api: jsonConfig.llmProvider.anthropicCompatible?.api ?? "anthropic",
-        apiKey: jsonConfig.llmProvider.anthropicCompatible?.apiKey,
-        baseUrl: jsonConfig.llmProvider.anthropicCompatible?.baseUrl,
-        model: jsonConfig.llmProvider.anthropicCompatible?.model ?? "grok-code-fast-1"
-      }
+      ...(jsonConfig.llmProvider.anthropic && {
+        anthropic: {
+          api: jsonConfig.llmProvider.anthropic.api ?? "anthropic",
+          apiKey: jsonConfig.llmProvider.anthropic.apiKey,
+          baseUrl: jsonConfig.llmProvider.anthropic.baseUrl,
+          model: jsonConfig.llmProvider.anthropic.model ?? "claude-3-5-sonnet-20241022"
+        }
+      }),
+      ...(jsonConfig.llmProvider.openai && {
+        openai: {
+          api: jsonConfig.llmProvider.openai.api ?? "openai",
+          apiKey: jsonConfig.llmProvider.openai.apiKey,
+          baseUrl: jsonConfig.llmProvider.openai.baseUrl,
+          model: jsonConfig.llmProvider.openai.model ?? "gpt-4o"
+        }
+      }),
+      ...(jsonConfig.llmProvider.google && {
+        google: {
+          api: jsonConfig.llmProvider.google.api ?? "google",
+          apiKey: jsonConfig.llmProvider.google.apiKey,
+          baseUrl: jsonConfig.llmProvider.google.baseUrl,
+          model: jsonConfig.llmProvider.google.model ?? "gemini-2.0-flash"
+        }
+      }),
+      ...(jsonConfig.llmProvider.alibaba && {
+        alibaba: {
+          api: jsonConfig.llmProvider.alibaba.api ?? "openai",
+          apiKey: jsonConfig.llmProvider.alibaba.apiKey,
+          baseUrl: jsonConfig.llmProvider.alibaba.baseUrl,
+          model: jsonConfig.llmProvider.alibaba.model ?? "qwen-max-latest"
+        }
+      }),
+      ...(jsonConfig.llmProvider.anthropicCompatible && {
+        anthropicCompatible: {
+          api: jsonConfig.llmProvider.anthropicCompatible.api ?? "anthropic",
+          apiKey: jsonConfig.llmProvider.anthropicCompatible.apiKey,
+          baseUrl: jsonConfig.llmProvider.anthropicCompatible.baseUrl,
+          model: jsonConfig.llmProvider.anthropicCompatible.model ?? "grok-code-fast-1"
+        }
+      })
     }
   };
 };

@@ -9,13 +9,13 @@
       "api": "anthropic",
       "apiKey": "sk-your-anthropic-api-key-here",
       "baseUrl": "https://your-anthropic-instance:5000",
-      "model": "grok-code-fast-1"
+      "model": "claude-3-5-sonnet-20241022"
     },
     "openai": {
       "api": "openai",
       "apiKey": "your-azure-openai-api-key-here",
       "baseUrl": "https://your-resource-name.openai.azure.com/openai/v1",
-      "model": "gpt-5-mini"
+      "model": "gpt-4o"
     },
     "google": {
       "api": "google",
