@@ -206,6 +206,7 @@ export type AppConfig = {
   retry: RetryConfig;
   slackRetry: SlackRetryConfig;
   slackRateLimit: SlackRateLimitConfig;
+  slackThreadContextLimit: number;
   autoRouting: AutoRoutingConfig;
   anthropicTimeoutMs: number;
   cron: CronConfig;
@@ -227,6 +228,7 @@ type JsonConfig = Partial<{
   slack: {
     botToken: string;
     appToken: string;
+    threadContextLimit?: number;
   };
   anthropic: {
     baseUrl: string;
@@ -542,6 +544,7 @@ const loadBaseConfig = (): AppConfig => {
       baseDelayMs: parseInteger(jsonConfig.slack_retry?.baseDelayMs, 15000),
       maxDelayMs: parseInteger(jsonConfig.slack_retry?.maxDelayMs, 300000)
     },
+    slackThreadContextLimit: parseInteger(jsonConfig.slack?.threadContextLimit, 15),
     autoRouting: {
       enabled: parseBoolean(jsonConfig.auto_routing?.enabled, true),
       confidenceThreshold: parseNumber(jsonConfig.auto_routing?.confidenceThreshold, 0.5),

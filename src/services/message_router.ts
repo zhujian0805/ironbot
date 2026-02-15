@@ -10,11 +10,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { SlackConnectionSupervisor } from "./slack_connection_supervisor.ts";
 import type { SkillContext } from "./skill_context.ts";
+import { ThreadHistoryCache, type SlackMessage } from "./thread_history_cache.ts";
 
 type SlackClientLike = {
   chat: {
     postMessage: (args: { channel: string; text: string; thread_ts?: string; reply_broadcast?: boolean; mrkdwn?: boolean }) => Promise<{ ts?: string }>;
     update: (args: { channel: string; ts: string; text: string }) => Promise<unknown>;
+  };
+  conversations: {
+    replies: (args: { channel: string; ts: string; limit?: number }) => Promise<{ messages?: Array<{ type: string; user?: string; text: string; ts: string; username?: string; bot_id?: string }> }>;
   };
   assistant?: {
     threads?: {
@@ -41,6 +45,7 @@ export class MessageRouter {
   private crossSessionMemoryChannels: Set<string> = new Set();
   private globalCrossSessionMemory: boolean = false;
   private slackSupervisor?: SlackConnectionSupervisor;
+  private threadHistoryCache: ThreadHistoryCache;
 
   constructor(
     agent: AgentProcessor,
@@ -52,6 +57,7 @@ export class MessageRouter {
     this.slackClient = slackClient;
     this.config = config;
     this.slackSupervisor = slackSupervisor;
+    this.threadHistoryCache = new ThreadHistoryCache(5 * 60 * 1000); // 5 minute TTL
   }
 
   private async setThreadStatus(params: { channelId: string; threadTs?: string; status: string }): Promise<void> {
@@ -78,6 +84,39 @@ export class MessageRouter {
       logger.info({ channelId: params.channelId, threadTs: params.threadTs }, "Response sent to user");
     } catch (error) {
       logger.warn({ error, channelId: params.channelId }, "Failed to update Slack thread status");
+    }
+  }
+
+  private async getThreadHistory(channel: string, threadTs: string): Promise<SlackMessage[]> {
+    if (!this.slackClient?.conversations?.replies) {
+      logger.debug({ channel, threadTs }, "Slack client does not have conversations.replies API");
+      return [];
+    }
+
+    // Check cache first
+    const cached = this.threadHistoryCache.get(channel, threadTs);
+    if (cached) {
+      logger.debug({ channel, threadTs, messageCount: cached.length }, "Retrieved thread history from cache");
+      return cached;
+    }
+
+    try {
+      const response = await this.slackClient.conversations.replies({
+        channel,
+        ts: threadTs,
+        limit: this.config.slackThreadContextLimit
+      });
+
+      const messages = response.messages || [];
+
+      // Store in cache
+      this.threadHistoryCache.set(channel, threadTs, messages);
+
+      logger.info({ channel, threadTs, messageCount: messages.length }, "Fetched thread history from Slack API");
+      return messages;
+    } catch (error) {
+      logger.warn({ error, channel, threadTs }, "Failed to fetch thread history from Slack API");
+      return [];
     }
   }
 
@@ -138,12 +177,20 @@ export class MessageRouter {
     // For channel messages, use undefined threadTs to share session across messages in the same channel
     // This enables context awareness between sequential messages even outside of threads
     const sessionThreadTs = event.thread_ts ?? (isDm ? undefined : undefined);
+
+    // Fetch Slack thread history if this is a threaded message
+    let threadHistory: SlackMessage[] = [];
+    if (event.thread_ts) {
+      threadHistory = await this.getThreadHistory(channel, event.thread_ts);
+    }
+
     const skillContext: SkillContext = {
       source: "slack",
       channel,
       threadTs,
       messageTs,
-      userId: event.user
+      userId: event.user,
+      threadHistory
     };
     const responsePrefix = "↪️ ";
 
@@ -230,7 +277,8 @@ export class MessageRouter {
           {
             conversationHistory,
             sessionKey,
-            crossSessionMemory
+            crossSessionMemory,
+            threadHistory
           },
           skillContext
         );

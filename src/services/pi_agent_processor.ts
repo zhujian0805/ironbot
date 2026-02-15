@@ -228,7 +228,7 @@ export class PiAgentProcessor {
 
   async processMessage(
     userMessage: string,
-    options: { conversationHistory?: MessageParam[]; sessionKey?: string; crossSessionMemory?: boolean } = {},
+    options: { conversationHistory?: MessageParam[]; sessionKey?: string; crossSessionMemory?: boolean; threadHistory?: any[] } = {},
     context?: SkillContext
   ): Promise<string> {
     logger.debug(
@@ -256,15 +256,19 @@ export class PiAgentProcessor {
       ? await this.buildMemoryContext(userMessage, options.sessionKey, options.crossSessionMemory)
       : "";
 
-    return this.processWithTools(userMessage, memoryContext);
+    return this.processWithTools(userMessage, memoryContext, options.threadHistory);
   }
 
-  private async processWithTools(userMessage: string, memoryContext: string): Promise<string> {
+  private async processWithTools(userMessage: string, memoryContext: string, threadHistory?: any[]): Promise<string> {
     try {
       // Build system prompt with skill metadata and OS context
       const skillsList = this.formatSkillsForPrompt();
       const osContext = this.getOSContext();
       let systemPrompt = `${DEFAULT_SYSTEM_PROMPT}\n\n<system_context>\n${osContext}\n</system_context>${skillsList}`;
+      if (threadHistory && threadHistory.length > 0) {
+        const threadContext = this.formatThreadContext(threadHistory, userMessage);
+        systemPrompt = `${systemPrompt}\n\n${threadContext}`;
+      }
       if (memoryContext) {
         systemPrompt = `${systemPrompt}\n\nRelevant memory:\n${memoryContext}\n\nUse this context if it helps answer the user.`;
       }
@@ -594,5 +598,26 @@ Note: OpenAI-compatible tool calling requires proper configuration.`;
     const errorCount = operations.filter((op) => op.status === "error").length;
     summaryLines.push(`- **Operations performed**: ${operations.length} tool call(s) (${successCount} successful, ${errorCount} failed)`);
     return summaryLines.join("\n");
+  }
+
+  private formatThreadContext(threadHistory: any[], currentQuestion: string): string {
+    if (!threadHistory || threadHistory.length === 0) {
+      return "";
+    }
+
+    const lines: string[] = ["<slack_thread_context>"];
+
+    // Add thread messages
+    for (const message of threadHistory) {
+      const user = message.user ? `<@${message.user}>` : (message.username || "unknown");
+      const text = message.text || "(no message text)";
+      lines.push(`${user}: ${text}`);
+    }
+
+    lines.push("");
+    lines.push(`**Current question**: ${currentQuestion}`);
+    lines.push("</slack_thread_context>");
+
+    return lines.join("\n");
   }
 }

@@ -516,7 +516,7 @@ export class ClaudeProcessor {
 
   async processMessage(
     userMessage: string,
-    options: { conversationHistory?: MessageParam[]; sessionKey?: string; crossSessionMemory?: boolean } = {},
+    options: { conversationHistory?: MessageParam[]; sessionKey?: string; crossSessionMemory?: boolean; threadHistory?: any[] } = {},
     context?: SkillContext
   ): Promise<string> {
     logger.debug({ messageLength: userMessage.length, hasSessionKey: !!options.sessionKey }, "[MSG-PROCESS] Processing user message");
@@ -548,13 +548,14 @@ export class ClaudeProcessor {
     const memoryContext = options.crossSessionMemory
       ? await this.buildMemoryContext(userMessage, options.sessionKey, options.crossSessionMemory)
       : ""; // Only use memory when explicitly enabled via /remember
-    return this.processWithTools(userMessage, conversationHistory, memoryContext);
+    return this.processWithTools(userMessage, conversationHistory, memoryContext, options.threadHistory);
   }
 
   private async processWithTools(
     userMessage: string,
     conversationHistory: MessageParam[],
-    memoryContext: string
+    memoryContext: string,
+    threadHistory?: any[]
   ): Promise<string> {
     const messages: MessageParam[] = [...conversationHistory, { role: "user", content: userMessage }];
     let finalResponse = "";
@@ -567,6 +568,10 @@ export class ClaudeProcessor {
     let systemPrompt = `${SYSTEM_PROMPT}${skillsList}`;
     if (relevantSkillDocs) {
       systemPrompt = `${systemPrompt}\n\n${relevantSkillDocs}`;
+    }
+    if (threadHistory && threadHistory.length > 0) {
+      const threadContext = this.formatThreadContext(threadHistory, userMessage);
+      systemPrompt = `${systemPrompt}\n\n${threadContext}`;
     }
     if (memoryContext) {
       systemPrompt = `${systemPrompt}\n\nRelevant memory:\n${memoryContext}\n\nUse this context if it helps answer the user.`;
@@ -853,5 +858,26 @@ export class ClaudeProcessor {
       }
     }
     return Array.from(recipients);
+  }
+
+  private formatThreadContext(threadHistory: any[], currentQuestion: string): string {
+    if (!threadHistory || threadHistory.length === 0) {
+      return "";
+    }
+
+    const lines: string[] = ["<slack_thread_context>"];
+
+    // Add thread messages
+    for (const message of threadHistory) {
+      const user = message.user ? `<@${message.user}>` : (message.username || "unknown");
+      const text = message.text || "(no message text)";
+      lines.push(`${user}: ${text}`);
+    }
+
+    lines.push("");
+    lines.push(`**Current question**: ${currentQuestion}`);
+    lines.push("</slack_thread_context>");
+
+    return lines.join("\n");
   }
 }
