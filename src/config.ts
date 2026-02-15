@@ -267,7 +267,7 @@ type JsonConfig = Partial<{
     };
   };
   skills: {
-    directory: string;
+    directory?: string | string[];
   };
   logging: {
     debug: boolean;
@@ -431,11 +431,26 @@ const loadBaseConfig = (): AppConfig => {
   );
 
   // Resolve skills directories
-  const baseSkillsDir = resolveUserPath(
-    jsonConfig.skills?.directory ?? path.join(process.cwd(), "skills")
-  );
+  let configuredSkillDirs: string[] = [];
+
+  if (jsonConfig.skills?.directory) {
+    // Support both single directory and multiple directories
+    if (Array.isArray(jsonConfig.skills.directory)) {
+      configuredSkillDirs = jsonConfig.skills.directory.map(dir => resolveUserPath(dir));
+    } else {
+      configuredSkillDirs = [resolveUserPath(jsonConfig.skills.directory)];
+    }
+  } else {
+    // Default to skills directory in current working directory
+    configuredSkillDirs = [resolveUserPath(path.join(process.cwd(), "skills"))];
+  }
+
   const stateSkillsDir = resolveUserPath(path.join(stateDir, "skills"));
-  const dedupedSkillDirs = [baseSkillsDir, stateSkillsDir];
+  // Deduplicate and combine all skill directories
+  const allSkillDirs = [
+    ...new Set([...configuredSkillDirs, stateSkillsDir])
+  ];
+  const baseSkillsDir = configuredSkillDirs[0]; // First configured directory for backwards compatibility
 
   // Resolve LLM provider
   const provider = parseLlmProvider(jsonConfig.llmProvider.provider);
@@ -461,7 +476,7 @@ const loadBaseConfig = (): AppConfig => {
     anthropicModel: jsonConfig.anthropic?.model ?? "claude-3-5-sonnet-20241022",
     skillsDir: baseSkillsDir,
     stateSkillsDir,
-    skillDirs: dedupedSkillDirs,
+    skillDirs: allSkillDirs,
     permissionsFile: jsonConfig.permissions?.file
       ? path.resolve(jsonConfig.permissions.file)
       : path.resolve("./permissions.yaml"),

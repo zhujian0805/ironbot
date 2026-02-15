@@ -37,7 +37,7 @@
     }
   },
   "skills": {
-    "directory": "~/.ironbot/skills"
+    "directory": ["~/.ironbot/skills", "D:/repos/ironbot/skills"]
   },
   "permissions": {
     "file": "./permissions.yaml"
