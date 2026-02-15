@@ -33,8 +33,9 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Temp directory
+# Temp directories (test runs, temporary outputs, scratch work)
 temp/
+temp_*/
 
 # Codex directory
 .codex/
