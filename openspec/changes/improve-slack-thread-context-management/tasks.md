@@ -29,11 +29,11 @@
 
 ## 5. Testing - Unit Tests
 
-- [ ] 5.1 Add unit tests for `ThreadHistoryCache` - caching and TTL behavior
-- [ ] 5.2 Add unit tests for `getThreadHistory()` - mocking Slack API calls
-- [ ] 5.3 Add unit tests for `formatThreadContext()` - correct formatting of thread messages
-- [ ] 5.4 Test graceful handling when Slack API fails or returns empty
-- [ ] 5.5 Update `message_router.test.ts` with thread history retrieval scenarios
+- [x] 5.1 Add unit tests for `ThreadHistoryCache` - caching and TTL behavior
+- [x] 5.2 Add unit tests for `getThreadHistory()` - mocking Slack API calls
+- [x] 5.3 Add unit tests for `formatThreadContext()` - correct formatting of thread messages
+- [x] 5.4 Test graceful handling when Slack API fails or returns empty
+- [x] 5.5 Update `message_router.test.ts` with thread history retrieval scenarios
 
 ## 6. Testing - Integration Tests
 
@@ -68,6 +68,6 @@
 - [ ] 10.1 Code review of MessageRouter changes
 - [ ] 10.2 Code review of ClaudeProcessor changes
 - [x] 10.3 Verify all tests pass: `bun run test`
-- [ ] 10.4 Verify TypeScript compilation: `bun run typecheck`
-- [ ] 10.5 Manual testing in Slack with real threads
+- [x] 10.4 Verify TypeScript compilation: `bun run typecheck`
+- [x] 10.5 Manual testing in Slack with real threads
 - [ ] 10.6 Create PR with clear description of thread context feature
