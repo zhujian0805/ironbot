@@ -7,6 +7,7 @@ import { logger } from "../utils/logging.ts";
 import { SkillLoader, type SkillHandler, type SkillInfo } from "./skill_loader.ts";
 import { ToolExecutor, getAllowedTools, type ToolResult } from "./tools.ts";
 import { RetryManager } from "./retry_manager.ts";
+import { ModelResolver } from "./model_resolver.ts";
 import type { MemoryManager } from "../memory/manager.ts";
 import type { SkillContext } from "./skill_context.ts";
 
@@ -141,37 +142,51 @@ export class ClaudeProcessor {
   private memoryManager?: MemoryManager;
   private autoRoutingConfig: AutoRoutingConfig;
   private autoRouteOptOutSet: Set<string>;
+  private modelResolver: ModelResolver;
 
-  constructor(skillDirs: string[], appConfig: AppConfig, memoryManager?: MemoryManager) {
+  constructor(skillDirs: string[], appConfig: AppConfig, memoryManager?: MemoryManager, modelResolver?: ModelResolver) {
     const config = appConfig || resolveConfig();
-    const provider = config.llmProvider.provider;
 
-    // Use bracket notation to support custom provider names
-    const providerConfig = (config.llmProvider as Record<string, any>)[provider];
-
-    if (!providerConfig) {
-      throw new Error(`Provider '${provider}' is not configured in llmProvider`);
+    // Use provided ModelResolver or create one
+    if (!modelResolver) {
+      modelResolver = new ModelResolver(config.models);
     }
+    this.modelResolver = modelResolver;
 
-    let anthropicConfig;
-    const apiType = providerConfig.api ?? "anthropic";
+    // Get the default model from agent config, or use first provider/first model
+    let modelRef: string;
 
-    // If the provider uses the Anthropic API, use its config
-    if (apiType === "anthropic") {
-      anthropicConfig = {
-        apiKey: providerConfig.apiKey,
-        baseUrl: providerConfig.baseUrl,
-        model: providerConfig.model
-      };
+    if (config.agents?.model) {
+      modelRef = config.agents.model;
     } else {
-      // Fallback to old config structure for backwards compatibility
-      // (if someone is using anthropic provider with old config format)
-      anthropicConfig = {
-        apiKey: config.anthropicAuthToken,
-        baseUrl: config.anthropicBaseUrl,
-        model: config.anthropicModel
-      };
+      const providers = this.modelResolver.getProviders();
+      if (providers.length === 0) {
+        throw new Error("No providers configured in models");
+      }
+
+      const firstProvider = providers[0];
+      const firstModels = this.modelResolver.getModelsForProvider(firstProvider);
+      if (firstModels.length === 0) {
+        throw new Error(`Provider '${firstProvider}' has no models configured`);
+      }
+
+      const firstModelId = firstModels[0].id;
+      modelRef = `${firstProvider}/${firstModelId}`;
     }
+
+    const resolvedModel = this.modelResolver.resolveModel(modelRef);
+    const [firstProvider, firstModelId] = modelRef.split("/");
+
+    logger.info(
+      { provider: firstProvider, model: firstModelId, modelRef },
+      "[CLAUDE-PROCESSOR] Initializing with resolved model"
+    );
+
+    const anthropicConfig = {
+      apiKey: resolvedModel.apiKey,
+      baseUrl: resolvedModel.baseUrl,
+      model: resolvedModel.model.name
+    };
 
     this.client = new Anthropic({
       apiKey: anthropicConfig.apiKey,
@@ -179,7 +194,7 @@ export class ClaudeProcessor {
       maxRetries: 2,
       timeout: config.anthropicTimeoutMs
     });
-    this.model = anthropicConfig.model;
+    this.model = resolvedModel.model.id;
     this.devMode = config.devMode;
     this.retryManager = new RetryManager(config.retry);
     this.toolExecutor = new ToolExecutor(undefined, this.retryManager, []);

@@ -1,5 +1,6 @@
 import { logger } from "../utils/logging.ts";
 import type { AppConfig } from "../config.ts";
+import { ModelResolver } from "./model_resolver.ts";
 import type { MemoryManager } from "../memory/manager.ts";
 import type { SkillContext } from "./skill_context.ts";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
@@ -76,13 +77,14 @@ export class PiAgentProcessor {
   private memoryManager?: MemoryManager;
   private config: AppConfig;
   private devMode: boolean;
-  private provider: string;
+  private modelResolver: ModelResolver;
+  private provider: string = "";
   private api: string = "";
   private model: string = "";
   private apiKey?: string;
   private baseUrl?: string;
 
-  constructor(skillDirs: string[], config: AppConfig, memoryManager?: MemoryManager) {
+  constructor(skillDirs: string[], config: AppConfig, memoryManager?: MemoryManager, modelResolver?: ModelResolver) {
     this.config = config;
     this.skillLoader = new SkillLoader(skillDirs);
     this.memoryManager = memoryManager;
@@ -90,13 +92,17 @@ export class PiAgentProcessor {
     this.retryManager = new RetryManager(config.retry);
     this.toolExecutor = new ToolExecutor(undefined, this.retryManager, []);
 
-    // Initialize provider-specific settings
-    this.provider = config.llmProvider.provider;
+    // Use provided ModelResolver or create one
+    if (!modelResolver) {
+      modelResolver = new ModelResolver(config.models);
+    }
+    this.modelResolver = modelResolver;
+
+    // Initialize provider-specific settings from first provider
     this.initializeProviderSettings();
 
     logger.info(
       {
-        provider: this.provider,
         api: this.api,
         model: this.model,
         skillDirs,
@@ -108,20 +114,35 @@ export class PiAgentProcessor {
   }
 
   private initializeProviderSettings(): void {
-    // Use bracket notation to support custom provider names
-    const providerConfig = (this.config.llmProvider as Record<string, any>)[this.provider];
+    // Get default model from agent config, or use first provider/first model
+    let modelRef: string;
 
-    if (providerConfig) {
-      this.api = providerConfig.api ?? "openai"; // default to openai for multi-provider support
-      this.model = providerConfig.model;
-      this.apiKey = providerConfig.apiKey;
-      this.baseUrl = providerConfig.baseUrl;
+    if (this.config.agents?.model) {
+      modelRef = this.config.agents.model;
     } else {
-      logger.warn(
-        { provider: this.provider },
-        "[PI-AGENT] Provider config not found, will use defaults"
-      );
+      const providers = this.modelResolver.getProviders();
+      if (providers.length === 0) {
+        throw new Error("No providers configured in models");
+      }
+
+      const firstProvider = providers[0];
+      const firstModels = this.modelResolver.getModelsForProvider(firstProvider);
+      if (firstModels.length === 0) {
+        throw new Error(`Provider '${firstProvider}' has no models configured`);
+      }
+
+      const firstModelId = firstModels[0].id;
+      modelRef = `${firstProvider}/${firstModelId}`;
     }
+
+    const resolvedModel = this.modelResolver.resolveModel(modelRef);
+    const [provider, modelId] = modelRef.split("/");
+
+    this.provider = provider;
+    this.api = resolvedModel.apiType ?? "openai";
+    this.model = modelRef;
+    this.apiKey = resolvedModel.apiKey;
+    this.baseUrl = resolvedModel.baseUrl;
 
     if (!this.apiKey) {
       logger.warn(
@@ -130,12 +151,10 @@ export class PiAgentProcessor {
       );
     }
 
-    if (!this.model) {
-      logger.warn(
-        { provider: this.provider, api: this.api },
-        "[PI-AGENT] No model configured for provider - using provider defaults"
-      );
-    }
+    logger.debug(
+      { provider: this.provider, model: modelId, api: this.api },
+      "[PI-AGENT] Provider settings initialized"
+    );
   }
 
   private async ensureSkillsLoaded(): Promise<void> {
@@ -351,8 +370,17 @@ Note: OpenAI-compatible tool calling requires proper configuration.`;
       logger.debug({ iteration, messageCount: messages.length }, "[PI-AGENT] Tool calling iteration");
 
       // Call OpenAI API with tools
+      // Extract model ID from provider/model-id format
+      let modelId = this.model!;
+      if (modelId.includes('/')) {
+        const parts = modelId.split('/');
+        modelId = parts[parts.length - 1]; // Take the last part after the /
+      }
+
+      logger.debug({ originalModel: this.model, extractedModelId: modelId }, "[PI-AGENT] Model ID extraction");
+
       const completion = await client.chat.completions.create({
-        model: this.model!,
+        model: modelId,
         messages: messages as Parameters<typeof client.chat.completions.create>[0]["messages"],
         max_completion_tokens: 2000,
         tools: tools.length > 0 ? tools : undefined,

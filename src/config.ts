@@ -9,6 +9,7 @@ import {
 } from "./sessions/paths.ts";
 import { DEFAULT_AGENT_ID, DEFAULT_MAIN_SESSION_KEY } from "./sessions/session_key.ts";
 import { resolveCronStorePath } from "./cron/store.ts";
+import { validateModelsConfig, validateAgentConfig } from "./services/config_validator.ts";
 
 type BooleanString = "true" | "false" | "1" | "0";
 
@@ -116,46 +117,42 @@ export type LlmProvider = "anthropic" | "openai" | "google" | "groq" | "mistral"
 
 export type LlmApiType = "anthropic" | "openai";
 
-export type LlmProviderConfig = {
-  provider: LlmProvider;
-  anthropic?: {
-    api?: LlmApiType;
-    apiKey?: string;
-    baseUrl?: string;
-    model: string;
-  };
-  openai?: {
-    api?: LlmApiType;
-    apiKey?: string;
-    baseUrl?: string;
-    model: string;
-  };
-  google?: {
-    api?: LlmApiType;
-    apiKey?: string;
-    baseUrl?: string;
-    model: string;
-  };
-  alibaba?: {
-    api?: LlmApiType;
-    apiKey?: string;
-    baseUrl?: string;
-    model: string;
-  };
-  anthropicCompatible?: {
-    api?: LlmApiType;
-    apiKey?: string;
-    baseUrl?: string;
-    model: string;
-  };
-  // Allow custom providers with any name (e.g., "copilot-api", "my-provider", etc.)
-  [key: string]: {
-    api?: LlmApiType;
-    apiKey?: string;
-    baseUrl?: string;
-    model: string;
-  } | LlmProvider | undefined;
+export type CostModel = {
+  input?: number;
+  output?: number;
+  cacheRead?: number;
+  cacheWrite?: number;
 };
+
+export type ModelDefinition = {
+  id: string;
+  name: string;
+  cost?: CostModel;
+  [key: string]: any;
+};
+
+export type ProviderConfig = {
+  models: ModelDefinition[];
+  baseUrl?: string;
+  api?: string; // Allow any API type string for extensibility
+  apiKey?: string;
+};
+
+export type ModelsConfig = {
+  providers: Record<string, ProviderConfig>;
+};
+
+export type AgentDefaults = {
+  model?: string; // Default model in "provider/model-id" format
+  workspace?: string;
+  compactionMode?: "safeguard" | "moderate" | "aggressive";
+  subagents?: {
+    maxConcurrent?: number;
+  };
+};
+
+// Legacy type - not used in new design
+export type LlmProviderConfig = never;
 
 export type EmbeddingsConfig = {
   provider: EmbeddingProvider;
@@ -187,9 +184,6 @@ export type RetryConfig = {
 export type AppConfig = {
   slackBotToken: string | undefined;
   slackAppToken: string | undefined;
-  anthropicBaseUrl: string | undefined;
-  anthropicAuthToken: string | undefined;
-  anthropicModel: string;
   skillsDir: string;
   stateSkillsDir: string;
   skillDirs: string[];
@@ -211,7 +205,8 @@ export type AppConfig = {
   anthropicTimeoutMs: number;
   cron: CronConfig;
   maxToolIterations: number;
-  llmProvider: LlmProviderConfig;
+  models: ModelsConfig;
+  agents?: AgentDefaults;
 };
 
 export type CronConfig = {
@@ -230,43 +225,33 @@ type JsonConfig = Partial<{
     appToken: string;
     threadContextLimit?: number;
   };
-  anthropic: {
-    baseUrl: string;
-    authToken: string;
-    model: string;
+  agents: {
+    defaults: {
+      model?: string;
+      workspace?: string;
+      compactionMode?: "safeguard" | "moderate" | "aggressive";
+      subagents?: {
+        maxConcurrent?: number;
+      };
+    };
   };
-  llmProvider: {
-    provider: LlmProvider;
-    anthropic: {
-      api: string;
-      apiKey: string;
-      baseUrl: string;
-      model: string;
-    };
-    openai: {
-      api: string;
-      apiKey: string;
-      baseUrl: string;
-      model: string;
-    };
-    google: {
-      api: string;
-      apiKey: string;
-      baseUrl: string;
-      model: string;
-    };
-    alibaba: {
-      api: string;
-      apiKey: string;
-      baseUrl: string;
-      model: string;
-    };
-    anthropicCompatible: {
-      api: string;
-      apiKey: string;
-      baseUrl: string;
-      model: string;
-    };
+  models: {
+    providers: Record<string, {
+      models: Array<{
+        id: string;
+        name: string;
+        cost?: {
+          input?: number;
+          output?: number;
+          cacheRead?: number;
+          cacheWrite?: number;
+        };
+        [key: string]: any;
+      }>;
+      baseUrl?: string;
+      api?: string;
+      apiKey?: string;
+    }>;
   };
   skills: {
     directory?: string | string[];
@@ -417,8 +402,20 @@ const loadBaseConfig = (): AppConfig => {
   if (!jsonConfig.slack?.appToken) {
     throw new Error("Configuration error: slack.appToken is required in ironbot.json");
   }
-  if (!jsonConfig.llmProvider?.provider) {
-    throw new Error("Configuration error: llmProvider.provider is required in ironbot.json");
+  if (!jsonConfig.models?.providers || Object.keys(jsonConfig.models.providers).length === 0) {
+    throw new Error(
+      "Configuration error: models.providers is required in ironbot.json. " +
+      "Please configure at least one LLM provider with models. " +
+      "See config/ironbot.json.example for guidance."
+    );
+  }
+
+  // Validate models configuration
+  validateModelsConfig(jsonConfig.models as any);
+
+  // Validate agent configuration if provided
+  if (jsonConfig.agents?.defaults) {
+    validateAgentConfig(jsonConfig.agents.defaults);
   }
 
   // Resolve session paths
@@ -452,30 +449,11 @@ const loadBaseConfig = (): AppConfig => {
   const allSkillDirs = [
     ...new Set([...configuredSkillDirs, stateSkillsDir])
   ];
-  const baseSkillsDir = configuredSkillDirs[0]; // First configured directory for backwards compatibility
-
-  // Resolve LLM provider
-  const provider = parseLlmProvider(jsonConfig.llmProvider.provider);
-
-  // Helper function to get default model names for known providers
-  const getDefaultModel = (providerName: string): string => {
-    const defaults: Record<string, string> = {
-      anthropic: "claude-3-5-sonnet-20241022",
-      openai: "gpt-4o",
-      google: "gemini-2.0-flash",
-      alibaba: "qwen-max-latest",
-      "anthropic-compatible": "grok-code-fast-1",
-      "copilot-api": "grok-code-fast-1"
-    };
-    return defaults[providerName] || "gpt-4o"; // fallback to gpt-4o for unknown providers
-  };
+  const baseSkillsDir = configuredSkillDirs[0];
 
   return {
     slackBotToken: jsonConfig.slack.botToken,
     slackAppToken: jsonConfig.slack.appToken,
-    anthropicBaseUrl: jsonConfig.anthropic?.baseUrl,
-    anthropicAuthToken: jsonConfig.anthropic?.authToken,
-    anthropicModel: jsonConfig.anthropic?.model ?? "claude-3-5-sonnet-20241022",
     skillsDir: baseSkillsDir,
     stateSkillsDir,
     skillDirs: allSkillDirs,
@@ -556,23 +534,15 @@ const loadBaseConfig = (): AppConfig => {
       storePath: resolveCronStorePath(jsonConfig.cron?.storePath)
     },
     maxToolIterations: parseInteger(jsonConfig.claude_max_tool_iterations, 10),
-    llmProvider: {
-      provider,
-      // Dynamically load all configured providers (including custom ones)
-      ...Object.fromEntries(
-        Object.entries(jsonConfig.llmProvider || {})
-          .filter(([key]) => key !== "provider") // Skip the "provider" key itself
-          .map(([key, config]: [string, any]) => [
-            key,
-            {
-              api: config?.api ?? (key === "alibaba" ? "openai" : key === "anthropic-compatible" ? "anthropic" : key),
-              apiKey: config?.apiKey,
-              baseUrl: config?.baseUrl,
-              model: config?.model ?? getDefaultModel(key)
-            }
-          ])
-      )
-    }
+    models: {
+      providers: jsonConfig.models.providers
+    },
+    agents: jsonConfig.agents?.defaults ? {
+      model: jsonConfig.agents.defaults.model,
+      workspace: jsonConfig.agents.defaults.workspace,
+      compactionMode: jsonConfig.agents.defaults.compactionMode,
+      subagents: jsonConfig.agents.defaults.subagents
+    } : undefined
   };
 };
 

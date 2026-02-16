@@ -10,8 +10,11 @@ describe("Azure OpenAI Provider - User Prompt Response", () => {
 
   beforeEach(() => {
     config = resolveConfig();
-    // Ensure OpenAI provider is configured
-    expect(config.llmProvider.provider).toBe("openai");
+    // Ensure a provider with OpenAI-compatible API is configured
+    const openaiProviders = Object.entries(config.models.providers)
+      .filter(([_, p]: any) => p.api === "openai")
+      .map(([name]) => name);
+    expect(openaiProviders.length).toBeGreaterThan(0);
   });
 
   describe("Bot Response Flow", () => {
@@ -77,12 +80,20 @@ describe("Azure OpenAI Provider - User Prompt Response", () => {
     });
 
     it("should provide Azure OpenAI configuration details", async () => {
-      expect(config.llmProvider.openai).toBeDefined();
-      expect(config.llmProvider.openai?.baseUrl).toContain(
-        "jzhu-9618-resource.openai.azure.com"
+      // Check for OpenAI-compatible provider with Azure configuration
+      const openaiProviders = Object.entries(config.models.providers)
+        .filter(([_, p]: any) => p.api === "openai")
+        .map(([name, p]: any) => ({ name, config: p }));
+
+      const azureProvider = openaiProviders.find(p =>
+        p.config.baseUrl?.includes("azure")
       );
-      expect(config.llmProvider.openai?.model).toBe("gpt-5.1-codex-mini");
-      expect(config.llmProvider.openai?.apiKey).toBeDefined();
+
+      expect(azureProvider).toBeDefined();
+      if (azureProvider) {
+        expect(azureProvider.config.baseUrl).toContain("openai.azure.com");
+        expect(azureProvider.config.apiKey).toBeDefined();
+      }
     });
 
     it("should successfully check connection with Azure OpenAI", async () => {
@@ -116,28 +127,50 @@ describe("Azure OpenAI Provider - User Prompt Response", () => {
 
   describe("Integration with Configuration", () => {
     it("should use configured Azure endpoint", () => {
-      expect(config.llmProvider.openai?.baseUrl).toContain("openai.azure.com");
+      // Check for OpenAI-compatible provider with Azure configuration
+      const openaiProviders = Object.entries(config.models.providers)
+        .filter(([_, p]: any) => p.api === "openai")
+        .map(([name, p]: any) => ({ name, config: p }));
+
+      const azureProvider = openaiProviders.find(p =>
+        p.config.baseUrl?.includes("azure")
+      );
+
+      expect(azureProvider?.config.baseUrl).toContain("openai.azure.com");
     });
 
     it("should have valid API credentials", () => {
-      expect(config.llmProvider.openai?.apiKey).toBeTruthy();
-      expect(config.llmProvider.openai?.apiKey?.length).toBeGreaterThan(10);
+      const openaiProviders = Object.entries(config.models.providers)
+        .filter(([_, p]: any) => p.api === "openai")
+        .map(([name, p]: any) => ({ name, config: p }));
+
+      const azureProvider = openaiProviders.find(p =>
+        p.config.baseUrl?.includes("azure")
+      );
+
+      expect(azureProvider?.config.apiKey).toBeTruthy();
+      expect(azureProvider?.config.apiKey?.length).toBeGreaterThan(10);
     });
 
     it("should support model switching", async () => {
-      const originalModel = config.llmProvider.openai?.model;
+      // Get first model from any provider
+      const firstProvider = Object.values(config.models.providers)[0] as any;
+      const firstModel = firstProvider?.models?.[0]?.id;
 
-      // Simulate having another model available (Kimi-K2.5)
+      // Both models should be available
       const alternativeModel = "Kimi-K2.5";
-      expect(originalModel).toBe("gpt-5.1-codex-mini");
+      expect(firstModel).toBeDefined();
 
-      // Both models should be valid in Azure OpenAI setup
-      expect([originalModel, alternativeModel]).toContain(originalModel);
+      // Both models should be valid
+      expect([firstModel, alternativeModel]).toContain(firstModel);
     });
 
-    it("should confirm OpenAI provider is active", () => {
-      const activeProvider = config.llmProvider.provider;
-      expect(activeProvider).toBe("openai");
+    it("should confirm OpenAI-compatible provider is available", () => {
+      const openaiProviders = Object.entries(config.models.providers)
+        .filter(([_, p]: any) => p.api === "openai")
+        .map(([name]) => name);
+
+      expect(openaiProviders.length).toBeGreaterThan(0);
     });
   });
 

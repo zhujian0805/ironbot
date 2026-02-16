@@ -135,13 +135,31 @@ const createDefaultMockConfig = () => ({
     optOutSkills: []
   },
   maxToolIterations: 10,
-  llmProvider: {
-    provider: "anthropic",
-    anthropic: {
-      api: "anthropic",
-      apiKey: "test-token",
-      baseUrl: undefined,
-      model: "claude-3-sonnet-20240229"
+  models: {
+    providers: {
+      anthropic: {
+        api: "anthropic",
+        apiKey: "test-token",
+        baseUrl: undefined,
+        models: [
+          {
+            id: "sonnet",
+            name: "Claude 3.5 Sonnet",
+            cost: {
+              input: 3.0,
+              output: 15.0
+            }
+          }
+        ]
+      }
+    }
+  },
+  agents: {
+    model: "anthropic/sonnet",
+    workspace: "~/.ironbot/workspace",
+    compactionMode: "moderate" as const,
+    subagents: {
+      maxConcurrent: 4
     }
   }
 });
@@ -180,10 +198,22 @@ describe("ClaudeProcessor", () => {
 
   const setupConfig = (provider: string = "anthropic", providerConfig?: any) => {
     testConfig = createDefaultMockConfig();
-    testConfig.llmProvider.provider = provider;
-    if (providerConfig) {
-      (testConfig.llmProvider as any)[provider] = providerConfig;
-    }
+    // Update models configuration to use the provided provider
+    testConfig.models.providers = {
+      [provider]: {
+        api: providerConfig?.api || "anthropic",
+        apiKey: providerConfig?.apiKey || "test-token",
+        baseUrl: providerConfig?.baseUrl,
+        models: [
+          {
+            id: providerConfig?.model || "default",
+            name: providerConfig?.model || "Default Model"
+          }
+        ]
+      }
+    };
+    // Set the default model
+    testConfig.agents.model = `${provider}/${providerConfig?.model || "default"}`;
     return testConfig;
   };
 

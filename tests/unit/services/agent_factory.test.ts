@@ -5,22 +5,44 @@ import { ClaudeProcessor } from "../../../src/services/claude_processor.ts";
 import { PiAgentProcessor } from "../../../src/services/pi_agent_processor.ts";
 
 describe("Multi-Provider LLM Configuration", () => {
-  const createTestConfig = (provider: string, providers: Record<string, any>): AppConfig => {
+  const createTestConfig = (provider: string, providerSpec: Record<string, any>): AppConfig => {
     const baseConfig = resolveConfig();
+    // Extract provider config from the spec
+    const config = providerSpec[provider] || providerSpec;
+
     return {
       ...baseConfig,
-      llmProvider: {
-        provider,
-        ...providers
-      } as any
+      models: {
+        providers: {
+          [provider]: {
+            api: config.api || "openai",
+            apiKey: config.apiKey,
+            baseUrl: config.baseUrl,
+            models: [
+              {
+                id: config.model || "default",
+                name: config.model || "Default Model"
+              }
+            ]
+          }
+        }
+      },
+      agents: {
+        model: `${provider}/${config.model || "default"}`,
+        workspace: "~/.ironbot/workspace",
+        compactionMode: "moderate" as const,
+        subagents: {
+          maxConcurrent: 4
+        }
+      }
     };
   };
 
   it("should load configuration with multiple LLM providers", () => {
     const config = resolveConfig();
 
-    expect(config.llmProvider).toBeDefined();
-    expect(config.llmProvider.provider).toBeDefined();
+    expect(config.models).toBeDefined();
+    expect(config.models.providers).toBeDefined();
   });
 
   it("should use PiAgentProcessor for OpenAI provider", () => {
@@ -97,9 +119,7 @@ describe("Multi-Provider LLM Configuration", () => {
   it("should throw error when provider is not configured", () => {
     const config = createTestConfig("missing-provider", {});
 
-    expect(() => AgentFactory.create(config, config.skillDirs)).toThrow(
-      "Provider 'missing-provider' is not configured in llmProvider"
-    );
+    expect(() => AgentFactory.create(config, config.skillDirs)).toThrow();
   });
 
   it("should support switching between different providers with same API type", () => {

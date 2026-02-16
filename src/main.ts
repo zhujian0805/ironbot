@@ -14,6 +14,7 @@ import { RetryManager } from "./services/retry_manager.ts";
 import { SlackApiOptimizer } from "./services/slack_api_optimizer.ts";
 import { SlackConnectionSupervisor } from "./services/slack_connection_supervisor.ts";
 import { AgentFactory } from "./services/agent_factory.ts";
+import { WorkspaceManager } from "./services/workspace_manager.ts";
 import type { CronMessagePayload } from "./cron/types.ts";
 import { SocketModeClient } from "@slack/socket-mode";
 
@@ -241,6 +242,34 @@ const main = async (): Promise<void> => {
   };
   logger.debug({ envVars }, "Environment variables available to process");
   const config = resolveConfig(args);
+
+  // Initialize workspace directory if configured in agent defaults
+  if (config.agents?.workspace) {
+    try {
+      const workspacePath = WorkspaceManager.initializeWorkspace(config.agents.workspace);
+      logger.info({ workspace: workspacePath }, "[INIT] Agent workspace initialized");
+    } catch (error) {
+      logger.error({ error, workspace: config.agents.workspace }, "[INIT] Failed to initialize workspace");
+      process.exit(1);
+    }
+  }
+
+  // Log models configuration if provided
+  if (config.models) {
+    const providerCount = Object.keys(config.models.providers).length;
+    logger.info({ providerCount }, "[INIT] Multi-provider models configuration loaded");
+    logger.debug(
+      {
+        providers: Object.entries(config.models.providers).map(([name, cfg]) => ({
+          name,
+          modelCount: cfg.models.length,
+          apiType: cfg.api,
+          baseUrl: cfg.baseUrl ? "<configured>" : undefined
+        }))
+      },
+      "Models configuration details"
+    );
+  }
 
   setupLogging({ debug: config.debug, logLevel: config.logLevel, logFile: config.logFile });
   logger.debug({ cliArgs: args, configPath: config.permissionsFile, skillsDir: config.skillsDir }, "CLI arguments parsed and configuration resolved");

@@ -9,9 +9,23 @@ describe("PiAgentProcessor", () => {
 
   const setupConfig = (provider: string, providerConfig?: any) => {
     config = resolveConfig();
-    config.llmProvider.provider = provider;
-    if (providerConfig) {
-      (config.llmProvider as any)[provider] = providerConfig;
+    // Update models configuration to use the provided provider
+    config.models.providers = {
+      [provider]: {
+        api: providerConfig?.api || "openai",
+        apiKey: providerConfig?.apiKey,
+        baseUrl: providerConfig?.baseUrl,
+        models: [
+          {
+            id: providerConfig?.model || "default",
+            name: providerConfig?.model || "Default Model"
+          }
+        ]
+      }
+    };
+    // Set the default model
+    if (config.agents) {
+      config.agents.model = `${provider}/${providerConfig?.model || "default"}`;
     }
   };
 

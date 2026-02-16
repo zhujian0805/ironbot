@@ -1,7 +1,8 @@
 {
   "slack": {
     "botToken": "xoxb-YOUR-BOT-TOKEN-HERE",
-    "appToken": "xapp-1-YOUR-APP-TOKEN-HERE"
+    "appToken": "xapp-1-YOUR-APP-TOKEN-HERE",
+    "threadContextLimit": 15
   },
   "llmProvider": {
     "provider": "openai",
@@ -34,6 +35,104 @@
       "apiKey": "your-grok-compatible-api-key-here",
       "baseUrl": "https://your-grok-instance:5000",
       "model": "grok-code-fast-1"
+    }
+  },
+  "models": {
+    "providers": {
+      "anthropic": {
+        "models": [
+          {
+            "id": "opus",
+            "name": "Claude Opus",
+            "cost": {
+              "input": 15.0,
+              "output": 75.0
+            }
+          },
+          {
+            "id": "sonnet",
+            "name": "Claude Sonnet",
+            "cost": {
+              "input": 3.0,
+              "output": 15.0
+            }
+          },
+          {
+            "id": "haiku",
+            "name": "Claude Haiku",
+            "cost": {
+              "input": 0.8,
+              "output": 4.0
+            }
+          }
+        ],
+        "api": "anthropic"
+      },
+      "openai": {
+        "models": [
+          {
+            "id": "gpt-4o",
+            "name": "GPT-4 Optimized",
+            "cost": {
+              "input": 2.5,
+              "output": 10.0
+            }
+          },
+          {
+            "id": "gpt-4-turbo",
+            "name": "GPT-4 Turbo",
+            "cost": {
+              "input": 10.0,
+              "output": 30.0
+            }
+          }
+        ],
+        "api": "openai",
+        "baseUrl": "https://api.openai.com/v1"
+      },
+      "moonshot": {
+        "models": [
+          {
+            "id": "kimi-k2-0905-preview",
+            "name": "Kimi K2 (Preview)",
+            "cost": {
+              "input": 1.0,
+              "output": 5.0,
+              "cacheRead": 0.1,
+              "cacheWrite": 2.0
+            }
+          }
+        ],
+        "api": "openai",
+        "baseUrl": "https://api.moonshot.cn/v1",
+        "apiKey": "your-moonshot-api-key-here"
+      },
+      "google": {
+        "models": [
+          {
+            "id": "gemini-2.0-flash",
+            "name": "Gemini 2.0 Flash",
+            "cost": {
+              "input": 0.075,
+              "output": 0.3,
+              "cacheRead": 0.01875,
+              "cacheWrite": 0.075
+            }
+          }
+        ],
+        "api": "openai",
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "apiKey": "your-google-api-key-here"
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "~/.ironbot/workspace",
+      "compactionMode": "moderate",
+      "subagents": {
+        "maxConcurrent": 4
+      }
     }
   },
   "skills": {

@@ -41,8 +41,13 @@ describe("Configuration System - JSON Only", () => {
           appToken: "xapp-1-test"
           // Missing botToken
         },
-        llmProvider: {
-          provider: "anthropic"
+        models: {
+          providers: {
+            anthropic: {
+              api: "anthropic",
+              models: [{ id: "default", name: "Default" }]
+            }
+          }
         }
       };
 
@@ -62,8 +67,13 @@ describe("Configuration System - JSON Only", () => {
           botToken: "xoxb-test"
           // Missing appToken
         },
-        llmProvider: {
-          provider: "anthropic"
+        models: {
+          providers: {
+            anthropic: {
+              api: "anthropic",
+              models: [{ id: "default", name: "Default" }]
+            }
+          }
         }
       };
 
@@ -76,75 +86,79 @@ describe("Configuration System - JSON Only", () => {
       expect(() => validateConfig(config)).toThrow("slack.appToken is required");
     });
 
-    it("should require llmProvider.provider in config", () => {
+    it("should require models.providers in config", () => {
       const config = {
         slack: {
           botToken: "xoxb-test",
           appToken: "xapp-1-test"
         },
-        llmProvider: {}
-        // Missing provider
+        models: {}
+        // Missing providers
       };
 
       const validateConfig = (cfg: any) => {
-        if (!cfg.llmProvider?.provider) {
-          throw new Error("Configuration error: llmProvider.provider is required in ironbot.json");
+        if (!cfg.models?.providers) {
+          throw new Error("Configuration error: models.providers is required in ironbot.json");
         }
       };
 
-      expect(() => validateConfig(config)).toThrow("llmProvider.provider is required");
+      expect(() => validateConfig(config)).toThrow("models.providers is required");
     });
   });
 
-  describe("LLM Provider Parsing", () => {
-    it("should accept valid providers", () => {
-      const validProviders = [
-        "anthropic",
-        "openai",
-        "google",
-        "groq",
-        "mistral",
-        "cerebras",
-        "xai",
-        "bedrock"
-      ];
+  describe("Models Provider Configuration", () => {
+    it("should accept valid provider types", () => {
+      const validApiTypes = ["anthropic", "openai"];
 
       const testConfig = {
-        slack: { botToken: "xoxb-test", appToken: "xapp-1-test" },
-        llmProvider: { provider: "openai" }
+        models: {
+          providers: {
+            anthropic: { api: "anthropic", models: [] },
+            openai: { api: "openai", models: [] }
+          }
+        }
       };
 
-      expect(validProviders).toContain(testConfig.llmProvider.provider);
+      expect(validApiTypes).toContain("anthropic");
+      expect(validApiTypes).toContain("openai");
     });
 
-    it("should parse provider case-insensitively", () => {
-      const parseLlmProvider = (value: string | undefined): string => {
-        const normalized = value?.trim().toLowerCase();
-        const validProviders = ["anthropic", "openai", "google", "groq", "mistral", "cerebras", "xai", "bedrock"];
-        if (normalized && validProviders.includes(normalized)) {
-          return normalized;
+    it("should accept custom provider names", () => {
+      const config = {
+        models: {
+          providers: {
+            "copilot-api": {
+              api: "anthropic",
+              apiKey: "key",
+              baseUrl: "https://custom.com",
+              models: [{ id: "custom-model", name: "Custom Model" }]
+            }
+          }
         }
-        return "anthropic";
       };
 
-      expect(parseLlmProvider("ANTHROPIC")).toBe("anthropic");
-      expect(parseLlmProvider("OpenAI")).toBe("openai");
-      expect(parseLlmProvider("GoOgLe")).toBe("google");
+      expect(config.models.providers["copilot-api"]).toBeDefined();
+      expect(config.models.providers["copilot-api"].api).toBe("anthropic");
     });
 
-    it("should default to anthropic for invalid provider", () => {
-      const parseLlmProvider = (value: string | undefined): string => {
-        const normalized = value?.trim().toLowerCase();
-        const validProviders = ["anthropic", "openai", "google", "groq", "mistral", "cerebras", "xai", "bedrock"];
-        if (normalized && validProviders.includes(normalized)) {
-          return normalized;
+    it("should accept both anthropic and openai API types", () => {
+      const config = {
+        models: {
+          providers: {
+            anthropic: { api: "anthropic", models: [] },
+            openai: { api: "openai", models: [] },
+            "custom-anthropic": { api: "anthropic", models: [] },
+            "custom-openai": { api: "openai", models: [] }
+          }
         }
-        return "anthropic";
       };
 
-      expect(parseLlmProvider("invalid-provider")).toBe("anthropic");
-      expect(parseLlmProvider("")).toBe("anthropic");
-      expect(parseLlmProvider(undefined)).toBe("anthropic");
+      const anthropicProviders = Object.entries(config.models.providers)
+        .filter(([_, p]: any) => p.api === "anthropic")
+        .map(([name]) => name);
+
+      expect(anthropicProviders).toContain("anthropic");
+      expect(anthropicProviders).toContain("custom-anthropic");
     });
   });
 
@@ -223,8 +237,13 @@ describe("Configuration System - JSON Only", () => {
           botToken: "xoxb-test",
           appToken: "xapp-1-test"
         },
-        llmProvider: {
-          provider: "anthropic"
+        models: {
+          providers: {
+            anthropic: {
+              api: "anthropic",
+              models: [{ id: "default", name: "Default" }]
+            }
+          }
         }
         // No logging, memory, retry, etc.
       };
@@ -233,7 +252,7 @@ describe("Configuration System - JSON Only", () => {
       const defaults = {
         debug: false,
         logLevel: "INFO",
-        maxToolIterations: 10,
+        maxToolIterations: 100,
         memorySearchEnabled: true,
         memoryVectorWeight: 0.7
       };
@@ -248,7 +267,7 @@ describe("Configuration System - JSON Only", () => {
 
       expect(applied.debug).toBe(false);
       expect(applied.logLevel).toBe("INFO");
-      expect(applied.maxToolIterations).toBe(10);
+      expect(applied.maxToolIterations).toBe(100);
       expect(applied.memorySearchEnabled).toBe(true);
       expect(applied.memoryVectorWeight).toBe(0.7);
     });
@@ -259,8 +278,13 @@ describe("Configuration System - JSON Only", () => {
           botToken: "xoxb-test",
           appToken: "xapp-1-test"
         },
-        llmProvider: {
-          provider: "anthropic"
+        models: {
+          providers: {
+            anthropic: {
+              api: "anthropic",
+              models: [{ id: "default", name: "Default" }]
+            }
+          }
         },
         logging: {
           debug: true,
@@ -272,7 +296,7 @@ describe("Configuration System - JSON Only", () => {
       const applied = {
         debug: config.logging?.debug ?? false,
         logLevel: config.logging?.level ?? "INFO",
-        maxToolIterations: config.claude_max_tool_iterations ?? 10
+        maxToolIterations: config.claude_max_tool_iterations ?? 100
       };
 
       expect(applied.debug).toBe(true);
@@ -450,69 +474,79 @@ describe("Configuration System - JSON Only", () => {
     });
   });
 
-  describe("Custom Provider Configuration", () => {
-    it("should accept custom provider names", () => {
+  describe("Models Configuration with Multiple Providers", () => {
+    it("should accept multiple providers in same configuration", () => {
       const config = {
-        llmProvider: {
-          provider: "copilot-api",
-          "copilot-api": {
-            api: "anthropic",
-            apiKey: "key",
-            baseUrl: "https://custom.com",
-            model: "custom-model"
+        models: {
+          providers: {
+            anthropic: {
+              api: "anthropic",
+              apiKey: "key1",
+              models: [
+                { id: "opus", name: "Claude Opus" },
+                { id: "sonnet", name: "Claude Sonnet" }
+              ]
+            },
+            alibaba: {
+              api: "openai",
+              apiKey: "key2",
+              baseUrl: "https://alibaba.com",
+              models: [{ id: "qwen", name: "Qwen Max" }]
+            }
           }
         }
       };
 
-      expect(config.llmProvider.provider).toBe("copilot-api");
-      expect((config.llmProvider as any)["copilot-api"]).toBeDefined();
+      expect(Object.keys(config.models.providers)).toHaveLength(2);
+      expect(config.models.providers.anthropic).toBeDefined();
+      expect(config.models.providers.alibaba).toBeDefined();
     });
 
-    it("should accept multiple custom providers", () => {
+    it("should support provider with multiple models", () => {
       const config = {
-        llmProvider: {
-          provider: "copilot-api",
-          "copilot-api": {
-            api: "anthropic",
-            apiKey: "key1",
-            baseUrl: "https://custom1.com",
-            model: "model1"
-          },
-          "my-openai": {
-            api: "openai",
-            apiKey: "key2",
-            baseUrl: "https://custom2.com",
-            model: "model2"
+        models: {
+          providers: {
+            anthropic: {
+              api: "anthropic",
+              models: [
+                { id: "opus", name: "Claude Opus" },
+                { id: "sonnet", name: "Claude Sonnet" },
+                { id: "haiku", name: "Claude Haiku" }
+              ]
+            }
           }
         }
       };
 
-      expect((config.llmProvider as any)["copilot-api"]).toBeDefined();
-      expect((config.llmProvider as any)["my-openai"]).toBeDefined();
+      expect(config.models.providers.anthropic.models).toHaveLength(3);
+      expect(config.models.providers.anthropic.models.map((m: any) => m.id)).toEqual([
+        "opus",
+        "sonnet",
+        "haiku"
+      ]);
     });
 
-    it("should support provider switching between custom providers", () => {
-      const baseConfig = {
-        llmProvider: {
-          provider: "copilot-api",
-          "copilot-api": {
-            api: "anthropic",
-            apiKey: "key",
-            baseUrl: "https://custom1.com",
-            model: "model1"
+    it("should allow setting default model via agents.defaults.model", () => {
+      const config = {
+        models: {
+          providers: {
+            anthropic: {
+              api: "anthropic",
+              models: [
+                { id: "opus", name: "Claude Opus" },
+                { id: "sonnet", name: "Claude Sonnet" }
+              ]
+            }
+          }
+        },
+        agents: {
+          defaults: {
+            model: "anthropic/opus"
           }
         }
       };
 
-      baseConfig.llmProvider.provider = "my-provider";
-      (baseConfig.llmProvider as any)["my-provider"] = {
-        api: "openai",
-        apiKey: "key",
-        baseUrl: "https://custom2.com",
-        model: "model2"
-      };
-
-      expect(baseConfig.llmProvider.provider).toBe("my-provider");
+      expect(config.agents.defaults.model).toBe("anthropic/opus");
     });
   });
 
@@ -553,21 +587,22 @@ describe("Configuration System - JSON Only", () => {
 
     it("should allow mixing providers with same API type", () => {
       const config = {
-        llmProvider: {
-          provider: "alibaba",
-          "openai": { api: "openai" },
-          "alibaba": { api: "openai" },
-          "custom": { api: "openai" }
+        models: {
+          providers: {
+            openai: { api: "openai", models: [] },
+            alibaba: { api: "openai", models: [] },
+            custom: { api: "openai", models: [] }
+          }
         }
       };
 
-      const isOpenAiCompatible = (config: any, provider: string) => {
-        return (config.llmProvider as any)[provider]?.api === "openai";
+      const isOpenAiCompatible = (providers: Record<string, any>, provider: string) => {
+        return providers[provider]?.api === "openai";
       };
 
-      expect(isOpenAiCompatible(config, "openai")).toBe(true);
-      expect(isOpenAiCompatible(config, "alibaba")).toBe(true);
-      expect(isOpenAiCompatible(config, "custom")).toBe(true);
+      expect(isOpenAiCompatible(config.models.providers, "openai")).toBe(true);
+      expect(isOpenAiCompatible(config.models.providers, "alibaba")).toBe(true);
+      expect(isOpenAiCompatible(config.models.providers, "custom")).toBe(true);
     });
   });
 });
