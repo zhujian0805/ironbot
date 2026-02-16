@@ -33,14 +33,14 @@
 - [x] 5.1 Add support for tilde (~) expansion in workspace paths
 - [x] 5.2 Add workspace directory auto-creation during agent initialization
 - [x] 5.3 Validate workspace path is writable before agent starts
-- [ ] 5.4 Integrate workspace path configuration with agent state management
+- [x] 5.4 Integrate workspace path configuration with agent state management
 
 ## 6. Agent Configuration Integration
 
 - [x] 6.1 Update agent initialization to read `compactionMode` from configuration
-- [ ] 6.2 Pass `compactionMode` to agent state compaction logic (safeguard/moderate/aggressive)
+- [x] 6.2 Pass `compactionMode` to agent state compaction logic (safeguard/moderate/aggressive)
 - [x] 6.3 Update agent initialization to read `workspace` from configuration
-- [ ] 6.4 Update subagent pool to respect separate `maxConcurrent` limit for subagents
+- [x] 6.4 Update subagent pool to respect separate `maxConcurrent` limit for subagents
 - [x] 6.5 Ensure agent defaults are applied before provider-specific overrides
 
 ## 7. Provider API Type Support

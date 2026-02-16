@@ -85,6 +85,7 @@ export class PiAgentProcessor {
   private baseUrl?: string;
   private compactionMode?: "safeguard" | "moderate" | "aggressive";
   private workspace?: string;
+  private subagentMaxConcurrent?: number;
 
   constructor(skillDirs: string[], config: AppConfig, memoryManager?: MemoryManager, modelResolver?: ModelResolver) {
     this.config = config;
@@ -106,6 +107,7 @@ export class PiAgentProcessor {
     // Read agent configuration defaults
     this.compactionMode = config.agents?.defaults?.compactionMode;
     this.workspace = config.agents?.defaults?.workspace;
+    this.subagentMaxConcurrent = config.agents?.defaults?.subagents?.maxConcurrent;
 
     logger.info(
       {
@@ -163,6 +165,35 @@ export class PiAgentProcessor {
       { provider: this.provider, model: modelId, api: this.api },
       "[PI-AGENT] Provider settings initialized"
     );
+  }
+
+  /**
+   * Get workspace configuration for agent state management
+   */
+  getWorkspaceConfig(): { workspace?: string; compactionMode?: "safeguard" | "moderate" | "aggressive" } {
+    return {
+      workspace: this.workspace,
+      compactionMode: this.compactionMode
+    };
+  }
+
+  /**
+   * Get compaction mode for agent state management
+   * Used to control state compression/compaction strategies:
+   * - safeguard: Minimal compaction, preserve full history
+   * - moderate: Balance between size and history (default)
+   * - aggressive: Maximum compaction, minimal history retention
+   */
+  getCompactionMode(): "safeguard" | "moderate" | "aggressive" {
+    return this.compactionMode ?? "moderate";
+  }
+
+  /**
+   * Get subagent concurrency limit for pool management
+   * Controls how many subagents can execute simultaneously
+   */
+  getSubagentConcurrencyLimit(): number {
+    return this.subagentMaxConcurrent ?? 1; // Default: sequential subagent execution
   }
 
   private async ensureSkillsLoaded(): Promise<void> {

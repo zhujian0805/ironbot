@@ -145,6 +145,7 @@ export class ClaudeProcessor {
   private modelResolver: ModelResolver;
   private compactionMode?: "safeguard" | "moderate" | "aggressive";
   private workspace?: string;
+  private subagentMaxConcurrent?: number;
 
   constructor(skillDirs: string[], appConfig: AppConfig, memoryManager?: MemoryManager, modelResolver?: ModelResolver) {
     const config = appConfig || resolveConfig();
@@ -211,8 +212,38 @@ export class ClaudeProcessor {
     // Read agent configuration defaults
     this.compactionMode = config.agents?.defaults?.compactionMode;
     this.workspace = config.agents?.defaults?.workspace;
+    this.subagentMaxConcurrent = config.agents?.defaults?.subagents?.maxConcurrent;
 
     logger.info({ model: this.model, skillDirs, hasMemoryManager: !!memoryManager, compactionMode: this.compactionMode, workspace: this.workspace }, "[INIT] ClaudeProcessor initialized");
+  }
+
+  /**
+   * Get workspace configuration for agent state management
+   */
+  getWorkspaceConfig(): { workspace?: string; compactionMode?: "safeguard" | "moderate" | "aggressive" } {
+    return {
+      workspace: this.workspace,
+      compactionMode: this.compactionMode
+    };
+  }
+
+  /**
+   * Get compaction mode for agent state management
+   * Used to control state compression/compaction strategies:
+   * - safeguard: Minimal compaction, preserve full history
+   * - moderate: Balance between size and history (default)
+   * - aggressive: Maximum compaction, minimal history retention
+   */
+  getCompactionMode(): "safeguard" | "moderate" | "aggressive" {
+    return this.compactionMode ?? "moderate";
+  }
+
+  /**
+   * Get subagent concurrency limit for pool management
+   * Controls how many subagents can execute simultaneously
+   */
+  getSubagentConcurrencyLimit(): number {
+    return this.subagentMaxConcurrent ?? 1; // Default: sequential subagent execution
   }
 
   private async checkAutoRouteSkills(userMessage: string, context?: SkillContext): Promise<string | null> {
