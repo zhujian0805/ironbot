@@ -1,5 +1,5 @@
 import { logger } from "../utils/logging.ts";
-import type { AppConfig } from "../config.ts";
+import type { AppConfig, ModelSelection } from "../config.ts";
 import { ModelResolver } from "./model_resolver.ts";
 import type { MemoryManager } from "../memory/manager.ts";
 import type { SkillContext } from "./skill_context.ts";
@@ -86,6 +86,7 @@ export class PiAgentProcessor {
   private compactionMode?: "safeguard" | "moderate" | "aggressive";
   private workspace?: string;
   private subagentMaxConcurrent?: number;
+  private modelFallbacks?: string[];
 
   constructor(skillDirs: string[], config: AppConfig, memoryManager?: MemoryManager, modelResolver?: ModelResolver) {
     this.config = config;
@@ -128,7 +129,14 @@ export class PiAgentProcessor {
     let modelRef: string;
 
     if (this.config.agents?.model) {
-      modelRef = this.config.agents.model;
+      // Handle both string and structured ModelSelection formats
+      if (typeof this.config.agents.model === "string") {
+        modelRef = this.config.agents.model;
+      } else {
+        // Structured format: extract primary, store fallbacks
+        modelRef = this.config.agents.model.primary;
+        this.modelFallbacks = this.config.agents.model.fallbacks;
+      }
     } else {
       const providers = this.modelResolver.getProviders();
       if (providers.length === 0) {
@@ -194,6 +202,14 @@ export class PiAgentProcessor {
    */
   getSubagentConcurrencyLimit(): number {
     return this.subagentMaxConcurrent ?? 1; // Default: sequential subagent execution
+  }
+
+  /**
+   * Get model fallback chain for intelligent model selection
+   * Returns ordered array of fallback models to try if primary is unavailable
+   */
+  getModelFallbacks(): string[] {
+    return this.modelFallbacks ?? [];
   }
 
   private async ensureSkillsLoaded(): Promise<void> {

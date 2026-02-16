@@ -3,26 +3,40 @@ import { ClaudeProcessor } from "./claude_processor.ts";
 import { PiAgentProcessor } from "./pi_agent_processor.ts";
 import { ModelResolver } from "./model_resolver.ts";
 import type { MemoryManager } from "../memory/manager.ts";
-import type { AppConfig } from "../config.ts";
+import type { AppConfig, ModelSelection } from "../config.ts";
 
 export type AgentProcessor = ClaudeProcessor | PiAgentProcessor;
 
 export class AgentFactory {
   static create(config: AppConfig, skillDirs: string[], memoryManager?: MemoryManager): AgentProcessor {
-    // Initialize ModelResolver
-    const modelResolver = new ModelResolver(config.models);
+    // Initialize ModelResolver with model aliases
+    const modelResolver = new ModelResolver(config.models, config.agents?.models);
+
+    // Helper to extract provider from model reference
+    const extractProvider = (model: string | ModelSelection | undefined): string | null => {
+      if (!model) return null;
+
+      if (typeof model === "string") {
+        const parts = model.split('/');
+        return parts.length >= 2 ? parts[0] : null;
+      }
+
+      // For structured format, extract provider from primary
+      const parts = model.primary.split('/');
+      return parts.length >= 2 ? parts[0] : null;
+    };
 
     // Determine which provider to use based on the default model
     let providerId: string;
 
     if (config.agents?.model) {
-      // Extract provider from "provider/model-id" format
-      const parts = config.agents.model.split('/');
-      if (parts.length >= 2) {
-        providerId = parts[0];
-      } else {
-        throw new Error(`Invalid model reference format: "${config.agents.model}". Expected "provider/model-id"`);
+      const provider = extractProvider(config.agents.model);
+      if (!provider) {
+        throw new Error(
+          `Invalid model reference format. Expected "provider/model-id" or { primary: "provider/model-id" }`
+        );
       }
+      providerId = provider;
     } else {
       // Fall back to first provider if no default model is specified
       providerId = Object.keys(config.models.providers)[0];
@@ -42,8 +56,22 @@ export class AgentFactory {
     // Use provider's API type, or default to anthropic
     const apiType = providerConfig.api ?? "anthropic";
 
+    // Log the model selection (handle both formats)
+    let defaultModelLog: string;
+    if (config.agents?.model) {
+      if (typeof config.agents.model === "string") {
+        defaultModelLog = config.agents.model;
+      } else {
+        defaultModelLog = `${config.agents.model.primary}${
+          config.agents.model.fallbacks ? ` (fallbacks: ${config.agents.model.fallbacks.join(", ")})` : ""
+        }`;
+      }
+    } else {
+      defaultModelLog = "not specified";
+    }
+
     logger.info(
-      { provider: providerId, apiType, modelCount: providerConfig.models.length, defaultModel: config.agents?.model },
+      { provider: providerId, apiType, modelCount: providerConfig.models.length, defaultModel: defaultModelLog },
       "[AGENT-FACTORY] Creating agent processor"
     );
 

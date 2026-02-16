@@ -1,4 +1,4 @@
-import { ModelsConfig, ModelDefinition, CostModel } from "../config.ts";
+import { ModelsConfig, ModelDefinition, CostModel, ModelSelection } from "../config.ts";
 
 export class ModelResolverError extends Error {
   constructor(message: string) {
@@ -18,14 +18,51 @@ export interface ResolvedModel {
 
 /**
  * ModelResolver handles model lookup by provider/model-id format
- * Supports caching and fallback chains across providers
+ * Supports caching, fallback chains across providers, and model aliases
  */
 export class ModelResolver {
   private modelsConfig: ModelsConfig;
   private cache: Map<string, ResolvedModel> = new Map();
+  private aliases: Map<string, string> = new Map(); // modelRef → alias
 
-  constructor(modelsConfig: ModelsConfig) {
+  constructor(modelsConfig: ModelsConfig, modelAliases?: Record<string, { alias?: string }>) {
     this.modelsConfig = modelsConfig;
+
+    // Store aliases from agent config
+    if (modelAliases) {
+      for (const [modelRef, metadata] of Object.entries(modelAliases)) {
+        if (metadata.alias) {
+          this.aliases.set(modelRef, metadata.alias);
+        }
+      }
+    }
+  }
+
+  /**
+   * Resolve a model from structured ModelSelection format (with primary and optional fallbacks)
+   * Tries primary first, then fallbacks in order
+   */
+  resolveModelSelection(selection: ModelSelection, unavailableProviders: Set<string> = new Set()): ResolvedModel {
+    const models = [selection.primary, ...(selection.fallbacks || [])];
+    const modelChain = models.join("|");
+    return this.resolveModelWithFallback(modelChain, unavailableProviders);
+  }
+
+  /**
+   * Resolve a model by reference - handles both string and ModelSelection formats
+   * For string: direct lookup
+   * For ModelSelection: primary with fallbacks support
+   */
+  resolveModelReference(model: string | ModelSelection | undefined, unavailableProviders: Set<string> = new Set()): ResolvedModel {
+    if (!model) {
+      throw new ModelResolverError("No model specified");
+    }
+
+    if (typeof model === "string") {
+      return this.resolveModel(model);
+    }
+
+    return this.resolveModelSelection(model, unavailableProviders);
   }
 
   /**
@@ -149,6 +186,44 @@ export class ModelResolver {
     throw new ModelResolverError(
       `No available models in fallback chain: "${modelRefChain}". Last error: ${lastError?.message || "unknown"}`
     );
+  }
+
+  /**
+   * Get the alias for a model reference
+   * Returns undefined if no alias is defined
+   */
+  getModelAlias(modelRef: string): string | undefined {
+    return this.aliases.get(modelRef);
+  }
+
+  /**
+   * Get model reference with its optional alias
+   */
+  getModelWithAlias(modelRef: string): { ref: string; alias?: string } {
+    return {
+      ref: modelRef,
+      alias: this.aliases.get(modelRef)
+    };
+  }
+
+  /**
+   * List all models with their aliases
+   */
+  listModelsWithAliases(): Array<{ ref: string; alias?: string }> {
+    const result: Array<{ ref: string; alias?: string }> = [];
+
+    // Get all models from all providers
+    for (const [providerId, providerConfig] of Object.entries(this.modelsConfig.providers)) {
+      for (const model of providerConfig.models) {
+        const ref = `${providerId}/${model.id}`;
+        result.push({
+          ref,
+          alias: this.aliases.get(ref)
+        });
+      }
+    }
+
+    return result;
   }
 
   /**

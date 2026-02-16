@@ -95,6 +95,20 @@
   },
   "agents": {
     "defaults": {
+      "model": {
+        "primary": "anthropic/opus",
+        "fallbacks": [
+          "anthropic/sonnet",
+          "moonshot/kimi-k2-0905-preview"
+        ]
+      },
+      "models": {
+        "anthropic/opus": { "alias": "claude-opus" },
+        "anthropic/sonnet": { "alias": "claude-sonnet" },
+        "anthropic/haiku": { "alias": "claude-haiku" },
+        "moonshot/kimi-k2-0905-preview": { "alias": "kimi" },
+        "openai/gpt-4o": { "alias": "gpt-4o" }
+      },
       "workspace": "~/.ironbot/workspace",
       "compactionMode": "moderate",
       "subagents": {

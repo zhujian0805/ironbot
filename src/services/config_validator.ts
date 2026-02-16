@@ -92,9 +92,113 @@ export function validateModelsConfig(modelsConfig: ModelsConfig): void {
   }
 }
 
-export function validateAgentConfig(agentConfig: any): void {
+export function validateAgentConfig(agentConfig: any, modelsConfig?: ModelsConfig): void {
   if (!agentConfig) {
     return; // Agent configuration is optional
+  }
+
+  // Get all available model refs for validation
+  const availableModels = new Set<string>();
+  if (modelsConfig) {
+    for (const [providerId, providerConfig] of Object.entries(modelsConfig.providers)) {
+      for (const model of providerConfig.models) {
+        availableModels.add(`${providerId}/${model.id}`);
+      }
+    }
+  }
+
+  // Validate model selection (string or primary/fallbacks structure)
+  if (agentConfig.model) {
+    if (typeof agentConfig.model === "string") {
+      // String format: validate if we have models config
+      if (modelsConfig && !availableModels.has(agentConfig.model)) {
+        throw new ConfigValidationError(
+          `Model not found: "${agentConfig.model}". Available models: ${Array.from(availableModels).join(", ")}`
+        );
+      }
+    } else if (typeof agentConfig.model === "object") {
+      // Structured format: validate primary and fallbacks
+      if (!agentConfig.model.primary) {
+        throw new ConfigValidationError(
+          "Model selection must have a 'primary' field"
+        );
+      }
+
+      if (typeof agentConfig.model.primary !== "string") {
+        throw new ConfigValidationError(
+          `Model primary must be a string, got ${typeof agentConfig.model.primary}`
+        );
+      }
+
+      // Validate primary model exists
+      if (modelsConfig && !availableModels.has(agentConfig.model.primary)) {
+        throw new ConfigValidationError(
+          `Primary model not found: "${agentConfig.model.primary}". Available models: ${Array.from(availableModels).join(", ")}`
+        );
+      }
+
+      // Validate fallbacks if provided
+      if (agentConfig.model.fallbacks) {
+        if (!Array.isArray(agentConfig.model.fallbacks)) {
+          throw new ConfigValidationError(
+            "Model fallbacks must be an array"
+          );
+        }
+
+        for (const fallback of agentConfig.model.fallbacks) {
+          if (typeof fallback !== "string") {
+            throw new ConfigValidationError(
+              `Fallback model must be a string, got ${typeof fallback}`
+            );
+          }
+
+          // Validate fallback model exists
+          if (modelsConfig && !availableModels.has(fallback)) {
+            throw new ConfigValidationError(
+              `Fallback model not found: "${fallback}". Available models: ${Array.from(availableModels).join(", ")}`
+            );
+          }
+
+          // Optional: warn if fallback is same as primary
+          if (fallback === agentConfig.model.primary) {
+            console.warn(`Warning: fallback model "${fallback}" is the same as primary model`);
+          }
+        }
+      }
+    }
+  }
+
+  // Validate models (aliases) map if provided
+  if (agentConfig.models) {
+    if (typeof agentConfig.models !== "object" || Array.isArray(agentConfig.models)) {
+      throw new ConfigValidationError(
+        "Agent models must be an object (Record<string, { alias?: string }>)"
+      );
+    }
+
+    for (const [modelRef, metadata] of Object.entries(agentConfig.models)) {
+      // Validate model reference format
+      if (!modelRef.includes("/")) {
+        throw new ConfigValidationError(
+          `Invalid model reference: "${modelRef}". Expected format: "provider/model-id"`
+        );
+      }
+
+      // Validate metadata is an object
+      if (typeof metadata !== "object" || Array.isArray(metadata)) {
+        throw new ConfigValidationError(
+          `Model metadata for "${modelRef}" must be an object`
+        );
+      }
+
+      // Validate alias if provided
+      const modelMetadata = metadata as any;
+      if (modelMetadata.alias !== undefined && typeof modelMetadata.alias !== "string") {
+        throw new ConfigValidationError(
+          `Alias for "${modelRef}" must be a string, got ${typeof modelMetadata.alias}`
+        );
+      }
+    }
   }
 
   // Validate compactionMode if provided

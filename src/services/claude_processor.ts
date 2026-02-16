@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { MessageParam, Tool } from "@anthropic-ai/sdk/resources/messages";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { resolveConfig, type AutoRoutingConfig, type AppConfig } from "../config.ts";
+import { resolveConfig, type AutoRoutingConfig, type AppConfig, type ModelSelection } from "../config.ts";
 import { logger } from "../utils/logging.ts";
 import { SkillLoader, type SkillHandler, type SkillInfo } from "./skill_loader.ts";
 import { ToolExecutor, getAllowedTools, type ToolResult } from "./tools.ts";
@@ -146,6 +146,7 @@ export class ClaudeProcessor {
   private compactionMode?: "safeguard" | "moderate" | "aggressive";
   private workspace?: string;
   private subagentMaxConcurrent?: number;
+  private modelFallbacks?: string[];
 
   constructor(skillDirs: string[], appConfig: AppConfig, memoryManager?: MemoryManager, modelResolver?: ModelResolver) {
     const config = appConfig || resolveConfig();
@@ -160,7 +161,14 @@ export class ClaudeProcessor {
     let modelRef: string;
 
     if (config.agents?.model) {
-      modelRef = config.agents.model;
+      // Handle both string and structured ModelSelection formats
+      if (typeof config.agents.model === "string") {
+        modelRef = config.agents.model;
+      } else {
+        // Structured format: extract primary, store fallbacks
+        modelRef = config.agents.model.primary;
+        this.modelFallbacks = config.agents.model.fallbacks;
+      }
     } else {
       const providers = this.modelResolver.getProviders();
       if (providers.length === 0) {
@@ -244,6 +252,14 @@ export class ClaudeProcessor {
    */
   getSubagentConcurrencyLimit(): number {
     return this.subagentMaxConcurrent ?? 1; // Default: sequential subagent execution
+  }
+
+  /**
+   * Get model fallback chain for intelligent model selection
+   * Returns ordered array of fallback models to try if primary is unavailable
+   */
+  getModelFallbacks(): string[] {
+    return this.modelFallbacks ?? [];
   }
 
   private async checkAutoRouteSkills(userMessage: string, context?: SkillContext): Promise<string | null> {

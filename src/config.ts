@@ -20,6 +20,28 @@ const parseBoolean = (value: string | boolean | undefined, fallback = false): bo
   return normalized === "true" || normalized === "1";
 };
 
+/**
+ * Convert string model reference to structured ModelSelection format
+ * Supports backward compatibility: string → { primary: string }
+ */
+const normalizeModelSelection = (model: string | { primary: string; fallbacks?: string[] } | undefined): ModelSelection | undefined => {
+  if (!model) return undefined;
+
+  // Already in structured format
+  if (typeof model === "object") {
+    if (!model.primary) {
+      throw new Error("Model selection must have a 'primary' field");
+    }
+    return {
+      primary: model.primary,
+      fallbacks: model.fallbacks && model.fallbacks.length > 0 ? model.fallbacks : undefined
+    };
+  }
+
+  // Convert string to structured format
+  return { primary: model.trim() };
+};
+
 const parseNumber = (value: string | number | undefined, fallback: number): number => {
   if (value === undefined || value === null) return fallback;
   if (typeof value === "number") return value;
@@ -142,8 +164,14 @@ export type ModelsConfig = {
   providers: Record<string, ProviderConfig>;
 };
 
+export type ModelSelection = {
+  primary: string; // Primary model in "provider/model-id" format
+  fallbacks?: string[]; // Optional ordered fallback models
+};
+
 export type AgentDefaults = {
-  model?: string; // Default model in "provider/model-id" format
+  model?: string | ModelSelection; // Can be string (backward compat) or structured selection
+  models?: Record<string, { alias?: string }>; // Per-model aliases map
   workspace?: string;
   compactionMode?: "safeguard" | "moderate" | "aggressive";
   subagents?: {
@@ -227,7 +255,11 @@ type JsonConfig = Partial<{
   };
   agents: {
     defaults: {
-      model?: string;
+      model?: string | {
+        primary: string;
+        fallbacks?: string[];
+      };
+      models?: Record<string, { alias?: string }>;
       workspace?: string;
       compactionMode?: "safeguard" | "moderate" | "aggressive";
       subagents?: {
@@ -415,7 +447,7 @@ const loadBaseConfig = (): AppConfig => {
 
   // Validate agent configuration if provided
   if (jsonConfig.agents?.defaults) {
-    validateAgentConfig(jsonConfig.agents.defaults);
+    validateAgentConfig(jsonConfig.agents.defaults, jsonConfig.models as any);
   }
 
   // Resolve session paths
@@ -538,7 +570,8 @@ const loadBaseConfig = (): AppConfig => {
       providers: jsonConfig.models.providers
     },
     agents: jsonConfig.agents?.defaults ? {
-      model: jsonConfig.agents.defaults.model,
+      model: normalizeModelSelection(jsonConfig.agents.defaults.model),
+      models: jsonConfig.agents.defaults.models,
       workspace: jsonConfig.agents.defaults.workspace,
       compactionMode: jsonConfig.agents.defaults.compactionMode,
       subagents: jsonConfig.agents.defaults.subagents
