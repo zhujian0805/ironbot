@@ -81,6 +81,7 @@ export class PiAgentProcessor {
   private provider: string = "";
   private api: string = "";
   private model: string = "";
+  private modelId: string = "";
   private apiKey?: string;
   private baseUrl?: string;
   private compactionMode?: "safeguard" | "moderate" | "aggressive";
@@ -154,11 +155,11 @@ export class PiAgentProcessor {
     }
 
     const resolvedModel = this.modelResolver.resolveModel(modelRef);
-    const [provider, modelId] = modelRef.split("/");
 
-    this.provider = provider;
+    this.provider = resolvedModel.providerId;
     this.api = resolvedModel.apiType ?? "openai";
     this.model = modelRef;
+    this.modelId = resolvedModel.model.id;
     this.apiKey = resolvedModel.apiKey;
     this.baseUrl = resolvedModel.baseUrl;
 
@@ -170,7 +171,7 @@ export class PiAgentProcessor {
     }
 
     logger.debug(
-      { provider: this.provider, model: modelId, api: this.api },
+      { provider: this.provider, model: resolvedModel.modelId, api: this.api },
       "[PI-AGENT] Provider settings initialized"
     );
   }
@@ -424,15 +425,10 @@ Note: OpenAI-compatible tool calling requires proper configuration.`;
       iteration++;
       logger.debug({ iteration, messageCount: messages.length }, "[PI-AGENT] Tool calling iteration");
 
-      // Call OpenAI API with tools
-      // Extract model ID from provider/model-id format
-      let modelId = this.model!;
-      if (modelId.includes('/')) {
-        const parts = modelId.split('/');
-        modelId = parts[parts.length - 1]; // Take the last part after the /
-      }
+      // Use the model ID from resolved configuration
+      const modelId = this.modelId;
 
-      logger.debug({ originalModel: this.model, extractedModelId: modelId }, "[PI-AGENT] Model ID extraction");
+      logger.debug({ originalModel: this.model, modelId }, "[PI-AGENT] Using configured model");
 
       const completion = await client.chat.completions.create({
         model: modelId,

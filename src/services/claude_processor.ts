@@ -186,17 +186,16 @@ export class ClaudeProcessor {
     }
 
     const resolvedModel = this.modelResolver.resolveModel(modelRef);
-    const [firstProvider, firstModelId] = modelRef.split("/");
 
     logger.info(
-      { provider: firstProvider, model: firstModelId, modelRef },
+      { provider: resolvedModel.providerId, model: resolvedModel.modelId, modelRef },
       "[CLAUDE-PROCESSOR] Initializing with resolved model"
     );
 
     const anthropicConfig = {
       apiKey: resolvedModel.apiKey,
       baseUrl: resolvedModel.baseUrl,
-      model: resolvedModel.model.name
+      model: resolvedModel.model.id
     };
 
     this.client = new Anthropic({

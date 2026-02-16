@@ -75,7 +75,9 @@ export class ModelResolver {
       return this.cache.get(modelRef)!;
     }
 
-    const [providerId, modelId] = modelRef.split("/");
+    const parts = modelRef.split("/");
+    const providerId = parts[0];
+    const modelId = parts.slice(1).join("/");
 
     if (!providerId || !modelId) {
       throw new ModelResolverError(
@@ -167,7 +169,7 @@ export class ModelResolver {
 
     for (const modelRef of candidates) {
       try {
-        const [providerId] = modelRef.split("/");
+        const providerId = modelRef.split("/")[0];
 
         // Skip unavailable providers
         if (providerId && unavailableProviders.has(providerId)) {
