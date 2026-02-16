@@ -83,6 +83,8 @@ export class PiAgentProcessor {
   private model: string = "";
   private apiKey?: string;
   private baseUrl?: string;
+  private compactionMode?: "safeguard" | "moderate" | "aggressive";
+  private workspace?: string;
 
   constructor(skillDirs: string[], config: AppConfig, memoryManager?: MemoryManager, modelResolver?: ModelResolver) {
     this.config = config;
@@ -101,13 +103,19 @@ export class PiAgentProcessor {
     // Initialize provider-specific settings from first provider
     this.initializeProviderSettings();
 
+    // Read agent configuration defaults
+    this.compactionMode = config.agents?.defaults?.compactionMode;
+    this.workspace = config.agents?.defaults?.workspace;
+
     logger.info(
       {
         api: this.api,
         model: this.model,
         skillDirs,
         hasMemoryManager: !!memoryManager,
-        hasApiKey: !!this.apiKey
+        hasApiKey: !!this.apiKey,
+        compactionMode: this.compactionMode,
+        workspace: this.workspace
       },
       "[INIT] PiAgentProcessor initialized"
     );

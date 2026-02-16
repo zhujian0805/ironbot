@@ -37,9 +37,9 @@
 
 ## 6. Agent Configuration Integration
 
-- [ ] 6.1 Update agent initialization to read `compactionMode` from configuration
+- [x] 6.1 Update agent initialization to read `compactionMode` from configuration
 - [ ] 6.2 Pass `compactionMode` to agent state compaction logic (safeguard/moderate/aggressive)
-- [ ] 6.3 Update agent initialization to read `workspace` from configuration
+- [x] 6.3 Update agent initialization to read `workspace` from configuration
 - [ ] 6.4 Update subagent pool to respect separate `maxConcurrent` limit for subagents
 - [x] 6.5 Ensure agent defaults are applied before provider-specific overrides
 
@@ -56,7 +56,7 @@
 - [x] 8.2 Update ironbot startup to initialize workspace directories
 - [x] 8.3 Update model selection logic to use new ModelResolver
 - [x] 8.4 Verify backward compatibility with existing single-provider configurations (REMOVED - using new design only)
-- [ ] 8.5 Add integration tests for multi-provider model resolution
-- [ ] 8.6 Add integration tests for workspace path configuration
-- [ ] 8.7 Add integration tests for agent configuration defaults (compactionMode, subagent concurrency)
-- [ ] 8.8 Test cost model with cache costs in model metadata
+- [x] 8.5 Add integration tests for multi-provider model resolution
+- [x] 8.6 Add integration tests for workspace path configuration
+- [x] 8.7 Add integration tests for agent configuration defaults (compactionMode, subagent concurrency)
+- [x] 8.8 Test cost model with cache costs in model metadata

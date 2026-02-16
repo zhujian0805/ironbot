@@ -143,6 +143,8 @@ export class ClaudeProcessor {
   private autoRoutingConfig: AutoRoutingConfig;
   private autoRouteOptOutSet: Set<string>;
   private modelResolver: ModelResolver;
+  private compactionMode?: "safeguard" | "moderate" | "aggressive";
+  private workspace?: string;
 
   constructor(skillDirs: string[], appConfig: AppConfig, memoryManager?: MemoryManager, modelResolver?: ModelResolver) {
     const config = appConfig || resolveConfig();
@@ -205,7 +207,12 @@ export class ClaudeProcessor {
       (config.autoRouting.optOutSkills ?? []).map((skill) => skill.toLowerCase())
     );
     this.maxToolIterations = config.maxToolIterations;
-    logger.info({ model: this.model, skillDirs, hasMemoryManager: !!memoryManager }, "[INIT] ClaudeProcessor initialized");
+
+    // Read agent configuration defaults
+    this.compactionMode = config.agents?.defaults?.compactionMode;
+    this.workspace = config.agents?.defaults?.workspace;
+
+    logger.info({ model: this.model, skillDirs, hasMemoryManager: !!memoryManager, compactionMode: this.compactionMode, workspace: this.workspace }, "[INIT] ClaudeProcessor initialized");
   }
 
   private async checkAutoRouteSkills(userMessage: string, context?: SkillContext): Promise<string | null> {

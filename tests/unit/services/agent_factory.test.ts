@@ -117,9 +117,18 @@ describe("Multi-Provider LLM Configuration", () => {
   });
 
   it("should throw error when provider is not configured", () => {
-    const config = createTestConfig("missing-provider", {});
+    const baseConfig = resolveConfig();
+    const config = {
+      ...baseConfig,
+      models: {
+        providers: {} // No providers configured
+      },
+      agents: {
+        model: "missing/default"
+      }
+    };
 
-    expect(() => AgentFactory.create(config, config.skillDirs)).toThrow();
+    expect(() => AgentFactory.create(config as AppConfig, config.skillDirs)).toThrow();
   });
 
   it("should support switching between different providers with same API type", () => {
@@ -173,5 +182,91 @@ describe("Multi-Provider LLM Configuration", () => {
 
     expect(agent1).toBeInstanceOf(PiAgentProcessor);
     expect(agent2).toBeInstanceOf(ClaudeProcessor);
+  });
+});
+
+describe("Agent Configuration Defaults", () => {
+  const createConfigWithDefaults = (defaults: Record<string, any>): AppConfig => {
+    const baseConfig = resolveConfig();
+    return {
+      ...baseConfig,
+      models: {
+        providers: {
+          anthropic: {
+            api: "anthropic",
+            apiKey: "test-key",
+            models: [
+              {
+                id: "default",
+                name: "Default Model"
+              }
+            ]
+          }
+        }
+      },
+      agents: {
+        defaults,
+        model: "anthropic/default"
+      }
+    };
+  };
+
+  it("should load compactionMode from agent defaults", () => {
+    const config = createConfigWithDefaults({
+      compactionMode: "moderate"
+    });
+
+    expect(config.agents?.defaults?.compactionMode).toBe("moderate");
+  });
+
+  it("should load workspace from agent defaults", () => {
+    const config = createConfigWithDefaults({
+      workspace: "~/.ironbot/workspace"
+    });
+
+    expect(config.agents?.defaults?.workspace).toBe("~/.ironbot/workspace");
+  });
+
+  it("should load subagents.maxConcurrent from agent defaults", () => {
+    const config = createConfigWithDefaults({
+      subagents: {
+        maxConcurrent: 10
+      }
+    });
+
+    expect(config.agents?.defaults?.subagents?.maxConcurrent).toBe(10);
+  });
+
+  it("should load all agent defaults together", () => {
+    const config = createConfigWithDefaults({
+      compactionMode: "safeguard",
+      workspace: "/var/workspace",
+      subagents: {
+        maxConcurrent: 5
+      }
+    });
+
+    expect(config.agents?.defaults?.compactionMode).toBe("safeguard");
+    expect(config.agents?.defaults?.workspace).toBe("/var/workspace");
+    expect(config.agents?.defaults?.subagents?.maxConcurrent).toBe(5);
+  });
+
+  it("should work with partial agent defaults", () => {
+    const config = createConfigWithDefaults({
+      compactionMode: "aggressive"
+    });
+
+    expect(config.agents?.defaults?.compactionMode).toBe("aggressive");
+    expect(config.agents?.defaults?.workspace).toBeUndefined();
+  });
+
+  it("should allow agent creation with defaults", () => {
+    const config = createConfigWithDefaults({
+      compactionMode: "moderate",
+      workspace: "~/.ironbot/workspace"
+    });
+
+    const agent = AgentFactory.create(config, config.skillDirs);
+    expect(agent).toBeInstanceOf(ClaudeProcessor);
   });
 });
