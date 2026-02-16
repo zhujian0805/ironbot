@@ -26,7 +26,7 @@
 - [x] 4.2 Implement model lookup that resolves provider first, then finds model by ID
 - [x] 4.3 Cache model resolution results at agent initialization for performance
 - [x] 4.4 Add `getModelMetadata()` method to expose cost and configuration information
-- [ ] 4.5 Support model fallback chains with automatic provider switching
+- [x] 4.5 Support model fallback chains with automatic provider switching
 
 ## 5. Workspace Path Configuration
 
@@ -48,7 +48,7 @@
 - [x] 7.1 Add `api` field support to provider configuration (openai-completions, anthropic, etc.)
 - [x] 7.2 Update model client selection to use provider-specific API type
 - [x] 7.3 Support baseUrl override per provider for custom endpoints
-- [ ] 7.4 Test OpenAI-compatible and Anthropic-compatible provider configurations
+- [x] 7.4 Test OpenAI-compatible and Anthropic-compatible provider configurations
 
 ## 8. Runtime Integration and Testing
 

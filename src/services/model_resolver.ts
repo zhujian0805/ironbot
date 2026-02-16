@@ -110,6 +110,48 @@ export class ModelResolver {
   }
 
   /**
+   * Resolve a model with fallback chain support
+   * Tries each model in the chain until one is available
+   * e.g., "anthropic/opus|openai/gpt-4|alibaba/qwen" tries each in order
+   */
+  resolveModelWithFallback(modelRefChain: string, unavailableProviders: Set<string> = new Set()): ResolvedModel {
+    const trimmedChain = modelRefChain.trim();
+    if (!trimmedChain) {
+      throw new ModelResolverError("Model reference chain cannot be empty");
+    }
+
+    const candidates = trimmedChain.split("|").map((ref) => ref.trim()).filter(Boolean);
+
+    if (candidates.length === 0) {
+      throw new ModelResolverError("Model reference chain cannot be empty");
+    }
+
+    let lastError: ModelResolverError | null = null;
+
+    for (const modelRef of candidates) {
+      try {
+        const [providerId] = modelRef.split("/");
+
+        // Skip unavailable providers
+        if (providerId && unavailableProviders.has(providerId)) {
+          continue;
+        }
+
+        // Try to resolve this model
+        return this.resolveModel(modelRef);
+      } catch (error) {
+        lastError = error instanceof ModelResolverError ? error : new ModelResolverError(String(error));
+        // Continue to next candidate
+      }
+    }
+
+    // All candidates failed
+    throw new ModelResolverError(
+      `No available models in fallback chain: "${modelRefChain}". Last error: ${lastError?.message || "unknown"}`
+    );
+  }
+
+  /**
    * Clear the resolution cache (useful for testing or config reloads)
    */
   clearCache(): void {

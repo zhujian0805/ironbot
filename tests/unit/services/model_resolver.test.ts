@@ -231,4 +231,93 @@ describe("ModelResolver", () => {
       }).not.toThrow();
     });
   });
+
+  describe("resolveModelWithFallback", () => {
+    it("should resolve first available model in fallback chain", () => {
+      const result = resolver.resolveModelWithFallback("anthropic/opus|openai/gpt-4");
+
+      expect(result.providerId).toBe("anthropic");
+      expect(result.modelId).toBe("opus");
+    });
+
+    it("should fall back to second model if first is unavailable", () => {
+      const result = resolver.resolveModelWithFallback("openai/gpt-5|anthropic/opus");
+
+      expect(result.providerId).toBe("anthropic");
+      expect(result.modelId).toBe("opus");
+    });
+
+    it("should handle multiple fallback candidates", () => {
+      const result = resolver.resolveModelWithFallback("openai/missing|anthropic/missing|alibaba/qwen-max");
+
+      expect(result.providerId).toBe("alibaba");
+      expect(result.modelId).toBe("qwen-max");
+    });
+
+    it("should skip unavailable providers in fallback chain", () => {
+      const unavailable = new Set(["openai"]);
+      const result = resolver.resolveModelWithFallback("openai/gpt-4|anthropic/opus", unavailable);
+
+      expect(result.providerId).toBe("anthropic");
+      expect(result.modelId).toBe("opus");
+    });
+
+    it("should throw error if no models in chain are available", () => {
+      expect(() => {
+        resolver.resolveModelWithFallback("openai/missing|anthropic/missing");
+      }).toThrow("No available models in fallback chain");
+    });
+
+    it("should throw error for empty fallback chain", () => {
+      expect(() => {
+        resolver.resolveModelWithFallback("");
+      }).toThrow("Model reference chain cannot be empty");
+    });
+
+    it("should handle chain with only unavailable providers", () => {
+      const unavailable = new Set(["anthropic", "openai", "alibaba"]);
+      expect(() => {
+        resolver.resolveModelWithFallback("anthropic/opus|openai/gpt-4|alibaba/qwen-max", unavailable);
+      }).toThrow("No available models in fallback chain");
+    });
+
+    it("should trim whitespace in fallback chain", () => {
+      const result = resolver.resolveModelWithFallback("  openai/missing  |  anthropic/opus  ");
+
+      expect(result.providerId).toBe("anthropic");
+      expect(result.modelId).toBe("opus");
+    });
+
+    it("should use cache for each resolved model in chain", () => {
+      resolver.resolveModelWithFallback("anthropic/opus|openai/gpt-4");
+
+      // Resolve again - should use cached results
+      const result = resolver.resolveModelWithFallback("anthropic/opus|openai/gpt-4");
+
+      expect(result.providerId).toBe("anthropic");
+      expect(result.modelId).toBe("opus");
+    });
+
+    it("should return model metadata for fallback resolved model", () => {
+      const result = resolver.resolveModelWithFallback("openai/missing|alibaba/qwen-max");
+
+      expect(result.model.name).toBe("Qwen Max");
+      expect(result.model.cost?.input).toBe(0.001);
+    });
+
+    it("should handle single model reference (no fallback)", () => {
+      const result = resolver.resolveModelWithFallback("anthropic/opus");
+
+      expect(result.providerId).toBe("anthropic");
+      expect(result.modelId).toBe("opus");
+    });
+
+    it("should prefer earlier models in chain when available", () => {
+      const result = resolver.resolveModelWithFallback(
+        "anthropic/opus|anthropic/sonnet|anthropic/haiku"
+      );
+
+      expect(result.modelId).toBe("opus");
+    });
+  });
 });
